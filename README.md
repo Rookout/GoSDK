@@ -1,0 +1,1 @@
+## Rookout Go stub module
