@@ -1,3 +1,3 @@
-module github.com/Rookout/Go
+module github.com/Rookout/GoSDK
 
 go 1.17

@@ -1,7 +1,7 @@
 package rookout
 
 import (
-	"github.com/Rookout/Go/pkg"
+	"github.com/Rookout/GoSDK/pkg"
 )
 
 type RookOptions = pkg.RookOptions
