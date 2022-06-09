@@ -13,3 +13,7 @@ func Start(opts RookOptions) error {
 func Stop() {
 	stop()
 }
+
+func Flush() {
+	flush()
+}

@@ -12,3 +12,7 @@ func start(_ RookOptions) error {
 func stop() error {
 	return nil
 }
+
+func flush() {
+
+}
