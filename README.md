@@ -4,7 +4,7 @@
 ## Compatibility
 Go versions 1.15 and higher are supported. 
 
-Linux and Mac operating systems are supported. 
+Linux (including Alpine) and Mac operating systems are supported. 
 
 ## Installation
 
@@ -27,11 +27,11 @@ Call `rookout.Start` as early as possible in your `main` function:
 rookout.Start(rookout.RookOptions{token=[Your Rookout Token]})
 ```
 
-Build your application:
+For the best experience, build your application with extra debug info:
 ```bash
 go build -gcflags="all=-dwarflocationlists=true"
 ```
 
-## Advanced 
+## Additional Information
 
 For more info see the complete setup guide [in our docs](https://docs.rookout.com/docs/go-setup/).
