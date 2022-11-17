@@ -1,0 +1,3208 @@
+
+
+
+
+
+
+package protobuf2
+
+import (
+	any "github.com/golang/protobuf/ptypes/any"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
+)
+
+const (
+	
+	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	
+	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+)
+
+type DataOnPremTokenAccessType int32
+
+const (
+	DataOnPremTokenAccessType_WRITE DataOnPremTokenAccessType = 0
+	DataOnPremTokenAccessType_READ  DataOnPremTokenAccessType = 1
+)
+
+
+var (
+	DataOnPremTokenAccessType_name = map[int32]string{
+		0: "WRITE",
+		1: "READ",
+	}
+	DataOnPremTokenAccessType_value = map[string]int32{
+		"WRITE": 0,
+		"READ":  1,
+	}
+)
+
+func (x DataOnPremTokenAccessType) Enum() *DataOnPremTokenAccessType {
+	p := new(DataOnPremTokenAccessType)
+	*p = x
+	return p
+}
+
+func (x DataOnPremTokenAccessType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DataOnPremTokenAccessType) Descriptor() protoreflect.EnumDescriptor {
+	return file_messages_proto_enumTypes[0].Descriptor()
+}
+
+func (DataOnPremTokenAccessType) Type() protoreflect.EnumType {
+	return &file_messages_proto_enumTypes[0]
+}
+
+func (x DataOnPremTokenAccessType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+
+func (DataOnPremTokenAccessType) EnumDescriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{0}
+}
+
+type LogMessage_LogLevel int32
+
+const (
+	LogMessage_TRACE   LogMessage_LogLevel = 0
+	LogMessage_DEBUG   LogMessage_LogLevel = 1
+	LogMessage_INFO    LogMessage_LogLevel = 2
+	LogMessage_WARNING LogMessage_LogLevel = 3
+	LogMessage_ERROR   LogMessage_LogLevel = 4
+	LogMessage_FATAL   LogMessage_LogLevel = 5
+)
+
+
+var (
+	LogMessage_LogLevel_name = map[int32]string{
+		0: "TRACE",
+		1: "DEBUG",
+		2: "INFO",
+		3: "WARNING",
+		4: "ERROR",
+		5: "FATAL",
+	}
+	LogMessage_LogLevel_value = map[string]int32{
+		"TRACE":   0,
+		"DEBUG":   1,
+		"INFO":    2,
+		"WARNING": 3,
+		"ERROR":   4,
+		"FATAL":   5,
+	}
+)
+
+func (x LogMessage_LogLevel) Enum() *LogMessage_LogLevel {
+	p := new(LogMessage_LogLevel)
+	*p = x
+	return p
+}
+
+func (x LogMessage_LogLevel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (LogMessage_LogLevel) Descriptor() protoreflect.EnumDescriptor {
+	return file_messages_proto_enumTypes[1].Descriptor()
+}
+
+func (LogMessage_LogLevel) Type() protoreflect.EnumType {
+	return &file_messages_proto_enumTypes[1]
+}
+
+func (x LogMessage_LogLevel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+
+func (LogMessage_LogLevel) EnumDescriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{4, 0}
+}
+
+type ControllerLogMessage_LogLevel int32
+
+const (
+	ControllerLogMessage_TRACE   ControllerLogMessage_LogLevel = 0
+	ControllerLogMessage_DEBUG   ControllerLogMessage_LogLevel = 1
+	ControllerLogMessage_INFO    ControllerLogMessage_LogLevel = 2
+	ControllerLogMessage_WARNING ControllerLogMessage_LogLevel = 3
+	ControllerLogMessage_ERROR   ControllerLogMessage_LogLevel = 4
+	ControllerLogMessage_FATAL   ControllerLogMessage_LogLevel = 5
+)
+
+
+var (
+	ControllerLogMessage_LogLevel_name = map[int32]string{
+		0: "TRACE",
+		1: "DEBUG",
+		2: "INFO",
+		3: "WARNING",
+		4: "ERROR",
+		5: "FATAL",
+	}
+	ControllerLogMessage_LogLevel_value = map[string]int32{
+		"TRACE":   0,
+		"DEBUG":   1,
+		"INFO":    2,
+		"WARNING": 3,
+		"ERROR":   4,
+		"FATAL":   5,
+	}
+)
+
+func (x ControllerLogMessage_LogLevel) Enum() *ControllerLogMessage_LogLevel {
+	p := new(ControllerLogMessage_LogLevel)
+	*p = x
+	return p
+}
+
+func (x ControllerLogMessage_LogLevel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ControllerLogMessage_LogLevel) Descriptor() protoreflect.EnumDescriptor {
+	return file_messages_proto_enumTypes[2].Descriptor()
+}
+
+func (ControllerLogMessage_LogLevel) Type() protoreflect.EnumType {
+	return &file_messages_proto_enumTypes[2]
+}
+
+func (x ControllerLogMessage_LogLevel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+
+func (ControllerLogMessage_LogLevel) EnumDescriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{5, 0}
+}
+
+type NewAgentMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AgentInfo *AgentInformation `protobuf:"bytes,1,opt,name=agent_info,json=agentInfo,proto3" json:"agent_info,omitempty"`
+}
+
+func (x *NewAgentMessage) Reset() {
+	*x = NewAgentMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[0]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *NewAgentMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewAgentMessage) ProtoMessage() {}
+
+func (x *NewAgentMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[0]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*NewAgentMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *NewAgentMessage) GetAgentInfo() *AgentInformation {
+	if x != nil {
+		return x.AgentInfo
+	}
+	return nil
+}
+
+type StackFrame struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Filename string `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	Line     uint32 `protobuf:"varint,2,opt,name=line,proto3" json:"line,omitempty"`
+	Function string `protobuf:"bytes,3,opt,name=function,proto3" json:"function,omitempty"`
+}
+
+func (x *StackFrame) Reset() {
+	*x = StackFrame{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StackFrame) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StackFrame) ProtoMessage() {}
+
+func (x *StackFrame) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*StackFrame) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *StackFrame) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *StackFrame) GetLine() uint32 {
+	if x != nil {
+		return x.Line
+	}
+	return 0
+}
+
+func (x *StackFrame) GetFunction() string {
+	if x != nil {
+		return x.Function
+	}
+	return ""
+}
+
+type StackTrace struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Frames []*StackFrame `protobuf:"bytes,1,rep,name=frames,proto3" json:"frames,omitempty"`
+}
+
+func (x *StackTrace) Reset() {
+	*x = StackTrace{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StackTrace) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StackTrace) ProtoMessage() {}
+
+func (x *StackTrace) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*StackTrace) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *StackTrace) GetFrames() []*StackFrame {
+	if x != nil {
+		return x.Frames
+	}
+	return nil
+}
+
+type Exception struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Type      string      `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Message   string      `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Instance  *Variant    `protobuf:"bytes,3,opt,name=instance,proto3" json:"instance,omitempty"`
+	Traceback *StackTrace `protobuf:"bytes,4,opt,name=traceback,proto3" json:"traceback,omitempty"`
+}
+
+func (x *Exception) Reset() {
+	*x = Exception{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Exception) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Exception) ProtoMessage() {}
+
+func (x *Exception) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*Exception) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Exception) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *Exception) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *Exception) GetInstance() *Variant {
+	if x != nil {
+		return x.Instance
+	}
+	return nil
+}
+
+func (x *Exception) GetTraceback() *StackTrace {
+	if x != nil {
+		return x.Traceback
+	}
+	return nil
+}
+
+type LogMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Timestamp *timestamp.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"` 
+	AgentId   string               `protobuf:"bytes,2,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Level     LogMessage_LogLevel  `protobuf:"varint,3,opt,name=level,proto3,enum=com.rookout.LogMessage_LogLevel" json:"level,omitempty"`
+	Filename  string               `protobuf:"bytes,4,opt,name=filename,proto3" json:"filename,omitempty"`
+	Line      uint32               `protobuf:"varint,5,opt,name=line,proto3" json:"line,omitempty"`
+	Text      string               `protobuf:"bytes,6,opt,name=text,proto3" json:"text,omitempty"`
+	Arguments []*Variant           `protobuf:"bytes,7,rep,name=arguments,proto3" json:"arguments,omitempty"`
+	Exception *Exception           `protobuf:"bytes,8,opt,name=exception,proto3" json:"exception,omitempty"`
+	
+	FormattedMessage string `protobuf:"bytes,9,opt,name=formatted_message,json=formattedMessage,proto3" json:"formatted_message,omitempty"`
+	
+	LegacyArguments *Variant `protobuf:"bytes,10,opt,name=legacy_arguments,json=legacyArguments,proto3" json:"legacy_arguments,omitempty"`
+	ClassName       string   `protobuf:"bytes,11,opt,name=class_name,json=className,proto3" json:"class_name,omitempty"`
+	MethodName      string   `protobuf:"bytes,12,opt,name=method_name,json=methodName,proto3" json:"method_name,omitempty"`
+	ControllerId    string   `protobuf:"bytes,13,opt,name=controller_id,json=controllerId,proto3" json:"controller_id,omitempty"`
+}
+
+func (x *LogMessage) Reset() {
+	*x = LogMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *LogMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogMessage) ProtoMessage() {}
+
+func (x *LogMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*LogMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *LogMessage) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *LogMessage) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *LogMessage) GetLevel() LogMessage_LogLevel {
+	if x != nil {
+		return x.Level
+	}
+	return LogMessage_TRACE
+}
+
+func (x *LogMessage) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *LogMessage) GetLine() uint32 {
+	if x != nil {
+		return x.Line
+	}
+	return 0
+}
+
+func (x *LogMessage) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *LogMessage) GetArguments() []*Variant {
+	if x != nil {
+		return x.Arguments
+	}
+	return nil
+}
+
+func (x *LogMessage) GetException() *Exception {
+	if x != nil {
+		return x.Exception
+	}
+	return nil
+}
+
+
+func (x *LogMessage) GetFormattedMessage() string {
+	if x != nil {
+		return x.FormattedMessage
+	}
+	return ""
+}
+
+
+func (x *LogMessage) GetLegacyArguments() *Variant {
+	if x != nil {
+		return x.LegacyArguments
+	}
+	return nil
+}
+
+func (x *LogMessage) GetClassName() string {
+	if x != nil {
+		return x.ClassName
+	}
+	return ""
+}
+
+func (x *LogMessage) GetMethodName() string {
+	if x != nil {
+		return x.MethodName
+	}
+	return ""
+}
+
+func (x *LogMessage) GetControllerId() string {
+	if x != nil {
+		return x.ControllerId
+	}
+	return ""
+}
+
+type ControllerLogMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Timestamp          *timestamp.Timestamp          `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"` 
+	Level              ControllerLogMessage_LogLevel `protobuf:"varint,2,opt,name=level,proto3,enum=com.rookout.ControllerLogMessage_LogLevel" json:"level,omitempty"`
+	Filename           string                        `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`
+	Line               uint32                        `protobuf:"varint,4,opt,name=line,proto3" json:"line,omitempty"`
+	Text               string                        `protobuf:"bytes,5,opt,name=text,proto3" json:"text,omitempty"`
+	ClassName          string                        `protobuf:"bytes,6,opt,name=class_name,json=className,proto3" json:"class_name,omitempty"`
+	MethodName         string                        `protobuf:"bytes,7,opt,name=method_name,json=methodName,proto3" json:"method_name,omitempty"`
+	ControllerId       string                        `protobuf:"bytes,8,opt,name=controller_id,json=controllerId,proto3" json:"controller_id,omitempty"`
+	Error              *ControllerLogMessage_Error   `protobuf:"bytes,9,opt,name=error,proto3" json:"error,omitempty"`
+	Metadata           map[string]string             `protobuf:"bytes,10,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`                     
+	MetadataJSONValues map[string][]byte             `protobuf:"bytes,11,rep,name=metadataJSONValues,proto3" json:"metadataJSONValues,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` 
+}
+
+func (x *ControllerLogMessage) Reset() {
+	*x = ControllerLogMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ControllerLogMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ControllerLogMessage) ProtoMessage() {}
+
+func (x *ControllerLogMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*ControllerLogMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ControllerLogMessage) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *ControllerLogMessage) GetLevel() ControllerLogMessage_LogLevel {
+	if x != nil {
+		return x.Level
+	}
+	return ControllerLogMessage_TRACE
+}
+
+func (x *ControllerLogMessage) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *ControllerLogMessage) GetLine() uint32 {
+	if x != nil {
+		return x.Line
+	}
+	return 0
+}
+
+func (x *ControllerLogMessage) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *ControllerLogMessage) GetClassName() string {
+	if x != nil {
+		return x.ClassName
+	}
+	return ""
+}
+
+func (x *ControllerLogMessage) GetMethodName() string {
+	if x != nil {
+		return x.MethodName
+	}
+	return ""
+}
+
+func (x *ControllerLogMessage) GetControllerId() string {
+	if x != nil {
+		return x.ControllerId
+	}
+	return ""
+}
+
+func (x *ControllerLogMessage) GetError() *ControllerLogMessage_Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+func (x *ControllerLogMessage) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *ControllerLogMessage) GetMetadataJSONValues() map[string][]byte {
+	if x != nil {
+		return x.MetadataJSONValues
+	}
+	return nil
+}
+
+type RuleStatusMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AgentId      string `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	RuleId       string `protobuf:"bytes,2,opt,name=rule_id,json=ruleId,proto3" json:"rule_id,omitempty"`
+	Active       string `protobuf:"bytes,3,opt,name=active,proto3" json:"active,omitempty"`
+	Error        *Error `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	ControllerId string `protobuf:"bytes,5,opt,name=controller_id,json=controllerId,proto3" json:"controller_id,omitempty"`
+}
+
+func (x *RuleStatusMessage) Reset() {
+	*x = RuleStatusMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RuleStatusMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuleStatusMessage) ProtoMessage() {}
+
+func (x *RuleStatusMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*RuleStatusMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RuleStatusMessage) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *RuleStatusMessage) GetRuleId() string {
+	if x != nil {
+		return x.RuleId
+	}
+	return ""
+}
+
+func (x *RuleStatusMessage) GetActive() string {
+	if x != nil {
+		return x.Active
+	}
+	return ""
+}
+
+func (x *RuleStatusMessage) GetError() *Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+func (x *RuleStatusMessage) GetControllerId() string {
+	if x != nil {
+		return x.ControllerId
+	}
+	return ""
+}
+
+type AugReportMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AgentId            string            `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	AugId              string            `protobuf:"bytes,2,opt,name=aug_id,json=augId,proto3" json:"aug_id,omitempty"`
+	Arguments          *Variant          `protobuf:"bytes,3,opt,name=arguments,proto3" json:"arguments,omitempty"`
+	ReportId           string            `protobuf:"bytes,4,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"` 
+	StringsCache       map[string]uint32 `protobuf:"bytes,5,rep,name=strings_cache,json=stringsCache,proto3" json:"strings_cache,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	BufferCacheBuffers [][]byte          `protobuf:"bytes,6,rep,name=buffer_cache_buffers,json=bufferCacheBuffers,proto3" json:"buffer_cache_buffers,omitempty"`
+	BufferCacheIndexes []uint32          `protobuf:"varint,7,rep,packed,name=buffer_cache_indexes,json=bufferCacheIndexes,proto3" json:"buffer_cache_indexes,omitempty"`
+	Arguments2         *Variant2         `protobuf:"bytes,8,opt,name=arguments2,proto3" json:"arguments2,omitempty"`
+	ReverseListOrder   bool              `protobuf:"varint,9,opt,name=reverse_list_order,json=reverseListOrder,proto3" json:"reverse_list_order,omitempty"` 
+}
+
+func (x *AugReportMessage) Reset() {
+	*x = AugReportMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AugReportMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AugReportMessage) ProtoMessage() {}
+
+func (x *AugReportMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*AugReportMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AugReportMessage) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *AugReportMessage) GetAugId() string {
+	if x != nil {
+		return x.AugId
+	}
+	return ""
+}
+
+func (x *AugReportMessage) GetArguments() *Variant {
+	if x != nil {
+		return x.Arguments
+	}
+	return nil
+}
+
+func (x *AugReportMessage) GetReportId() string {
+	if x != nil {
+		return x.ReportId
+	}
+	return ""
+}
+
+func (x *AugReportMessage) GetStringsCache() map[string]uint32 {
+	if x != nil {
+		return x.StringsCache
+	}
+	return nil
+}
+
+func (x *AugReportMessage) GetBufferCacheBuffers() [][]byte {
+	if x != nil {
+		return x.BufferCacheBuffers
+	}
+	return nil
+}
+
+func (x *AugReportMessage) GetBufferCacheIndexes() []uint32 {
+	if x != nil {
+		return x.BufferCacheIndexes
+	}
+	return nil
+}
+
+func (x *AugReportMessage) GetArguments2() *Variant2 {
+	if x != nil {
+		return x.Arguments2
+	}
+	return nil
+}
+
+func (x *AugReportMessage) GetReverseListOrder() bool {
+	if x != nil {
+		return x.ReverseListOrder
+	}
+	return false
+}
+
+type UserMsg struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AugReport   *AugReportMessage `protobuf:"bytes,1,opt,name=aug_report,json=augReport,proto3" json:"aug_report,omitempty"`
+	ReportId    string            `protobuf:"bytes,2,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"` 
+	WorkspaceId string            `protobuf:"bytes,3,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+}
+
+func (x *UserMsg) Reset() {
+	*x = UserMsg{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UserMsg) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserMsg) ProtoMessage() {}
+
+func (x *UserMsg) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*UserMsg) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UserMsg) GetAugReport() *AugReportMessage {
+	if x != nil {
+		return x.AugReport
+	}
+	return nil
+}
+
+func (x *UserMsg) GetReportId() string {
+	if x != nil {
+		return x.ReportId
+	}
+	return ""
+}
+
+func (x *UserMsg) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+type AddAugCommand struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AugJson string `protobuf:"bytes,1,opt,name=aug_json,json=augJson,proto3" json:"aug_json,omitempty"`
+}
+
+func (x *AddAugCommand) Reset() {
+	*x = AddAugCommand{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AddAugCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddAugCommand) ProtoMessage() {}
+
+func (x *AddAugCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*AddAugCommand) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AddAugCommand) GetAugJson() string {
+	if x != nil {
+		return x.AugJson
+	}
+	return ""
+}
+
+type InitialAugsCommand struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Augs             []string          `protobuf:"bytes,1,rep,name=augs,proto3" json:"augs,omitempty"`
+	SdkConfiguration map[string]string `protobuf:"bytes,2,rep,name=sdk_configuration,json=sdkConfiguration,proto3" json:"sdk_configuration,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (x *InitialAugsCommand) Reset() {
+	*x = InitialAugsCommand{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *InitialAugsCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InitialAugsCommand) ProtoMessage() {}
+
+func (x *InitialAugsCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*InitialAugsCommand) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *InitialAugsCommand) GetAugs() []string {
+	if x != nil {
+		return x.Augs
+	}
+	return nil
+}
+
+func (x *InitialAugsCommand) GetSdkConfiguration() map[string]string {
+	if x != nil {
+		return x.SdkConfiguration
+	}
+	return nil
+}
+
+type RemoveAugCommand struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AugId string `protobuf:"bytes,1,opt,name=aug_id,json=augId,proto3" json:"aug_id,omitempty"`
+}
+
+func (x *RemoveAugCommand) Reset() {
+	*x = RemoveAugCommand{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[11]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RemoveAugCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveAugCommand) ProtoMessage() {}
+
+func (x *RemoveAugCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[11]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*RemoveAugCommand) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RemoveAugCommand) GetAugId() string {
+	if x != nil {
+		return x.AugId
+	}
+	return ""
+}
+
+type InitFinishedMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *InitFinishedMessage) Reset() {
+	*x = InitFinishedMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[12]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *InitFinishedMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InitFinishedMessage) ProtoMessage() {}
+
+func (x *InitFinishedMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[12]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*InitFinishedMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{12}
+}
+
+type ClearAugsCommand struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ClearAugsCommand) Reset() {
+	*x = ClearAugsCommand{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[13]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ClearAugsCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearAugsCommand) ProtoMessage() {}
+
+func (x *ClearAugsCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[13]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*ClearAugsCommand) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{13}
+}
+
+type PingMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Value int32 `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (x *PingMessage) Reset() {
+	*x = PingMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[14]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PingMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PingMessage) ProtoMessage() {}
+
+func (x *PingMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[14]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*PingMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *PingMessage) GetValue() int32 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+type ErrorMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+}
+
+func (x *ErrorMessage) Reset() {
+	*x = ErrorMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[15]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ErrorMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ErrorMessage) ProtoMessage() {}
+
+func (x *ErrorMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[15]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*ErrorMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ErrorMessage) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type C2CInitMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ControllerInfo  *ControllerInformation `protobuf:"bytes,1,opt,name=controllerInfo,proto3" json:"controllerInfo,omitempty"`
+	ConnectedAgents []string               `protobuf:"bytes,2,rep,name=connectedAgents,proto3" json:"connectedAgents,omitempty"`
+}
+
+func (x *C2CInitMessage) Reset() {
+	*x = C2CInitMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[16]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *C2CInitMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*C2CInitMessage) ProtoMessage() {}
+
+func (x *C2CInitMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[16]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*C2CInitMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *C2CInitMessage) GetControllerInfo() *ControllerInformation {
+	if x != nil {
+		return x.ControllerInfo
+	}
+	return nil
+}
+
+func (x *C2CInitMessage) GetConnectedAgents() []string {
+	if x != nil {
+		return x.ConnectedAgents
+	}
+	return nil
+}
+
+type DataOnPremTokenRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AccessType DataOnPremTokenAccessType `protobuf:"varint,1,opt,name=access_type,json=accessType,proto3,enum=com.rookout.DataOnPremTokenAccessType" json:"access_type,omitempty"`
+}
+
+func (x *DataOnPremTokenRequest) Reset() {
+	*x = DataOnPremTokenRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[17]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DataOnPremTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DataOnPremTokenRequest) ProtoMessage() {}
+
+func (x *DataOnPremTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[17]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*DataOnPremTokenRequest) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *DataOnPremTokenRequest) GetAccessType() DataOnPremTokenAccessType {
+	if x != nil {
+		return x.AccessType
+	}
+	return DataOnPremTokenAccessType_WRITE
+}
+
+type DataOnPremTokenResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	
+	Token []byte `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+}
+
+func (x *DataOnPremTokenResponse) Reset() {
+	*x = DataOnPremTokenResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[18]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DataOnPremTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DataOnPremTokenResponse) ProtoMessage() {}
+
+func (x *DataOnPremTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[18]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*DataOnPremTokenResponse) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *DataOnPremTokenResponse) GetToken() []byte {
+	if x != nil {
+		return x.Token
+	}
+	return nil
+}
+
+type AgentsList struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AgentsIds []string `protobuf:"bytes,1,rep,name=agents_ids,json=agentsIds,proto3" json:"agents_ids,omitempty"`
+}
+
+func (x *AgentsList) Reset() {
+	*x = AgentsList{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[19]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AgentsList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentsList) ProtoMessage() {}
+
+func (x *AgentsList) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[19]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*AgentsList) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AgentsList) GetAgentsIds() []string {
+	if x != nil {
+		return x.AgentsIds
+	}
+	return nil
+}
+
+type AssertAgents struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AgentIds []string `protobuf:"bytes,1,rep,name=agent_ids,json=agentIds,proto3" json:"agent_ids,omitempty"`
+}
+
+func (x *AssertAgents) Reset() {
+	*x = AssertAgents{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[20]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AssertAgents) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssertAgents) ProtoMessage() {}
+
+func (x *AssertAgents) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[20]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*AssertAgents) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AssertAgents) GetAgentIds() []string {
+	if x != nil {
+		return x.AgentIds
+	}
+	return nil
+}
+
+type InvalidateAgentsCommand struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AgentsIds []string `protobuf:"bytes,1,rep,name=agents_ids,json=agentsIds,proto3" json:"agents_ids,omitempty"`
+}
+
+func (x *InvalidateAgentsCommand) Reset() {
+	*x = InvalidateAgentsCommand{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[21]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *InvalidateAgentsCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InvalidateAgentsCommand) ProtoMessage() {}
+
+func (x *InvalidateAgentsCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[21]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*InvalidateAgentsCommand) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *InvalidateAgentsCommand) GetAgentsIds() []string {
+	if x != nil {
+		return x.AgentsIds
+	}
+	return nil
+}
+
+type ConfirmAgentsCommand struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AgentsIds []string `protobuf:"bytes,1,rep,name=agents_ids,json=agentsIds,proto3" json:"agents_ids,omitempty"`
+}
+
+func (x *ConfirmAgentsCommand) Reset() {
+	*x = ConfirmAgentsCommand{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[22]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ConfirmAgentsCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConfirmAgentsCommand) ProtoMessage() {}
+
+func (x *ConfirmAgentsCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[22]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*ConfirmAgentsCommand) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ConfirmAgentsCommand) GetAgentsIds() []string {
+	if x != nil {
+		return x.AgentsIds
+	}
+	return nil
+}
+
+type AgentIdHitCountPair struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AgentId  string `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	HitCount uint32 `protobuf:"varint,2,opt,name=hit_count,json=hitCount,proto3" json:"hit_count,omitempty"`
+}
+
+func (x *AgentIdHitCountPair) Reset() {
+	*x = AgentIdHitCountPair{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[23]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AgentIdHitCountPair) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentIdHitCountPair) ProtoMessage() {}
+
+func (x *AgentIdHitCountPair) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[23]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*AgentIdHitCountPair) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AgentIdHitCountPair) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *AgentIdHitCountPair) GetHitCount() uint32 {
+	if x != nil {
+		return x.HitCount
+	}
+	return 0
+}
+
+type HitCountUpdateMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AugId               string                 `protobuf:"bytes,1,opt,name=aug_id,json=augId,proto3" json:"aug_id,omitempty"`
+	HitCountInformation []*AgentIdHitCountPair `protobuf:"bytes,2,rep,name=hitCountInformation,proto3" json:"hitCountInformation,omitempty"`
+}
+
+func (x *HitCountUpdateMessage) Reset() {
+	*x = HitCountUpdateMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[24]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *HitCountUpdateMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HitCountUpdateMessage) ProtoMessage() {}
+
+func (x *HitCountUpdateMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[24]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*HitCountUpdateMessage) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *HitCountUpdateMessage) GetAugId() string {
+	if x != nil {
+		return x.AugId
+	}
+	return ""
+}
+
+func (x *HitCountUpdateMessage) GetHitCountInformation() []*AgentIdHitCountPair {
+	if x != nil {
+		return x.HitCountInformation
+	}
+	return nil
+}
+
+type C2CRpcRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	RequestUuid string   `protobuf:"bytes,1,opt,name=request_uuid,json=requestUuid,proto3" json:"request_uuid,omitempty"`
+	Message     *any.Any `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+}
+
+func (x *C2CRpcRequest) Reset() {
+	*x = C2CRpcRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[25]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *C2CRpcRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*C2CRpcRequest) ProtoMessage() {}
+
+func (x *C2CRpcRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[25]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*C2CRpcRequest) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *C2CRpcRequest) GetRequestUuid() string {
+	if x != nil {
+		return x.RequestUuid
+	}
+	return ""
+}
+
+func (x *C2CRpcRequest) GetMessage() *any.Any {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+type C2CRpcResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	RequestUuid string   `protobuf:"bytes,1,opt,name=request_uuid,json=requestUuid,proto3" json:"request_uuid,omitempty"`
+	Message     *any.Any `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Error       string   `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *C2CRpcResponse) Reset() {
+	*x = C2CRpcResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[26]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *C2CRpcResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*C2CRpcResponse) ProtoMessage() {}
+
+func (x *C2CRpcResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[26]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*C2CRpcResponse) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *C2CRpcResponse) GetRequestUuid() string {
+	if x != nil {
+		return x.RequestUuid
+	}
+	return ""
+}
+
+func (x *C2CRpcResponse) GetMessage() *any.Any {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+func (x *C2CRpcResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type StartDatastoreConnectivityTestCommand struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	OrgId        string `protobuf:"bytes,1,opt,name=orgId,proto3" json:"orgId,omitempty"`
+	ControllerId string `protobuf:"bytes,2,opt,name=controllerId,proto3" json:"controllerId,omitempty"`
+	DatastoreUrl string `protobuf:"bytes,3,opt,name=datastoreUrl,proto3" json:"datastoreUrl,omitempty"`
+	WorkspaceId  string `protobuf:"bytes,4,opt,name=workspaceId,proto3" json:"workspaceId,omitempty"`
+}
+
+func (x *StartDatastoreConnectivityTestCommand) Reset() {
+	*x = StartDatastoreConnectivityTestCommand{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[27]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StartDatastoreConnectivityTestCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartDatastoreConnectivityTestCommand) ProtoMessage() {}
+
+func (x *StartDatastoreConnectivityTestCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[27]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*StartDatastoreConnectivityTestCommand) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *StartDatastoreConnectivityTestCommand) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *StartDatastoreConnectivityTestCommand) GetControllerId() string {
+	if x != nil {
+		return x.ControllerId
+	}
+	return ""
+}
+
+func (x *StartDatastoreConnectivityTestCommand) GetDatastoreUrl() string {
+	if x != nil {
+		return x.DatastoreUrl
+	}
+	return ""
+}
+
+func (x *StartDatastoreConnectivityTestCommand) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+type DatastoreConnectivityTestC2CResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ControllerId  string `protobuf:"bytes,1,opt,name=controllerId,proto3" json:"controllerId,omitempty"`
+	TestMessageId string `protobuf:"bytes,2,opt,name=TestMessageId,proto3" json:"TestMessageId,omitempty"`
+	IsSuccess     bool   `protobuf:"varint,3,opt,name=isSuccess,proto3" json:"isSuccess,omitempty"`
+	ErrorString   string `protobuf:"bytes,4,opt,name=errorString,proto3" json:"errorString,omitempty"`
+}
+
+func (x *DatastoreConnectivityTestC2CResponse) Reset() {
+	*x = DatastoreConnectivityTestC2CResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[28]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DatastoreConnectivityTestC2CResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DatastoreConnectivityTestC2CResponse) ProtoMessage() {}
+
+func (x *DatastoreConnectivityTestC2CResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[28]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*DatastoreConnectivityTestC2CResponse) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *DatastoreConnectivityTestC2CResponse) GetControllerId() string {
+	if x != nil {
+		return x.ControllerId
+	}
+	return ""
+}
+
+func (x *DatastoreConnectivityTestC2CResponse) GetTestMessageId() string {
+	if x != nil {
+		return x.TestMessageId
+	}
+	return ""
+}
+
+func (x *DatastoreConnectivityTestC2CResponse) GetIsSuccess() bool {
+	if x != nil {
+		return x.IsSuccess
+	}
+	return false
+}
+
+func (x *DatastoreConnectivityTestC2CResponse) GetErrorString() string {
+	if x != nil {
+		return x.ErrorString
+	}
+	return ""
+}
+
+type PingDatastoreCommand struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	DatastoreUrl string `protobuf:"bytes,1,opt,name=datastoreUrl,proto3" json:"datastoreUrl,omitempty"`
+}
+
+func (x *PingDatastoreCommand) Reset() {
+	*x = PingDatastoreCommand{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[29]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PingDatastoreCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PingDatastoreCommand) ProtoMessage() {}
+
+func (x *PingDatastoreCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[29]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*PingDatastoreCommand) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *PingDatastoreCommand) GetDatastoreUrl() string {
+	if x != nil {
+		return x.DatastoreUrl
+	}
+	return ""
+}
+
+type DatastoreInformation struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Version     string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	Hostname    string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	MachineType string `protobuf:"bytes,3,opt,name=machine_type,json=machineType,proto3" json:"machine_type,omitempty"`
+	Network     string `protobuf:"bytes,4,opt,name=network,proto3" json:"network,omitempty"`
+	Ip          string `protobuf:"bytes,5,opt,name=ip,proto3" json:"ip,omitempty"`
+	Os          string `protobuf:"bytes,6,opt,name=os,proto3" json:"os,omitempty"`
+	OsRelease   string `protobuf:"bytes,7,opt,name=os_release,json=osRelease,proto3" json:"os_release,omitempty"`
+	OsVersion   string `protobuf:"bytes,8,opt,name=os_version,json=osVersion,proto3" json:"os_version,omitempty"`
+	OsString    string `protobuf:"bytes,9,opt,name=os_string,json=osString,proto3" json:"os_string,omitempty"`
+}
+
+func (x *DatastoreInformation) Reset() {
+	*x = DatastoreInformation{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[30]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DatastoreInformation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DatastoreInformation) ProtoMessage() {}
+
+func (x *DatastoreInformation) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[30]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*DatastoreInformation) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *DatastoreInformation) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *DatastoreInformation) GetHostname() string {
+	if x != nil {
+		return x.Hostname
+	}
+	return ""
+}
+
+func (x *DatastoreInformation) GetMachineType() string {
+	if x != nil {
+		return x.MachineType
+	}
+	return ""
+}
+
+func (x *DatastoreInformation) GetNetwork() string {
+	if x != nil {
+		return x.Network
+	}
+	return ""
+}
+
+func (x *DatastoreInformation) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+func (x *DatastoreInformation) GetOs() string {
+	if x != nil {
+		return x.Os
+	}
+	return ""
+}
+
+func (x *DatastoreInformation) GetOsRelease() string {
+	if x != nil {
+		return x.OsRelease
+	}
+	return ""
+}
+
+func (x *DatastoreInformation) GetOsVersion() string {
+	if x != nil {
+		return x.OsVersion
+	}
+	return ""
+}
+
+func (x *DatastoreInformation) GetOsString() string {
+	if x != nil {
+		return x.OsString
+	}
+	return ""
+}
+
+type OrgLanguagesConfigsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *OrgLanguagesConfigsRequest) Reset() {
+	*x = OrgLanguagesConfigsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[31]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OrgLanguagesConfigsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrgLanguagesConfigsRequest) ProtoMessage() {}
+
+func (x *OrgLanguagesConfigsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[31]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*OrgLanguagesConfigsRequest) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{31}
+}
+
+type LanguageConfig struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Config map[string]string `protobuf:"bytes,1,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` 
+}
+
+func (x *LanguageConfig) Reset() {
+	*x = LanguageConfig{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[32]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *LanguageConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LanguageConfig) ProtoMessage() {}
+
+func (x *LanguageConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[32]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*LanguageConfig) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *LanguageConfig) GetConfig() map[string]string {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type OrgLanguagesConfigsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	OrgConfig map[string]*LanguageConfig `protobuf:"bytes,1,rep,name=OrgConfig,proto3" json:"OrgConfig,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (x *OrgLanguagesConfigsResponse) Reset() {
+	*x = OrgLanguagesConfigsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[33]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OrgLanguagesConfigsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrgLanguagesConfigsResponse) ProtoMessage() {}
+
+func (x *OrgLanguagesConfigsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[33]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*OrgLanguagesConfigsResponse) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *OrgLanguagesConfigsResponse) GetOrgConfig() map[string]*LanguageConfig {
+	if x != nil {
+		return x.OrgConfig
+	}
+	return nil
+}
+
+type ControllerLogMessage_Error struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Type    string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+}
+
+func (x *ControllerLogMessage_Error) Reset() {
+	*x = ControllerLogMessage_Error{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_messages_proto_msgTypes[34]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ControllerLogMessage_Error) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ControllerLogMessage_Error) ProtoMessage() {}
+
+func (x *ControllerLogMessage_Error) ProtoReflect() protoreflect.Message {
+	mi := &file_messages_proto_msgTypes[34]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*ControllerLogMessage_Error) Descriptor() ([]byte, []int) {
+	return file_messages_proto_rawDescGZIP(), []int{5, 0}
+}
+
+func (x *ControllerLogMessage_Error) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ControllerLogMessage_Error) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+var File_messages_proto protoreflect.FileDescriptor
+
+var file_messages_proto_rawDesc = []byte{
+	0x0a, 0x0e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x12, 0x0b, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x1a, 0x0d, 0x76,
+	0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x0e, 0x76, 0x61,
+	0x72, 0x69, 0x61, 0x6e, 0x74, 0x32, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x10, 0x61, 0x67,
+	0x65, 0x6e, 0x74, 0x5f, 0x69, 0x6e, 0x66, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x15,
+	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x5f, 0x69, 0x6e, 0x66, 0x6f, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x19, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x61, 0x6e, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x1a, 0x1f, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75,
+	0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x22, 0x4f, 0x0a, 0x0f, 0x4e, 0x65, 0x77, 0x41, 0x67, 0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x12, 0x3c, 0x0a, 0x0a, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x6e,
+	0x66, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72,
+	0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x41, 0x67, 0x65, 0x6e, 0x74, 0x49, 0x6e, 0x66, 0x6f,
+	0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x09, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x49, 0x6e,
+	0x66, 0x6f, 0x22, 0x58, 0x0a, 0x0a, 0x53, 0x74, 0x61, 0x63, 0x6b, 0x46, 0x72, 0x61, 0x6d, 0x65,
+	0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04,
+	0x6c, 0x69, 0x6e, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x04, 0x6c, 0x69, 0x6e, 0x65,
+	0x12, 0x1a, 0x0a, 0x08, 0x66, 0x75, 0x6e, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x08, 0x66, 0x75, 0x6e, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x3d, 0x0a, 0x0a,
+	0x53, 0x74, 0x61, 0x63, 0x6b, 0x54, 0x72, 0x61, 0x63, 0x65, 0x12, 0x2f, 0x0a, 0x06, 0x66, 0x72,
+	0x61, 0x6d, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x53, 0x74, 0x61, 0x63, 0x6b, 0x46, 0x72,
+	0x61, 0x6d, 0x65, 0x52, 0x06, 0x66, 0x72, 0x61, 0x6d, 0x65, 0x73, 0x22, 0xa2, 0x01, 0x0a, 0x09,
+	0x45, 0x78, 0x63, 0x65, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70,
+	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x18, 0x0a,
+	0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07,
+	0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x30, 0x0a, 0x08, 0x69, 0x6e, 0x73, 0x74, 0x61,
+	0x6e, 0x63, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x63, 0x6f, 0x6d, 0x2e,
+	0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x56, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x52,
+	0x08, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x12, 0x35, 0x0a, 0x09, 0x74, 0x72, 0x61,
+	0x63, 0x65, 0x62, 0x61, 0x63, 0x6b, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x53, 0x74, 0x61, 0x63, 0x6b,
+	0x54, 0x72, 0x61, 0x63, 0x65, 0x52, 0x09, 0x74, 0x72, 0x61, 0x63, 0x65, 0x62, 0x61, 0x63, 0x6b,
+	0x22, 0xf1, 0x04, 0x0a, 0x0a, 0x4c, 0x6f, 0x67, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12,
+	0x38, 0x0a, 0x09, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x09,
+	0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x12, 0x19, 0x0a, 0x08, 0x61, 0x67, 0x65,
+	0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x67, 0x65,
+	0x6e, 0x74, 0x49, 0x64, 0x12, 0x36, 0x0a, 0x05, 0x6c, 0x65, 0x76, 0x65, 0x6c, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x0e, 0x32, 0x20, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75,
+	0x74, 0x2e, 0x4c, 0x6f, 0x67, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x4c, 0x6f, 0x67,
+	0x4c, 0x65, 0x76, 0x65, 0x6c, 0x52, 0x05, 0x6c, 0x65, 0x76, 0x65, 0x6c, 0x12, 0x1a, 0x0a, 0x08,
+	0x66, 0x69, 0x6c, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08,
+	0x66, 0x69, 0x6c, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x6c, 0x69, 0x6e, 0x65,
+	0x18, 0x05, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x04, 0x6c, 0x69, 0x6e, 0x65, 0x12, 0x12, 0x0a, 0x04,
+	0x74, 0x65, 0x78, 0x74, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x65, 0x78, 0x74,
+	0x12, 0x32, 0x0a, 0x09, 0x61, 0x72, 0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x07, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75,
+	0x74, 0x2e, 0x56, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x52, 0x09, 0x61, 0x72, 0x67, 0x75, 0x6d,
+	0x65, 0x6e, 0x74, 0x73, 0x12, 0x34, 0x0a, 0x09, 0x65, 0x78, 0x63, 0x65, 0x70, 0x74, 0x69, 0x6f,
+	0x6e, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f,
+	0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x45, 0x78, 0x63, 0x65, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x52,
+	0x09, 0x65, 0x78, 0x63, 0x65, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x2f, 0x0a, 0x11, 0x66, 0x6f,
+	0x72, 0x6d, 0x61, 0x74, 0x74, 0x65, 0x64, 0x5f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18,
+	0x09, 0x20, 0x01, 0x28, 0x09, 0x42, 0x02, 0x18, 0x01, 0x52, 0x10, 0x66, 0x6f, 0x72, 0x6d, 0x61,
+	0x74, 0x74, 0x65, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x43, 0x0a, 0x10, 0x6c,
+	0x65, 0x67, 0x61, 0x63, 0x79, 0x5f, 0x61, 0x72, 0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18,
+	0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b,
+	0x6f, 0x75, 0x74, 0x2e, 0x56, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x42, 0x02, 0x18, 0x01, 0x52,
+	0x0f, 0x6c, 0x65, 0x67, 0x61, 0x63, 0x79, 0x41, 0x72, 0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x73,
+	0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x6c, 0x61, 0x73, 0x73, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x0b,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x63, 0x6c, 0x61, 0x73, 0x73, 0x4e, 0x61, 0x6d, 0x65, 0x12,
+	0x1f, 0x0a, 0x0b, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x0c,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4e, 0x61, 0x6d, 0x65,
+	0x12, 0x23, 0x0a, 0x0d, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x5f, 0x69,
+	0x64, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
+	0x6c, 0x65, 0x72, 0x49, 0x64, 0x22, 0x4d, 0x0a, 0x08, 0x4c, 0x6f, 0x67, 0x4c, 0x65, 0x76, 0x65,
+	0x6c, 0x12, 0x09, 0x0a, 0x05, 0x54, 0x52, 0x41, 0x43, 0x45, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05,
+	0x44, 0x45, 0x42, 0x55, 0x47, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x49, 0x4e, 0x46, 0x4f, 0x10,
+	0x02, 0x12, 0x0b, 0x0a, 0x07, 0x57, 0x41, 0x52, 0x4e, 0x49, 0x4e, 0x47, 0x10, 0x03, 0x12, 0x09,
+	0x0a, 0x05, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x10, 0x04, 0x12, 0x09, 0x0a, 0x05, 0x46, 0x41, 0x54,
+	0x41, 0x4c, 0x10, 0x05, 0x22, 0xbc, 0x06, 0x0a, 0x14, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
+	0x6c, 0x65, 0x72, 0x4c, 0x6f, 0x67, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x38, 0x0a,
+	0x09, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x09, 0x74, 0x69,
+	0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x12, 0x40, 0x0a, 0x05, 0x6c, 0x65, 0x76, 0x65, 0x6c,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f,
+	0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x4c,
+	0x6f, 0x67, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x4c, 0x6f, 0x67, 0x4c, 0x65, 0x76,
+	0x65, 0x6c, 0x52, 0x05, 0x6c, 0x65, 0x76, 0x65, 0x6c, 0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69, 0x6c,
+	0x65, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x66, 0x69, 0x6c,
+	0x65, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x6c, 0x69, 0x6e, 0x65, 0x18, 0x04, 0x20,
+	0x01, 0x28, 0x0d, 0x52, 0x04, 0x6c, 0x69, 0x6e, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x65, 0x78,
+	0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x65, 0x78, 0x74, 0x12, 0x1d, 0x0a,
+	0x0a, 0x63, 0x6c, 0x61, 0x73, 0x73, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x09, 0x63, 0x6c, 0x61, 0x73, 0x73, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x1f, 0x0a, 0x0b,
+	0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0a, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x23, 0x0a,
+	0x0d, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x08,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72,
+	0x49, 0x64, 0x12, 0x3d, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x09, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x27, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e,
+	0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x4c, 0x6f, 0x67, 0x4d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x2e, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f,
+	0x72, 0x12, 0x4b, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x0a, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x2f, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75,
+	0x74, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x4c, 0x6f, 0x67, 0x4d,
+	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x45,
+	0x6e, 0x74, 0x72, 0x79, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x69,
+	0x0a, 0x12, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4a, 0x53, 0x4f, 0x4e, 0x56, 0x61,
+	0x6c, 0x75, 0x65, 0x73, 0x18, 0x0b, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x39, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
+	0x6c, 0x65, 0x72, 0x4c, 0x6f, 0x67, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x4d, 0x65,
+	0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4a, 0x53, 0x4f, 0x4e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73,
+	0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x12, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4a,
+	0x53, 0x4f, 0x4e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x1a, 0x35, 0x0a, 0x05, 0x45, 0x72, 0x72,
+	0x6f, 0x72, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x1a, 0x3b, 0x0a, 0x0d, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x45, 0x6e, 0x74, 0x72,
+	0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03,
+	0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x1a, 0x45, 0x0a,
+	0x17, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4a, 0x53, 0x4f, 0x4e, 0x56, 0x61, 0x6c,
+	0x75, 0x65, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61,
+	0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
+	0x3a, 0x02, 0x38, 0x01, 0x22, 0x4d, 0x0a, 0x08, 0x4c, 0x6f, 0x67, 0x4c, 0x65, 0x76, 0x65, 0x6c,
+	0x12, 0x09, 0x0a, 0x05, 0x54, 0x52, 0x41, 0x43, 0x45, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x44,
+	0x45, 0x42, 0x55, 0x47, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x49, 0x4e, 0x46, 0x4f, 0x10, 0x02,
+	0x12, 0x0b, 0x0a, 0x07, 0x57, 0x41, 0x52, 0x4e, 0x49, 0x4e, 0x47, 0x10, 0x03, 0x12, 0x09, 0x0a,
+	0x05, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x10, 0x04, 0x12, 0x09, 0x0a, 0x05, 0x46, 0x41, 0x54, 0x41,
+	0x4c, 0x10, 0x05, 0x22, 0xae, 0x01, 0x0a, 0x11, 0x52, 0x75, 0x6c, 0x65, 0x53, 0x74, 0x61, 0x74,
+	0x75, 0x73, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x61, 0x67, 0x65,
+	0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x67, 0x65,
+	0x6e, 0x74, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x75, 0x6c, 0x65, 0x5f, 0x69, 0x64, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x75, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x16, 0x0a,
+	0x06, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x61,
+	0x63, 0x74, 0x69, 0x76, 0x65, 0x12, 0x28, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f,
+	0x75, 0x74, 0x2e, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x12,
+	0x23, 0x0a, 0x0d, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x5f, 0x69, 0x64,
+	0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c,
+	0x65, 0x72, 0x49, 0x64, 0x22, 0xf5, 0x03, 0x0a, 0x10, 0x41, 0x75, 0x67, 0x52, 0x65, 0x70, 0x6f,
+	0x72, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x61, 0x67, 0x65,
+	0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x67, 0x65,
+	0x6e, 0x74, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x61, 0x75, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x61, 0x75, 0x67, 0x49, 0x64, 0x12, 0x32, 0x0a, 0x09, 0x61,
+	0x72, 0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14,
+	0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x56, 0x61, 0x72,
+	0x69, 0x61, 0x6e, 0x74, 0x52, 0x09, 0x61, 0x72, 0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x12,
+	0x1b, 0x0a, 0x09, 0x72, 0x65, 0x70, 0x6f, 0x72, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x04, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x08, 0x72, 0x65, 0x70, 0x6f, 0x72, 0x74, 0x49, 0x64, 0x12, 0x54, 0x0a, 0x0d,
+	0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x73, 0x5f, 0x63, 0x61, 0x63, 0x68, 0x65, 0x18, 0x05, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x2f, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75,
+	0x74, 0x2e, 0x41, 0x75, 0x67, 0x52, 0x65, 0x70, 0x6f, 0x72, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x2e, 0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x73, 0x43, 0x61, 0x63, 0x68, 0x65, 0x45,
+	0x6e, 0x74, 0x72, 0x79, 0x52, 0x0c, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x73, 0x43, 0x61, 0x63,
+	0x68, 0x65, 0x12, 0x30, 0x0a, 0x14, 0x62, 0x75, 0x66, 0x66, 0x65, 0x72, 0x5f, 0x63, 0x61, 0x63,
+	0x68, 0x65, 0x5f, 0x62, 0x75, 0x66, 0x66, 0x65, 0x72, 0x73, 0x18, 0x06, 0x20, 0x03, 0x28, 0x0c,
+	0x52, 0x12, 0x62, 0x75, 0x66, 0x66, 0x65, 0x72, 0x43, 0x61, 0x63, 0x68, 0x65, 0x42, 0x75, 0x66,
+	0x66, 0x65, 0x72, 0x73, 0x12, 0x30, 0x0a, 0x14, 0x62, 0x75, 0x66, 0x66, 0x65, 0x72, 0x5f, 0x63,
+	0x61, 0x63, 0x68, 0x65, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x65, 0x73, 0x18, 0x07, 0x20, 0x03,
+	0x28, 0x0d, 0x52, 0x12, 0x62, 0x75, 0x66, 0x66, 0x65, 0x72, 0x43, 0x61, 0x63, 0x68, 0x65, 0x49,
+	0x6e, 0x64, 0x65, 0x78, 0x65, 0x73, 0x12, 0x35, 0x0a, 0x0a, 0x61, 0x72, 0x67, 0x75, 0x6d, 0x65,
+	0x6e, 0x74, 0x73, 0x32, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x56, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74,
+	0x32, 0x52, 0x0a, 0x61, 0x72, 0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x32, 0x12, 0x2c, 0x0a,
+	0x12, 0x72, 0x65, 0x76, 0x65, 0x72, 0x73, 0x65, 0x5f, 0x6c, 0x69, 0x73, 0x74, 0x5f, 0x6f, 0x72,
+	0x64, 0x65, 0x72, 0x18, 0x09, 0x20, 0x01, 0x28, 0x08, 0x52, 0x10, 0x72, 0x65, 0x76, 0x65, 0x72,
+	0x73, 0x65, 0x4c, 0x69, 0x73, 0x74, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x1a, 0x3f, 0x0a, 0x11, 0x53,
+	0x74, 0x72, 0x69, 0x6e, 0x67, 0x73, 0x43, 0x61, 0x63, 0x68, 0x65, 0x45, 0x6e, 0x74, 0x72, 0x79,
+	0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b,
+	0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x0d, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x87, 0x01, 0x0a,
+	0x07, 0x55, 0x73, 0x65, 0x72, 0x4d, 0x73, 0x67, 0x12, 0x3c, 0x0a, 0x0a, 0x61, 0x75, 0x67, 0x5f,
+	0x72, 0x65, 0x70, 0x6f, 0x72, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x41, 0x75, 0x67, 0x52, 0x65,
+	0x70, 0x6f, 0x72, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x09, 0x61, 0x75, 0x67,
+	0x52, 0x65, 0x70, 0x6f, 0x72, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x72, 0x65, 0x70, 0x6f, 0x72, 0x74,
+	0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72, 0x65, 0x70, 0x6f, 0x72,
+	0x74, 0x49, 0x64, 0x12, 0x21, 0x0a, 0x0c, 0x77, 0x6f, 0x72, 0x6b, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x77, 0x6f, 0x72, 0x6b, 0x73,
+	0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x22, 0x2a, 0x0a, 0x0d, 0x41, 0x64, 0x64, 0x41, 0x75, 0x67,
+	0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x19, 0x0a, 0x08, 0x61, 0x75, 0x67, 0x5f, 0x6a,
+	0x73, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x75, 0x67, 0x4a, 0x73,
+	0x6f, 0x6e, 0x22, 0xd1, 0x01, 0x0a, 0x12, 0x49, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x41, 0x75,
+	0x67, 0x73, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x61, 0x75, 0x67,
+	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x61, 0x75, 0x67, 0x73, 0x12, 0x62, 0x0a,
+	0x11, 0x73, 0x64, 0x6b, 0x5f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x35, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72,
+	0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x49, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x41, 0x75,
+	0x67, 0x73, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x2e, 0x53, 0x64, 0x6b, 0x43, 0x6f, 0x6e,
+	0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52,
+	0x10, 0x73, 0x64, 0x6b, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x1a, 0x43, 0x0a, 0x15, 0x53, 0x64, 0x6b, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65,
+	0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x29, 0x0a, 0x10, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65,
+	0x41, 0x75, 0x67, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x61, 0x75,
+	0x67, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x61, 0x75, 0x67, 0x49,
+	0x64, 0x22, 0x15, 0x0a, 0x13, 0x49, 0x6e, 0x69, 0x74, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65,
+	0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x12, 0x0a, 0x10, 0x43, 0x6c, 0x65, 0x61,
+	0x72, 0x41, 0x75, 0x67, 0x73, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x22, 0x23, 0x0a, 0x0b,
+	0x50, 0x69, 0x6e, 0x67, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x76,
+	0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75,
+	0x65, 0x22, 0x28, 0x0a, 0x0c, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x86, 0x01, 0x0a, 0x0e,
+	0x43, 0x32, 0x43, 0x49, 0x6e, 0x69, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x4a,
+	0x0a, 0x0e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f,
+	0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x49,
+	0x6e, 0x66, 0x6f, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0e, 0x63, 0x6f, 0x6e, 0x74,
+	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x28, 0x0a, 0x0f, 0x63, 0x6f,
+	0x6e, 0x6e, 0x65, 0x63, 0x74, 0x65, 0x64, 0x41, 0x67, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x02, 0x20,
+	0x03, 0x28, 0x09, 0x52, 0x0f, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x65, 0x64, 0x41, 0x67,
+	0x65, 0x6e, 0x74, 0x73, 0x22, 0x61, 0x0a, 0x16, 0x44, 0x61, 0x74, 0x61, 0x4f, 0x6e, 0x50, 0x72,
+	0x65, 0x6d, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x47,
+	0x0a, 0x0b, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0e, 0x32, 0x26, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75,
+	0x74, 0x2e, 0x44, 0x61, 0x74, 0x61, 0x4f, 0x6e, 0x50, 0x72, 0x65, 0x6d, 0x54, 0x6f, 0x6b, 0x65,
+	0x6e, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x54, 0x79, 0x70, 0x65, 0x52, 0x0a, 0x61, 0x63, 0x63,
+	0x65, 0x73, 0x73, 0x54, 0x79, 0x70, 0x65, 0x22, 0x2f, 0x0a, 0x17, 0x44, 0x61, 0x74, 0x61, 0x4f,
+	0x6e, 0x50, 0x72, 0x65, 0x6d, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x0c, 0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x2b, 0x0a, 0x0a, 0x41, 0x67, 0x65, 0x6e,
+	0x74, 0x73, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x73,
+	0x5f, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x09, 0x61, 0x67, 0x65, 0x6e,
+	0x74, 0x73, 0x49, 0x64, 0x73, 0x22, 0x2b, 0x0a, 0x0c, 0x41, 0x73, 0x73, 0x65, 0x72, 0x74, 0x41,
+	0x67, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x1b, 0x0a, 0x09, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x5f, 0x69,
+	0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x08, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x49,
+	0x64, 0x73, 0x22, 0x38, 0x0a, 0x17, 0x49, 0x6e, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x65,
+	0x41, 0x67, 0x65, 0x6e, 0x74, 0x73, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x1d, 0x0a,
+	0x0a, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x73, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
+	0x09, 0x52, 0x09, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x73, 0x49, 0x64, 0x73, 0x22, 0x35, 0x0a, 0x14,
+	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x72, 0x6d, 0x41, 0x67, 0x65, 0x6e, 0x74, 0x73, 0x43, 0x6f, 0x6d,
+	0x6d, 0x61, 0x6e, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x73, 0x5f, 0x69,
+	0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x09, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x73,
+	0x49, 0x64, 0x73, 0x22, 0x4d, 0x0a, 0x13, 0x41, 0x67, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x48, 0x69,
+	0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x50, 0x61, 0x69, 0x72, 0x12, 0x19, 0x0a, 0x08, 0x61, 0x67,
+	0x65, 0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x67,
+	0x65, 0x6e, 0x74, 0x49, 0x64, 0x12, 0x1b, 0x0a, 0x09, 0x68, 0x69, 0x74, 0x5f, 0x63, 0x6f, 0x75,
+	0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x08, 0x68, 0x69, 0x74, 0x43, 0x6f, 0x75,
+	0x6e, 0x74, 0x22, 0x82, 0x01, 0x0a, 0x15, 0x48, 0x69, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x55,
+	0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x15, 0x0a, 0x06,
+	0x61, 0x75, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x61, 0x75,
+	0x67, 0x49, 0x64, 0x12, 0x52, 0x0a, 0x13, 0x68, 0x69, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x49,
+	0x6e, 0x66, 0x6f, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x20, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x41,
+	0x67, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x48, 0x69, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x50, 0x61,
+	0x69, 0x72, 0x52, 0x13, 0x68, 0x69, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x49, 0x6e, 0x66, 0x6f,
+	0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x62, 0x0a, 0x0d, 0x43, 0x32, 0x63, 0x52, 0x70,
+	0x63, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x5f, 0x75, 0x75, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b,
+	0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x55, 0x75, 0x69, 0x64, 0x12, 0x2e, 0x0a, 0x07, 0x6d,
+	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x67,
+	0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x41,
+	0x6e, 0x79, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x79, 0x0a, 0x0e, 0x43,
+	0x32, 0x63, 0x52, 0x70, 0x63, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x21, 0x0a,
+	0x0c, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x5f, 0x75, 0x75, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0b, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x55, 0x75, 0x69, 0x64,
+	0x12, 0x2e, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x12, 0x14, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x22, 0xa7, 0x01, 0x0a, 0x25, 0x53, 0x74, 0x61, 0x72, 0x74,
+	0x44, 0x61, 0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74,
+	0x69, 0x76, 0x69, 0x74, 0x79, 0x54, 0x65, 0x73, 0x74, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64,
+	0x12, 0x14, 0x0a, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x12, 0x22, 0x0a, 0x0c, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f,
+	0x6c, 0x6c, 0x65, 0x72, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x63, 0x6f,
+	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x49, 0x64, 0x12, 0x22, 0x0a, 0x0c, 0x64, 0x61,
+	0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x55, 0x72, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0c, 0x64, 0x61, 0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x55, 0x72, 0x6c, 0x12, 0x20,
+	0x0a, 0x0b, 0x77, 0x6f, 0x72, 0x6b, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x18, 0x04, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0b, 0x77, 0x6f, 0x72, 0x6b, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64,
+	0x22, 0xb0, 0x01, 0x0a, 0x24, 0x44, 0x61, 0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x43, 0x6f,
+	0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79, 0x54, 0x65, 0x73, 0x74, 0x43, 0x32,
+	0x63, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x22, 0x0a, 0x0c, 0x63, 0x6f, 0x6e,
+	0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0c, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x49, 0x64, 0x12, 0x24, 0x0a,
+	0x0d, 0x54, 0x65, 0x73, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x49, 0x64, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x54, 0x65, 0x73, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x49, 0x64, 0x12, 0x1c, 0x0a, 0x09, 0x69, 0x73, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x09, 0x69, 0x73, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73,
+	0x73, 0x12, 0x20, 0x0a, 0x0b, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x53, 0x74, 0x72, 0x69, 0x6e, 0x67,
+	0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x53, 0x74, 0x72,
+	0x69, 0x6e, 0x67, 0x22, 0x3a, 0x0a, 0x14, 0x50, 0x69, 0x6e, 0x67, 0x44, 0x61, 0x74, 0x61, 0x73,
+	0x74, 0x6f, 0x72, 0x65, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x22, 0x0a, 0x0c, 0x64,
+	0x61, 0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x55, 0x72, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0c, 0x64, 0x61, 0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x55, 0x72, 0x6c, 0x22,
+	0x84, 0x02, 0x0a, 0x14, 0x44, 0x61, 0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x49, 0x6e, 0x66,
+	0x6f, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73,
+	0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69,
+	0x6f, 0x6e, 0x12, 0x1a, 0x0a, 0x08, 0x68, 0x6f, 0x73, 0x74, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x68, 0x6f, 0x73, 0x74, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x21,
+	0x0a, 0x0c, 0x6d, 0x61, 0x63, 0x68, 0x69, 0x6e, 0x65, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6d, 0x61, 0x63, 0x68, 0x69, 0x6e, 0x65, 0x54, 0x79, 0x70,
+	0x65, 0x12, 0x18, 0x0a, 0x07, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x18, 0x04, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x07, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x12, 0x0e, 0x0a, 0x02, 0x69,
+	0x70, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x70, 0x12, 0x0e, 0x0a, 0x02, 0x6f,
+	0x73, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x6f, 0x73, 0x12, 0x1d, 0x0a, 0x0a, 0x6f,
+	0x73, 0x5f, 0x72, 0x65, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x09, 0x6f, 0x73, 0x52, 0x65, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x6f, 0x73,
+	0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x08, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09,
+	0x6f, 0x73, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1b, 0x0a, 0x09, 0x6f, 0x73, 0x5f,
+	0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x18, 0x09, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x6f, 0x73,
+	0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x22, 0x1c, 0x0a, 0x1a, 0x4f, 0x72, 0x67, 0x4c, 0x61, 0x6e,
+	0x67, 0x75, 0x61, 0x67, 0x65, 0x73, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x22, 0x8c, 0x01, 0x0a, 0x0e, 0x4c, 0x61, 0x6e, 0x67, 0x75, 0x61, 0x67,
+	0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x3f, 0x0a, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69,
+	0x67, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f,
+	0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x4c, 0x61, 0x6e, 0x67, 0x75, 0x61, 0x67, 0x65, 0x43, 0x6f,
+	0x6e, 0x66, 0x69, 0x67, 0x2e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79,
+	0x52, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x1a, 0x39, 0x0a, 0x0b, 0x43, 0x6f, 0x6e, 0x66,
+	0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a,
+	0x02, 0x38, 0x01, 0x22, 0xcf, 0x01, 0x0a, 0x1b, 0x4f, 0x72, 0x67, 0x4c, 0x61, 0x6e, 0x67, 0x75,
+	0x61, 0x67, 0x65, 0x73, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x55, 0x0a, 0x09, 0x4f, 0x72, 0x67, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x37, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f,
+	0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x4f, 0x72, 0x67, 0x4c, 0x61, 0x6e, 0x67, 0x75, 0x61, 0x67, 0x65,
+	0x73, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x2e, 0x4f, 0x72, 0x67, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52,
+	0x09, 0x4f, 0x72, 0x67, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x1a, 0x59, 0x0a, 0x0e, 0x4f, 0x72,
+	0x67, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03,
+	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x31,
+	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1b, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x4c, 0x61, 0x6e, 0x67,
+	0x75, 0x61, 0x67, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75,
+	0x65, 0x3a, 0x02, 0x38, 0x01, 0x2a, 0x30, 0x0a, 0x19, 0x44, 0x61, 0x74, 0x61, 0x4f, 0x6e, 0x50,
+	0x72, 0x65, 0x6d, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x54, 0x79,
+	0x70, 0x65, 0x12, 0x09, 0x0a, 0x05, 0x57, 0x52, 0x49, 0x54, 0x45, 0x10, 0x00, 0x12, 0x08, 0x0a,
+	0x04, 0x52, 0x45, 0x41, 0x44, 0x10, 0x01, 0x42, 0x4f, 0x0a, 0x19, 0x63, 0x6f, 0x6d, 0x2e, 0x72,
+	0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2e, 0x72, 0x6f, 0x6f, 0x6b, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x62, 0x75, 0x66, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2f, 0x52, 0x6f, 0x6f, 0x6b, 0x6f, 0x75, 0x74, 0x2f, 0x6d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d,
+	0x65, 0x6e, 0x74, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2f, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x32, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+}
+
+var (
+	file_messages_proto_rawDescOnce sync.Once
+	file_messages_proto_rawDescData = file_messages_proto_rawDesc
+)
+
+func file_messages_proto_rawDescGZIP() []byte {
+	file_messages_proto_rawDescOnce.Do(func() {
+		file_messages_proto_rawDescData = protoimpl.X.CompressGZIP(file_messages_proto_rawDescData)
+	})
+	return file_messages_proto_rawDescData
+}
+
+var file_messages_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_messages_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
+var file_messages_proto_goTypes = []interface{}{
+	(DataOnPremTokenAccessType)(0),                
+	(LogMessage_LogLevel)(0),                      
+	(ControllerLogMessage_LogLevel)(0),            
+	(*NewAgentMessage)(nil),                       
+	(*StackFrame)(nil),                            
+	(*StackTrace)(nil),                            
+	(*Exception)(nil),                             
+	(*LogMessage)(nil),                            
+	(*ControllerLogMessage)(nil),                  
+	(*RuleStatusMessage)(nil),                     
+	(*AugReportMessage)(nil),                      
+	(*UserMsg)(nil),                               
+	(*AddAugCommand)(nil),                         
+	(*InitialAugsCommand)(nil),                    
+	(*RemoveAugCommand)(nil),                      
+	(*InitFinishedMessage)(nil),                   
+	(*ClearAugsCommand)(nil),                      
+	(*PingMessage)(nil),                           
+	(*ErrorMessage)(nil),                          
+	(*C2CInitMessage)(nil),                        
+	(*DataOnPremTokenRequest)(nil),                
+	(*DataOnPremTokenResponse)(nil),               
+	(*AgentsList)(nil),                            
+	(*AssertAgents)(nil),                          
+	(*InvalidateAgentsCommand)(nil),               
+	(*ConfirmAgentsCommand)(nil),                  
+	(*AgentIdHitCountPair)(nil),                   
+	(*HitCountUpdateMessage)(nil),                 
+	(*C2CRpcRequest)(nil),                         
+	(*C2CRpcResponse)(nil),                        
+	(*StartDatastoreConnectivityTestCommand)(nil), 
+	(*DatastoreConnectivityTestC2CResponse)(nil),  
+	(*PingDatastoreCommand)(nil),                  
+	(*DatastoreInformation)(nil),                  
+	(*OrgLanguagesConfigsRequest)(nil),            
+	(*LanguageConfig)(nil),                        
+	(*OrgLanguagesConfigsResponse)(nil),           
+	(*ControllerLogMessage_Error)(nil),            
+	nil,                                           
+	nil,                                           
+	nil,                                           
+	nil,                                           
+	nil,                                           
+	nil,                                           
+	(*AgentInformation)(nil),                      
+	(*Variant)(nil),                               
+	(*timestamp.Timestamp)(nil),                   
+	(*Error)(nil),                                 
+	(*Variant2)(nil),                              
+	(*ControllerInformation)(nil),                 
+	(*any.Any)(nil),                               
+}
+var file_messages_proto_depIdxs = []int32{
+	44, 
+	4,  
+	45, 
+	5,  
+	46, 
+	1,  
+	45, 
+	6,  
+	45, 
+	46, 
+	2,  
+	37, 
+	38, 
+	39, 
+	47, 
+	45, 
+	40, 
+	48, 
+	10, 
+	41, 
+	49, 
+	0,  
+	26, 
+	50, 
+	50, 
+	42, 
+	43, 
+	35, 
+	28, 
+	28, 
+	28, 
+	28, 
+	0,  
+}
+
+func init() { file_messages_proto_init() }
+func file_messages_proto_init() {
+	if File_messages_proto != nil {
+		return
+	}
+	file_variant_proto_init()
+	file_variant2_proto_init()
+	file_agent_info_proto_init()
+	file_controller_info_proto_init()
+	if !protoimpl.UnsafeEnabled {
+		file_messages_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*NewAgentMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StackFrame); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StackTrace); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Exception); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*LogMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ControllerLogMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RuleStatusMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AugReportMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UserMsg); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AddAugCommand); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*InitialAugsCommand); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RemoveAugCommand); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*InitFinishedMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ClearAugsCommand); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PingMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ErrorMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*C2CInitMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DataOnPremTokenRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DataOnPremTokenResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AgentsList); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AssertAgents); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*InvalidateAgentsCommand); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ConfirmAgentsCommand); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AgentIdHitCountPair); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*HitCountUpdateMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*C2CRpcRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*C2CRpcResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StartDatastoreConnectivityTestCommand); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DatastoreConnectivityTestC2CResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PingDatastoreCommand); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DatastoreInformation); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OrgLanguagesConfigsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*LanguageConfig); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OrgLanguagesConfigsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_messages_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ControllerLogMessage_Error); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+	}
+	type x struct{}
+	out := protoimpl.TypeBuilder{
+		File: protoimpl.DescBuilder{
+			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor: file_messages_proto_rawDesc,
+			NumEnums:      3,
+			NumMessages:   41,
+			NumExtensions: 0,
+			NumServices:   0,
+		},
+		GoTypes:           file_messages_proto_goTypes,
+		DependencyIndexes: file_messages_proto_depIdxs,
+		EnumInfos:         file_messages_proto_enumTypes,
+		MessageInfos:      file_messages_proto_msgTypes,
+	}.Build()
+	File_messages_proto = out.File
+	file_messages_proto_rawDesc = nil
+	file_messages_proto_goTypes = nil
+	file_messages_proto_depIdxs = nil
+}

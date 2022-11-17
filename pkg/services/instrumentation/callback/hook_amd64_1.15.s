@@ -1,0 +1,72 @@
+//go:build go1.15 && !go1.17 && amd64
+// +build go1.15,!go1.17,amd64
+
+#include "funcdata.h"
+#include "textflag.h"
+
+TEXT ·PrepForCallback(SB), NOSPLIT, $0
+
+
+
+
+
+
+
+
+NO_LOCAL_POINTERS
+
+
+MOVQ SP,BX
+
+ADDQ	$352, BX
+PUSHQ BX
+
+MOVQ (BP),BX
+PUSHQ BX
+
+
+
+
+
+
+MOVQ TLS, BX 
+PUSHQ BX
+MOVQ SP,AX 
+ADDQ $32, AX
+PUSHQ (AX) 
+ADDQ $16, AX
+PUSHQ (AX) 
+ADDQ $8, AX
+PUSHQ (AX) 
+ADDQ $8, AX
+PUSHQ (AX) 
+ADDQ $8, AX
+PUSHQ (AX) 
+ADDQ $8, AX
+PUSHQ (AX) 
+ADDQ $8, AX
+PUSHQ (AX) 
+ADDQ $8, AX
+PUSHQ (AX) 
+ADDQ $8, AX
+PUSHQ (AX) 
+ADDQ $248, AX
+PUSHQ (AX) 
+ADDQ $8, AX
+PUSHQ (AX) 
+CALL ·callback(SB)
+POPQ BX
+POPQ AX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+POPQ BX
+RET
