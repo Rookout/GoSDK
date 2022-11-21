@@ -6,6 +6,7 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 	"github.com/Rookout/GoSDK/pkg/services/suspender"
 	"github.com/Rookout/GoSDK/pkg/types"
+	"syscall"
 	"unsafe"
 )
 
@@ -18,12 +19,14 @@ type SafeHookInstaller interface {
 }
 
 type RealSafeHookInstaller struct {
-	goroutineSuspender suspender.Suspender
-	stb                callstack.IStackTraceBuffer
-	validator          safe_hook_validator.Validator
-	hookSizeBytes      int
-	hookDstAddr        uintptr
-	hookSrcAddr        uintptr
+	goroutineSuspender   suspender.Suspender
+	stb                  callstack.IStackTraceBuffer
+	validator            safe_hook_validator.Validator
+	hookSizeBytes        int
+	hookDstAddr          uintptr
+	hookSrcAddr          uintptr
+	hookPageStartAddress uintptr
+	hookTotalPagesBytes  int
 }
 
 func NewSafeHookInstaller(functionEntry, functionEnd uint64, stateId int,
@@ -48,6 +51,7 @@ func (s *RealSafeHookInstaller) InstallHook() (int, error) {
 	var ok bool
 	var err error = nil
 	var validationRes safe_hook_validator.ValidationErrorFlags
+	var modifyPermissionsRes int
 	s.goroutineSuspender.StopAll()
 	n, ok = s.stb.FillStackTraces()
 	if !ok {
@@ -59,12 +63,25 @@ func (s *RealSafeHookInstaller) InstallHook() (int, error) {
 	validationRes = s.validator.Validate(s.stb)
 	if validationRes != safe_hook_validator.NoError {
 		s.goroutineSuspender.ResumeAll()
-		err = fmt.Errorf("Detected it's unsafe to insatll hook at this time. Reason: %s", validationRes.String())
+		err = fmt.Errorf("Detected it's unsafe to install hook at this time. Reason: %s", validationRes.String())
 		return n, err
 	}
 	
+	modifyPermissionsRes = setWritable(s.hookPageStartAddress, s.hookTotalPagesBytes)
+	if modifyPermissionsRes != 0 {
+		s.goroutineSuspender.ResumeAll()
+		err = fmt.Errorf("Failed to set write permissions before setting the hook. Error code: %d", modifyPermissionsRes)
+		return n, err
+	}
 	for i := 0; i < s.hookSizeBytes; i++ {
 		*(*uint8)(unsafe.Pointer(s.hookDstAddr + uintptr(i))) = *(*uint8)(unsafe.Pointer(s.hookSrcAddr + uintptr(i)))
+	}
+	modifyPermissionsRes = setExecutable(s.hookPageStartAddress, s.hookTotalPagesBytes)
+	if modifyPermissionsRes != 0 {
+		
+		s.goroutineSuspender.ResumeAll()
+		err = fmt.Errorf("Failed to set execute permissions after setting the hook. Error code: %d", modifyPermissionsRes)
+		return n, err
 	}
 	s.goroutineSuspender.ResumeAll()
 	return n, nil
@@ -86,6 +103,13 @@ func (s *RealSafeHookInstaller) initHookInfo(nativeApi types.NativeHookerAPI, fu
 	if err != nil {
 		return err
 	}
+
+	pageSize := uintptr(syscall.Getpagesize())
+	pageMask := ^(pageSize - 1)                                                              
+	s.hookPageStartAddress = s.hookDstAddr & pageMask                                        
+	hookEndPageStartAddress := (s.hookDstAddr + uintptr(s.hookSizeBytes)) & pageMask         
+	s.hookTotalPagesBytes = int(pageSize + hookEndPageStartAddress - s.hookPageStartAddress) 
+
 	return nil
 }
 

@@ -2,6 +2,7 @@
 #define _HOOK_API_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -44,16 +45,7 @@ extern "C"
     void* GetHookBytesView(void* function_entry_addr, void* function_end_addr, int state_id);
 
     
-    uint32_t GetPrologueStackUsage();
-
-    
-    int GetPrologueAfterUsingStackOffset();
-
-    
-    uint32_t GetBreakpointStackUsage();
-
-    
-    int GetBreakpointTrampolineSizeInBytes();
+    int GetStackUsageJSON(char* stack_usage_buffer, size_t stack_usage_buffer_size);
 
     
     int ApplyBreakpointsState(void* function_entry_addr, void* function_end_addr, int state_id);

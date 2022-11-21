@@ -1,29 +1,38 @@
-//go:build !windows && amd64 && cgo
-// +build !windows,amd64,cgo
+//go:build !windows && (amd64 || (arm64 && !darwin)) && cgo
+// +build !windows
+// +build amd64 arm64,!darwin
+// +build cgo
 
 package hooker
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"github.com/Rookout/GoSDK/pkg/types"
 	"reflect"
 	"unsafe"
+
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/types"
 )
 
 
 
 /* #cgo CFLAGS: -I${SRCDIR}
 // Dynamic alpine
-#cgo rookout_dynamic,linux,alpine314,amd64 rookout_dynamic,linux,alpine,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_alpine314.a -lpthread -lrt -ldl -lz -lm -lstdc++
+#cgo rookout_dynamic,linux,alpine314,amd64 rookout_dynamic,linux,alpine,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_alpine314_x86_64.a -lpthread -lrt -ldl -lz -lm -lstdc++
 // Static alpine
-#cgo !rookout_dynamic,linux,alpine314,amd64 !rookout_dynamic,linux,alpine,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_alpine314.a -static -lpthread -lrt -ldl -lz -lm -lstdc++
+#cgo !rookout_dynamic,linux,alpine314,amd64 !rookout_dynamic,linux,alpine,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_alpine314_x86_64.a -static -lpthread -lrt -ldl -lz -lm -lstdc++
 // Dynamic debian
-#cgo rookout_dynamic,linux,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu18.a -lpthread -lrt -ldl -lz -lm -lstdc++
+#cgo rookout_dynamic,linux,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu18_x86_64.a -lpthread -lrt -ldl -lz -lm -lstdc++
 // Static debian
-#cgo !rookout_dynamic,linux,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu18.a -static -lpthread -lrt -ldl -lz -lm -lstdc++
+#cgo !rookout_dynamic,linux,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu18_x86_64.a -static -lpthread -lrt -ldl -lz -lm -lstdc++
 // Dynamic macos
-#cgo darwin LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_darwin.a -lpthread -lz -lffi -ledit -lm -lc++
+#cgo darwin,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_macos_x86_64.a -lpthread -lz -lffi -ledit -lm -lc++
+// Dynamic linux-arm
+#cgo rookout_dynamic,linux,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_linux_arm64.a -lpthread -lrt -ldl -lz -lm -lstdc++
+// Static linux-arm
+#cgo !rookout_dynamic,linux,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_linux_arm64.a -static -lpthread -lrt -ldl -lz -lstdc++ -lm
+#include <stdlib.h>
 #include <hook_api.h>
 */
 import "C"
@@ -94,20 +103,21 @@ func (a *nativeAPIImpl) GetUnpatchedInstructionMapping(functionEntry uint64, fun
 	return uintptr(rawUnpatchedAddressMapping), err
 }
 
-func (a *nativeAPIImpl) GetPrologueStackUsage() int32 {
-	return int32(C.GetPrologueStackUsage())
-}
-
-func (a *nativeAPIImpl) GetPrologueAfterUsingStackOffset() int {
-	return int(C.GetPrologueAfterUsingStackOffset())
-}
-
-func (a *nativeAPIImpl) GetBreakpointStackUsage() int32 {
-	return int32(C.GetBreakpointStackUsage())
-}
-
-func (a *nativeAPIImpl) GetBreakpointTrampolineSizeInBytes() int {
-	return int(C.GetBreakpointTrampolineSizeInBytes())
+func (a *nativeAPIImpl) GetStackUsageMap() (map[uint64][]map[string]int64, rookoutErrors.RookoutError) {
+	const stackUsageBufferSize = 100000
+	stackUsageMap := make(map[uint64][]map[string]int64)
+	stackUsageBufferPtr := C.malloc(C.ulong(C.sizeof_char * stackUsageBufferSize))
+	defer C.free(stackUsageBufferPtr)
+	stackUsageBufferLen := C.GetStackUsageJSON((*C.char)(stackUsageBufferPtr), C.ulong(stackUsageBufferSize))
+	if stackUsageBufferLen < 0 {
+		return nil, rookoutErrors.NewFailedToGetStackUsageMap(C.GoString(C.GetHookerLastError()))
+	}
+	stackUsageBuffer := C.GoBytes(stackUsageBufferPtr, stackUsageBufferLen)
+	err := json.Unmarshal(stackUsageBuffer, &stackUsageMap)
+	if err != nil {
+		return nil, rookoutErrors.NewFailedToParseStackUsageMap(string(stackUsageBuffer), err)
+	}
+	return stackUsageMap, nil
 }
 
 func (a *nativeAPIImpl) ApplyBreakpointsState(functionEntry uint64, functionEnd uint64, stateId int) error {

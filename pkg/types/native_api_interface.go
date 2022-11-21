@@ -1,11 +1,14 @@
 package types
 
+import "github.com/Rookout/GoSDK/pkg/rookoutErrors"
+
 type Address = uint64
 type FunctionType int
 
 const (
 	FunctionType0 FunctionType = iota
 	FunctionType1
+	FunctionType2
 )
 
 func (f FunctionType) String() string {
@@ -14,6 +17,8 @@ func (f FunctionType) String() string {
 		return "Type0"
 	case FunctionType1:
 		return "Type1"
+	case FunctionType2:
+		return "Type2"
 	default:
 		return "Illegal"
 	}
@@ -23,10 +28,7 @@ type NativeHookerAPI interface {
 	RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []uint64, bpCallback uintptr, prologueCallback uintptr, shouldRunPrologue uintptr, functionStackUsage int32) (stateId int, err error)
 	GetInstructionMapping(functionEntry Address, functionEnd Address, stateId int) (rawAddressMapping uintptr, err error)
 	GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (uintptr, error)
-	GetPrologueStackUsage() int32
-	GetPrologueAfterUsingStackOffset() int
-	GetBreakpointStackUsage() int32
-	GetBreakpointTrampolineSizeInBytes() int
+	GetStackUsageMap() (map[uint64][]map[string]int64, rookoutErrors.RookoutError)
 	ApplyBreakpointsState(functionEntry Address, functionEnd Address, stateId int) (err error)
 	GetHookAddress(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error)
 	GetHookSizeBytes(functionEntry uint64, functionEnd uint64, stateId int) (int, error)

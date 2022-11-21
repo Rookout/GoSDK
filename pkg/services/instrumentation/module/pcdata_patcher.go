@@ -117,7 +117,7 @@ func writePCDataEntry(p []byte, value int32, offset int32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err = writeUvarintToBytes(p, uint64(offset))
+	p, err = writeUvarintToBytes(p, uint64(offset/pcQuantum))
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func getEntryAtOffset(offset uintptr, pcDataEntries []PCDataEntry) (*PCDataEntry
 
 
 
-func addCallbackEntry(pcDataEntries []PCDataEntry, callbackOffset uintptr, callbackPcInfos []CallbackPCDataInfo) ([]PCDataEntry, error) {
+func addCallbackEntry(pcDataEntries []PCDataEntry, callbackOffset uintptr, callbackPcInfos []stackUsageInfo) ([]PCDataEntry, error) {
 	callbackEntryIndex, entryAfterCallback := getEntryAfterOffset(callbackOffset, pcDataEntries)
 	if callbackEntryIndex == -1 {
 		return nil, errors.New("No PCData entry in table after breakpoint")
@@ -191,7 +191,7 @@ func addCallbackEntry(pcDataEntries []PCDataEntry, callbackOffset uintptr, callb
 	return newPCDataEntries, nil
 }
 
-func generateCallbackPCDataEntries(callbackOffset uintptr, entryAfterCallbackValue int32, callbackPcInfos []CallbackPCDataInfo) []PCDataEntry {
+func generateCallbackPCDataEntries(callbackOffset uintptr, entryAfterCallbackValue int32, callbackPcInfos []stackUsageInfo) []PCDataEntry {
 	var callbackPcDataEntries []PCDataEntry
 
 	for _, callbackPcInfo := range callbackPcInfos {
@@ -202,7 +202,7 @@ func generateCallbackPCDataEntries(callbackOffset uintptr, entryAfterCallbackVal
 }
 
 
-func addCallbacksEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMapping, callbackMarkerToCallbackPcInfos map[uintptr][]CallbackPCDataInfo) ([]PCDataEntry, error) {
+func addCallbacksEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMapping, callbackMarkerToCallbackPcInfos map[uintptr][]stackUsageInfo) ([]PCDataEntry, error) {
 	for mapIndex, mapping := range offsetMappings {
 		for marker, callbackPCSPInfos := range callbackMarkerToCallbackPcInfos {
 			if mapping.OriginalAddress == marker {
@@ -231,7 +231,7 @@ func addCallbacksEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMa
 
 
 
-func updatePCDataOffsets(p []byte, offsetMappings []AddressMapping, callbackMarkerToCallbackPCSPInfos map[uintptr][]CallbackPCDataInfo) ([]byte, uintptr, error) {
+func updatePCDataOffsets(p []byte, offsetMappings []AddressMapping, callbackMarkerToCallbackPCSPInfos map[uintptr][]stackUsageInfo) ([]byte, uintptr, error) {
 	pcDataEntries := decodePCDataEntries(p)
 	if err := updatePCDataEntries(pcDataEntries, offsetMappings, false); err != nil {
 		return nil, 0, err
@@ -244,7 +244,6 @@ func updatePCDataOffsets(p []byte, offsetMappings []AddressMapping, callbackMark
 		}
 		pcDataEntries = newPCDataEntries
 	}
-
 	encoded, err := encodePCDataEntries(pcDataEntries)
 	if err != nil {
 		return nil, 0, err

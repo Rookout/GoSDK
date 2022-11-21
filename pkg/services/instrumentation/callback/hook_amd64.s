@@ -1,12 +1,9 @@
-//go:build go1.15 && !go1.20
-// +build go1.15,!go1.20
+//go:build amd64 && go1.15 && !go1.20
+// +build amd64,go1.15,!go1.20
 
 #include "funcdata.h"
 #include "textflag.h"
 
-TEXT ·MoreStack(SB), $0
-CALL runtime·morestack(SB)
-RET
 
  
  

@@ -3,6 +3,7 @@ package rookoutErrors
 import (
 	"fmt"
 	"github.com/go-errors/errors"
+	"runtime"
 )
 
 type RookoutError interface {
@@ -565,10 +566,6 @@ func NewFailedToGetDWARFTree(err error) RookoutError {
 		map[string]interface{}{})
 }
 
-func NewUnsupportedPlatform(platform string) RookoutError {
-	return newRookoutError("UnsupportedPlatform", "Your project was built for an unsupported platform", nil, map[string]interface{}{"platform": platform})
-}
-
 func NewFlushTimedOut() RookoutError {
 	return newRookoutError("FlushTimedOut", "Timed out during flush", nil, map[string]interface{}{})
 }
@@ -589,4 +586,40 @@ func NewRookMessageSizeExceeded(messageSize int, maxMessageSize int) RookoutErro
 			"messageSize":    messageSize,
 			"maxMessageSize": maxMessageSize,
 		})
+}
+
+func NewFailedToGetStackUsageMap(reason string) RookoutError {
+	return newRookoutError(
+		"FailedToGetStackUsageMap",
+		"Failed to get stack usage map from native",
+		nil,
+		map[string]interface{}{
+			"reason": reason,
+		})
+}
+
+func NewFailedToParseStackUsageMap(buffer string, externalErr error) RookoutError {
+	return newRookoutError(
+		"FailedToParseStackUsageMap",
+		"Failed to parse stack usage map from native",
+		externalErr,
+		map[string]interface{}{
+			"buffer": buffer,
+		})
+}
+
+func NewUnsupportedPlatform() RookoutError {
+	var desc string
+	if runtime.GOOS == "windows" {
+		desc = "Your project was built for an unsupported platform - Windows"
+	} else if runtime.GOARCH != "amd64" {
+		desc = "Your project was built for an unsupported platform architecture - " + runtime.GOARCH + "-" + runtime.GOOS
+	} else {
+		desc = "You're building without CGO enabled, which is not supported"
+	}
+	return newRookoutError(
+		"UnsupportedPlatform",
+		desc,
+		nil,
+		map[string]interface{}{})
 }

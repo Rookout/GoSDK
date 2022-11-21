@@ -39,7 +39,11 @@ func NewProcessManager() (pm *ProcessManager, err rookoutErrors.RookoutError) {
 		return nil, err
 	}
 
-	module.LoadModuleDatas()
+	stackUsageMap, err := h.GetStackUsageMap()
+	if err != nil {
+		return nil, err
+	}
+	module.Init(stackUsageMap)
 	bi, err := createBinaryInfo()
 	if err != nil {
 		return nil, err
@@ -54,7 +58,7 @@ func createBinaryInfo() (*binary_info.BinaryInfo, rookoutErrors.RookoutError) {
 	if err != nil {
 		return nil, rookoutErrors.NewFailedToGetExecutable(err)
 	}
-	err = bi.LoadBinaryInfo(exec, 0, nil)
+	err = bi.LoadBinaryInfo(exec, binary_info.GetEntrypoint(exec), nil)
 	if err != nil {
 		return nil, rookoutErrors.NewFailedToLoadBinaryInfo(err)
 	}
@@ -95,6 +99,7 @@ func (p *ProcessManager) WriteBreakpoint(filename string, lineno int, function *
 
 func (p *ProcessManager) writeBreakpointInstance(filename string, lineno int, function *binary_info.Function, addr uint64) (*augs.BreakpointInstance, rookoutErrors.RookoutError) {
 	filename, lineno, function = p.binaryInfo.PCToLine(addr)
+	logger.Logger().Debugf("Adding breakpoint in %s:%d address=0x%x", filename, lineno, addr)
 	flowRunner, err := p.hooker.StartWritingBreakpoint(addr, function.Entry, function.End)
 	if err != nil {
 		return nil, rookoutErrors.NewFailedToAddBreakpoint(filename, lineno, err)
@@ -113,11 +118,10 @@ func (p *ProcessManager) writeBreakpointInstance(filename string, lineno int, fu
 	
 	
 	
-	if err = module.PatchModuleData(addr, rawUnpatchedAddressMapping, nil, flowRunner.DefaultID()); err != nil {
+	if err = module.PatchModuleData(addr, rawUnpatchedAddressMapping, flowRunner.DefaultID()); err != nil {
 		return nil, rookoutErrors.NewFailedToPatchModule(filename, lineno, err)
 	}
-	pcspNativeInfo := p.getPCSPNativeInfo()
-	if err = module.PatchModuleData(addr, rawAddressMapping, &pcspNativeInfo, flowRunner.ID()); err != nil {
+	if err = module.PatchModuleData(addr, rawAddressMapping, flowRunner.ID()); err != nil {
 		return nil, rookoutErrors.NewFailedToPatchModule(filename, lineno, err)
 	}
 
@@ -135,15 +139,6 @@ func (p *ProcessManager) writeBreakpointInstance(filename string, lineno int, fu
 		Addr:             addr,
 		VariableLocators: variableLocators,
 	}, nil
-}
-
-func (p *ProcessManager) getPCSPNativeInfo() module.PCSPNativeInfo {
-	return module.PCSPNativeInfo{
-		BpOpcodesSizeInBytes:          p.hooker.GetBreakpointTrampolineSizeInBytes(),
-		BpStackUsage:                  p.hooker.GetBreakpointStackUsage(),
-		PrologueAfterUsingStackOffset: p.hooker.GetPrologueAfterUsingStackOffset(),
-		PrologueStackUsage:            p.hooker.GetPrologueStackUsage(),
-	}
 }
 
 func (p *ProcessManager) EraseBreakpoint(bp *augs.Breakpoint) rookoutErrors.RookoutError {
@@ -175,8 +170,7 @@ func (p *ProcessManager) eraseBreakpointInstance(bp *augs.Breakpoint, bpInstance
 			return rookoutErrors.NewFailedToGetAddressMapping(bp.File, bp.Line, err)
 		}
 
-		pcspNativeInfo := p.getPCSPNativeInfo()
-		err = module.PatchModuleData(bpInstance.Addr, rawAddressMapping, &pcspNativeInfo, flowRunner.ID())
+		err = module.PatchModuleData(bpInstance.Addr, rawAddressMapping, flowRunner.ID())
 		if err != nil {
 			return rookoutErrors.NewFailedToPatchModule(bp.File, bp.Line, err)
 		}

@@ -38,7 +38,6 @@ type BreakpointInfo struct {
 
 func collectStacktrace(bp *augs.Breakpoint, pcs []uintptr) (*BreakpointInfo, error) {
 	bpi := &BreakpointInfo{}
-
 	if bp.Stacktrace > 0 {
 		frames := runtime.CallersFrames(pcs)
 		frameCount := len(pcs)
@@ -100,8 +99,8 @@ func printBytesAt(sp, count uint64, prefixes []string) uint64 {
 func printStack(stackRegs registers.OnStackRegisters) {
 	stackPtr := stackRegs.SP()
 
-	fmt.Printf("BP: 0x%016x\n", stackRegs.RBP)
-	fmt.Printf("SP: 0x%016x\n", stackRegs.RSP)
+	fmt.Printf("BP: 0x%016x\n", stackRegs.BP())
+	fmt.Printf("SP: 0x%016x\n", stackRegs.SP())
 
 	fmt.Println("Native:")
 	stackPtr = printBytesAt(stackPtr, 4, []string{"idk", "flags", "rdi", "rdx"})
@@ -142,7 +141,6 @@ func callback(stackRegs registers.OnStackRegisters) {
 	pcs := make([]uintptr, MaxStacktrace-1)
 	
 	frameCount := runtime.Callers(4, pcs)
-
 	utils.CreateBlockingGoroutine(func() {
 		pcs = pcs[:frameCount]
 		collectBreakpoint(stackRegs, pcs, goid)
@@ -169,27 +167,31 @@ func collectBreakpoint(regs registers.OnStackRegisters, pcs []uintptr, goid int)
 	}
 
 	bpInfo.regs = regs
-	err = reportBreakpoint(bp, bpInstance, bpInfo, goid)
-	if err != nil {
-		logger.Logger().WithError(err).Errorf("failed to report breakpoint info")
-		return
-	}
+	reportBreakpoint(bp, bpInstance, bpInfo, goid)
 }
 
-func reportBreakpoint(bp *augs.Breakpoint, bpInstance *augs.BreakpointInstance, bpInfo *BreakpointInfo, goid int) error {
+func reportBreakpoint(bp *augs.Breakpoint, bpInstance *augs.BreakpointInstance, bpInfo *BreakpointInfo, goid int) {
 	locations, exists := locationsSet.FindLocationsByBreakpointName(bp.Name)
 	if !exists {
 		logger.Logger().Errorf("Breakpoint %s (on %s:%d) triggered but the breakpoint doesn't exist.", bp.Name, bp.File, bp.Line)
+		return
 	}
 
-	collectionService, err := collection.NewCollectionService(bpInfo.regs, BinaryInfo.PointerSize, bpInfo.Stacktrace, bpInstance.VariableLocators, goid)
-	if err != nil {
-		return err
-	}
+	wg := sync.WaitGroup{}
+	wg.Add(len(locations))
+	for i := range locations {
+		utils.CreateGoroutine(func(i int) func() {
+			return func() { 
+				defer wg.Done()
 
-	for _, location := range locations {
-		location.GetAug().Execute(collectionService)
-	}
+				collectionService, err := collection.NewCollectionService(bpInfo.regs, BinaryInfo.PointerSize, bpInfo.Stacktrace, bpInstance.VariableLocators, goid)
+				if err != nil {
+					logger.Logger().WithError(err).Errorf("failed to report breakpoint info")
+				}
 
-	return nil
+				locations[i].GetAug().Execute(collectionService)
+			}
+		}(i))
+	}
+	wg.Wait()
 }

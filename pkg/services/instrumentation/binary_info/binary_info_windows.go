@@ -20,7 +20,7 @@ type section struct {
 }
 
 func loadBinaryInfo(_ *BinaryInfo, _ *Image, _ string, _ uint64) error {
-	return rookoutErrors.NewUnsupportedPlatform("Windows")
+	return rookoutErrors.NewUnsupportedPlatform()
 }
 
 func getSectionName(_ string) string {

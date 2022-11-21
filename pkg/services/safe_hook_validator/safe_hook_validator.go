@@ -81,6 +81,8 @@ func (v *ValidatorFactoryImpl) GetValidator(funcType types.FunctionType, functio
 		return &type1Validator{
 			functionRange: functionRange,
 		}, nil
+	case types.FunctionType2:
+		return &type2Validator{}, nil
 	}
 	return nil, fmt.Errorf("Illegal function type! Got %d=%s", int(funcType), funcType.String())
 }
@@ -92,6 +94,9 @@ type type0Validator struct {
 
 type type1Validator struct {
 	functionRange AddressRange
+}
+
+type type2Validator struct {
 }
 
 func (r *AddressRange) contains(pc uintptr) bool {
@@ -135,4 +140,9 @@ func (v *type1Validator) Validate(buffer callstack.IStackTraceBuffer) Validation
 		}
 	}
 	return ret
+}
+
+func (v *type2Validator) Validate(buffer callstack.IStackTraceBuffer) ValidationErrorFlags {
+	
+	return NoError
 }

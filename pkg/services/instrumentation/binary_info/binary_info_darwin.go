@@ -18,15 +18,24 @@ type File = macho.File
 
 var supportedArchs = map[macho.Cpu]interface{}{
 	macho.CpuAmd64: nil,
+	macho.CpuArm64: nil,
 }
 
 const crosscall2SPOffset = 0x58
 
 
-func loadBinaryInfo(bi *BinaryInfo, image *Image, path string, _ uint64) error {
+
+func loadBinaryInfo(bi *BinaryInfo, image *Image, path string, entryPoint uint64) error {
 	exe, err := macho.Open(path)
 	if err != nil {
 		return err
+	}
+	if entryPoint != 0 {
+		
+		
+		
+		
+		image.StaticBase = entryPoint - 0x100000000
 	}
 	image.closer = exe
 	if !isSupportedArch(exe.Cpu) {

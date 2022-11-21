@@ -134,7 +134,7 @@ func pcvalue(f FuncInfo, off uint32, targetpc uintptr, cache *pcvalueCache, stri
 
 var moduleDatas []*moduledata
 
-func LoadModuleDatas() {
+func loadModuleDatas() {
 	if moduleDatas != nil {
 		return
 	}
@@ -142,6 +142,11 @@ func LoadModuleDatas() {
 	for moduleData := &firstModuleData; moduleData != nil; moduleData = moduleData.next {
 		moduleDatas = append(moduleDatas, moduleData)
 	}
+}
+
+func Init(stackUsageMap map[uint64][]map[string]int64) {
+	loadModuleDatas()
+	loadStackUsageMap(stackUsageMap)
 }
 
 func FindModuleDataForType(typeAddr uint64) *moduledata {

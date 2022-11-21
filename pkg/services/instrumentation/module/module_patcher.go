@@ -25,7 +25,7 @@ type AddressMapping struct {
 	OriginalAddress uintptr
 }
 
-type CallbackPCDataInfo struct {
+type stackUsageInfo struct {
 	offset    uintptr 
 	valueDiff int32
 }
@@ -37,12 +37,26 @@ type PCSPNativeInfo struct {
 	PrologueStackUsage            int32
 }
 
+var stackUsageMap map[uintptr][]stackUsageInfo
+
+func loadStackUsageMap(unparsedStackUsageMap map[uint64][]map[string]int64) {
+	valueDiffKey := "valueDiff"
+	offsetKey := "offset"
+	stackUsageMap = make(map[uintptr][]stackUsageInfo)
+	for marker, m := range unparsedStackUsageMap {
+		for _, info := range m {
+			stackUsageMap[uintptr(marker)] = append(stackUsageMap[uintptr(marker)], stackUsageInfo{
+				offset:    uintptr(info[offsetKey]),
+				valueDiff: int32(info[valueDiffKey]),
+			})
+		}
+	}
+}
+
 const BPMarker uintptr = 0xffffffffffffffff
 const PrologueMarker uintptr = 0xaaaaaaaaaaaaaaaa
 
 var callbacksMarkers = [...]uintptr{BPMarker, PrologueMarker}
-
-const firstOpcodeSize = 1
 
 func FindFuncMaxSPDelta(addr uint64) int32 {
 	if f := FindFunc(uintptr(addr)); f._func != nil {
@@ -122,18 +136,6 @@ func (m *moduleDataPatcher) patchPClntableEntryUInt32(newEntry *[]byte, offsetEn
 	newOffset := m.addBufferToPclntable(newEntry)
 	patchUInt32WithPointer(unsafe.Pointer(&m.newPclntable[offsetEntry]), newOffset)
 	return newOffset
-}
-
-
-func (m *moduleDataPatcher) generateCallbackMarkerToCallbackPCSPInfos() map[uintptr][]CallbackPCDataInfo {
-	if m.pcspNativeInfo == nil {
-		return nil
-	}
-
-	return map[uintptr][]CallbackPCDataInfo{
-		BPMarker:       {{offset: firstOpcodeSize, valueDiff: 0}, {offset: uintptr(m.pcspNativeInfo.BpOpcodesSizeInBytes), valueDiff: m.pcspNativeInfo.BpStackUsage}},
-		PrologueMarker: {{offset: firstOpcodeSize, valueDiff: 0}, {offset: uintptr(m.pcspNativeInfo.PrologueAfterUsingStackOffset), valueDiff: m.pcspNativeInfo.PrologueStackUsage}},
-	}
 }
 
 
@@ -286,8 +288,7 @@ func (m *moduleDataPatcher) patchPCSP() (*pcDataTableInfo, error) {
 		return nil, errors.New("Attempted to patch the pcsp twice")
 	}
 
-	callbackMarkerToCallbackPCSPInfos := m.generateCallbackMarkerToCallbackPCSPInfos()
-	newPCSP, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.function.pcsp)), m.offsetMappings, callbackMarkerToCallbackPCSPInfos)
+	newPCSP, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.function.pcsp)), m.offsetMappings, stackUsageMap)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +411,7 @@ func addModule(newModule *moduledata) {
 
 
 
-func PatchModuleData(addr uint64, rawAddressMapping unsafe.Pointer, pcspNativeInfo *PCSPNativeInfo, stateId int) error {
+func PatchModuleData(addr uint64, rawAddressMapping unsafe.Pointer, stateId int) error {
 	function := FindFunc(uintptr(addr)) 
 	moduleName := "Rookout-" + funcName(function) + "-" + strconv.Itoa(stateId)
 	if _, ok := modules[moduleName]; ok {
@@ -424,7 +425,6 @@ func PatchModuleData(addr uint64, rawAddressMapping unsafe.Pointer, pcspNativeIn
 	data.newFuncEndAddress = data.addressMappings[len(data.addressMappings)-1].NewAddress
 	data.origModule = function.datap
 	data.newPclntable = append(data.newPclntable, data.origModule.pclntable...)
-	data.pcspNativeInfo = pcspNativeInfo
 	
 	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
 		dumpBuffer(data.newFuncEntryAddress, data.newFuncEndAddress, "New function")

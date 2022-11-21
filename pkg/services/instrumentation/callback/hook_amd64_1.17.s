@@ -1,5 +1,5 @@
-//go:build go1.17 && !go1.20 && amd64
-// +build go1.17,!go1.20,amd64
+//go:build amd64 && go1.17 && !go1.20
+// +build amd64,go1.17,!go1.20
 
 #include "funcdata.h"
 #include "textflag.h"
@@ -21,9 +21,6 @@ MOVQ SP,BX
 ADDQ $360, BX
 PUSHQ BX
 
-MOVQ (BP),BX
-PUSHQ BX
-
 
 
 
@@ -32,9 +29,11 @@ PUSHQ BX
 MOVQ TLS, BX 
 PUSHQ BX
 MOVQ SP,AX 
-ADDQ $40, AX
+ADDQ $32, AX 
 PUSHQ (AX) 
-ADDQ $16, AX
+ADDQ $8, AX
+PUSHQ (AX) 
+ADDQ $8, AX
 PUSHQ (AX) 
 ADDQ $8, AX
 PUSHQ (AX) 

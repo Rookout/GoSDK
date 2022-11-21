@@ -29,7 +29,6 @@ type moduleDataPatcher struct {
 	addressMappings      []AddressMapping
 	offsetMappings       []AddressMapping
 	function             *FuncInfo
-	pcspNativeInfo       *PCSPNativeInfo
 	origFuncEntryAddress uintptr
 	newFuncEntryAddress  uintptr
 	newFuncEndAddress    uintptr

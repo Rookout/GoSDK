@@ -15,7 +15,7 @@ import (
 )
 
 func GetVariableLocators(pc uint64, line int, function *binary_info.Function, binaryInfo *binary_info.BinaryInfo) ([]*VariableLocator, error) {
-	root, err := godwarf.LoadTree(function.Offset, binaryInfo.Dwarf, 0)
+	root, err := godwarf.LoadTree(function.Offset, binaryInfo.Dwarf, binaryInfo.Images[0].StaticBase)
 	if err != nil {
 		return nil, err
 	}

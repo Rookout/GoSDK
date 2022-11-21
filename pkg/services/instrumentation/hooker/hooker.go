@@ -2,6 +2,7 @@ package hooker
 
 import (
 	"fmt"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_installer"
 	"github.com/Rookout/GoSDK/pkg/types"
 	"sort"
@@ -13,10 +14,7 @@ const stackBig = 4096
 type Hooker interface {
 	StartWritingBreakpoint(addr uint64, functionEntry uint64, functionEnd uint64) (hookContext BreakpointFlowRunner, err error)
 	StartErasingBreakpoint(addr uint64) (hookContext BreakpointFlowRunner, err error)
-	GetPrologueStackUsage() int32
-	GetPrologueAfterUsingStackOffset() int
-	GetBreakpointStackUsage() int32
-	GetBreakpointTrampolineSizeInBytes() int
+	GetStackUsageMap() (map[uint64][]map[string]int64, rookoutErrors.RookoutError)
 }
 
 type hookerImpl struct {
@@ -95,20 +93,8 @@ func (h *hookerImpl) StartErasingBreakpoint(bpAddress types.Address) (Breakpoint
 	return startRemovingBreakpoint(h, initInfo, safe_hook_installer.NewSafeHookInstaller)
 }
 
-func (h *hookerImpl) GetPrologueStackUsage() int32 {
-	return h.api.GetPrologueStackUsage()
-}
-
-func (h *hookerImpl) GetPrologueAfterUsingStackOffset() int {
-	return h.api.GetPrologueAfterUsingStackOffset()
-}
-
-func (h *hookerImpl) GetBreakpointStackUsage() int32 {
-	return h.api.GetBreakpointStackUsage()
-}
-
-func (h *hookerImpl) GetBreakpointTrampolineSizeInBytes() int {
-	return h.api.GetBreakpointTrampolineSizeInBytes()
+func (h *hookerImpl) GetStackUsageMap() (map[uint64][]map[string]int64, rookoutErrors.RookoutError) {
+	return h.api.GetStackUsageMap()
 }
 
 func (h *hookerImpl) getFunctionAddressesByBreakpoint(bpAddress types.Address) (uint64, uint64, bool) {
