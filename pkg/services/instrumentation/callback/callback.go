@@ -2,6 +2,11 @@ package callback
 
 import (
 	"fmt"
+	"runtime"
+	"runtime/debug"
+	"sync"
+	"unsafe"
+
 	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/locations_set"
 	"github.com/Rookout/GoSDK/pkg/logger"
@@ -10,10 +15,6 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/collection/registers"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/binary_info"
 	"github.com/Rookout/GoSDK/pkg/utils"
-	"runtime"
-	"runtime/debug"
-	"sync"
-	"unsafe"
 )
 
 var BinaryInfo *binary_info.BinaryInfo
@@ -156,7 +157,7 @@ func collectBreakpoint(regs registers.OnStackRegisters, pcs []uintptr, goid int)
 			functionName = function.Name
 		}
 
-		logger.Logger().Errorf("Breakpoint triggered on unknown address, %x (%s:%d - %s)", regs.PC(), file, line, functionName)
+		logger.Logger().Errorf("Breakpoint triggered on unknown address, 0x%x (%s:%d - %s)", regs.PC(), file, line, functionName)
 		return
 	}
 
@@ -173,7 +174,7 @@ func collectBreakpoint(regs registers.OnStackRegisters, pcs []uintptr, goid int)
 func reportBreakpoint(bp *augs.Breakpoint, bpInstance *augs.BreakpointInstance, bpInfo *BreakpointInfo, goid int) {
 	locations, exists := locationsSet.FindLocationsByBreakpointName(bp.Name)
 	if !exists {
-		logger.Logger().Errorf("Breakpoint %s (on %s:%d) triggered but the breakpoint doesn't exist.", bp.Name, bp.File, bp.Line)
+		logger.Logger().Errorf("Breakpoint %s (on %s:%d - 0x%x) triggered but the breakpoint doesn't exist.", bp.Name, bp.File, bp.Line, bpInfo.regs.PC())
 		return
 	}
 

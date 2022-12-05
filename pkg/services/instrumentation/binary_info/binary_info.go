@@ -8,6 +8,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/frame"
@@ -19,14 +28,6 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/util"
 	"github.com/Rookout/GoSDK/pkg/utils"
 	"github.com/hashicorp/golang-lru/simplelru"
-	"io"
-	"os"
-	"path/filepath"
-	"runtime"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 )
 
 type Function struct {
@@ -294,8 +295,12 @@ func shouldFilterSource(path string) bool {
 		return false
 	}
 
-	return strings.Contains(strings.ToLower(path), "gorook") ||
-		strings.Contains(strings.ToLower(path), "gosdk")
+	
+	if strings.Contains(path, "shouldrunprologue") || strings.Contains(path, "prepforcallback") {
+		return false
+	}
+
+	return strings.Contains(path, "gorook") || strings.Contains(path, "gosdk")
 }
 
 func (bi *BinaryInfo) loadSources(compileUnits []*compileUnit) {

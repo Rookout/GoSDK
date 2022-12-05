@@ -2,8 +2,9 @@ package rookoutErrors
 
 import (
 	"fmt"
-	"github.com/go-errors/errors"
 	"runtime"
+
+	"github.com/go-errors/errors"
 )
 
 type RookoutError interface {
@@ -605,6 +606,16 @@ func NewFailedToParseStackUsageMap(buffer string, externalErr error) RookoutErro
 		externalErr,
 		map[string]interface{}{
 			"buffer": buffer,
+		})
+}
+
+func NewUnwrappedFuncNotFound(funcName string) RookoutError {
+	return newRookoutError(
+		"UnwrappedFuncNotFound",
+		"Could not find unwrapped address of go assembly function",
+		nil,
+		map[string]interface{}{
+			"funcName": funcName,
 		})
 }
 

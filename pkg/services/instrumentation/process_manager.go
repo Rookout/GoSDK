@@ -1,6 +1,10 @@
 package instrumentation
 
 import (
+	"os"
+	"strings"
+	"unsafe"
+
 	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
@@ -10,10 +14,6 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/hooker"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/module"
 	"github.com/google/uuid"
-	"os"
-	"reflect"
-	"strings"
-	"unsafe"
 )
 
 
@@ -23,9 +23,27 @@ type ProcessManager struct {
 }
 
 func NewProcessManager() (pm *ProcessManager, err rookoutErrors.RookoutError) {
-	h := hooker.New(unsafe.Pointer(reflect.ValueOf(callback.PrepForCallback).Pointer()),
-		unsafe.Pointer(reflect.ValueOf(callback.MoreStack).Pointer()),
-		unsafe.Pointer(reflect.ValueOf(callback.ShouldRunPrologue).Pointer()),
+	bi, err := createBinaryInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	prepForCallback, err := bi.GetUnwrappedFuncPointer(callback.PrepForCallback)
+	if err != nil {
+		return nil, err
+	}
+	shouldRunPrologue, err := bi.GetUnwrappedFuncPointer(callback.ShouldRunPrologue)
+	if err != nil {
+		return nil, err
+	}
+	moreStack, err := bi.GetUnwrappedFuncPointer(callback.MoreStack)
+	if err != nil {
+		return nil, err
+	}
+
+	h := hooker.New(unsafe.Pointer(prepForCallback),
+		unsafe.Pointer(moreStack),
+		unsafe.Pointer(shouldRunPrologue),
 		module.FindFuncMaxSPDelta)
 	defer func() {
 		if err != nil {
@@ -44,10 +62,6 @@ func NewProcessManager() (pm *ProcessManager, err rookoutErrors.RookoutError) {
 		return nil, err
 	}
 	module.Init(stackUsageMap)
-	bi, err := createBinaryInfo()
-	if err != nil {
-		return nil, err
-	}
 
 	return &ProcessManager{hooker: h, binaryInfo: bi}, nil
 }
@@ -65,7 +79,6 @@ func createBinaryInfo() (*binary_info.BinaryInfo, rookoutErrors.RookoutError) {
 	bi.Dwarf = bi.Images[0].Dwarf 
 
 	callback.SetBinaryInfo(bi)
-
 	return bi, nil
 }
 

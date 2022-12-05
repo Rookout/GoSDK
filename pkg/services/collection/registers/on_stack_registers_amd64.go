@@ -20,6 +20,10 @@ type OnStackRegisters struct {
 	R9     uintptr
 	R10    uintptr
 	R11    uintptr
+	R12    uintptr
+	R13    uintptr
+	R14    uintptr
+	R15    uintptr
 	RBP    uintptr
 	RIP    uintptr
 	TLSVal uintptr
@@ -104,6 +108,22 @@ func (o OnStackRegisters) Slice(floatingPoint bool) ([]Register, error) {
 		{
 			Name: "R11",
 			Reg:  op.DwarfRegisterFromUint64(uint64(o.R11)),
+		},
+		{
+			Name: "R12",
+			Reg:  op.DwarfRegisterFromUint64(uint64(o.R12)),
+		},
+		{
+			Name: "R13",
+			Reg:  op.DwarfRegisterFromUint64(uint64(o.R13)),
+		},
+		{
+			Name: "R14",
+			Reg:  op.DwarfRegisterFromUint64(uint64(o.R14)),
+		},
+		{
+			Name: "R15",
+			Reg:  op.DwarfRegisterFromUint64(uint64(o.R15)),
 		},
 	}, nil
 }
