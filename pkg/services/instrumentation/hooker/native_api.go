@@ -18,20 +18,24 @@ import (
 
 
 /* #cgo CFLAGS: -I${SRCDIR}
-// Dynamic alpine
+// Dynamic alpine X86
 #cgo rookout_dynamic,linux,alpine314,amd64 rookout_dynamic,linux,alpine,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_alpine314_x86_64.a -lpthread -lrt -ldl -lz -lm -lstdc++
-// Static alpine
+// Static alpine X86
 #cgo !rookout_dynamic,linux,alpine314,amd64 !rookout_dynamic,linux,alpine,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_alpine314_x86_64.a -static -lpthread -lrt -ldl -lz -lm -lstdc++
-// Dynamic debian
+// Dynamic debian X86
 #cgo rookout_dynamic,linux,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu18_x86_64.a -lpthread -lrt -ldl -lz -lm -lstdc++
-// Static debian
+// Static debian X86
 #cgo !rookout_dynamic,linux,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu18_x86_64.a -static -lpthread -lrt -ldl -lz -lm -lstdc++
-// Dynamic macos
+// Dynamic macos X86
 #cgo darwin,amd64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_macos_x86_64.a -lpthread -lz -lffi -ledit -lm -lc++
-// Dynamic linux-arm
-#cgo rookout_dynamic,linux,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_linux_arm64.a -lpthread -lrt -ldl -lz -lm -lstdc++
-// Static linux-arm
-#cgo !rookout_dynamic,linux,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_linux_arm64.a -static -lpthread -lrt -ldl -lz -lstdc++ -lm
+// Dynamic alpine arm64
+#cgo rookout_dynamic,linux,alpine314,arm64 rookout_dynamic,linux,alpine,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_alpine314_arm64.a -lpthread -lrt -ldl -lz -lm -lstdc++
+// Static alpine arm64
+#cgo !rookout_dynamic,linux,alpine314,arm64 !rookout_dynamic,linux,alpine,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_alpine314_arm64.a -static -lpthread -lrt -ldl -lz -lm -lstdc++
+// Dynamic debian arm64
+#cgo rookout_dynamic,linux,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu_arm64.a -lpthread -lrt -ldl -lz -lm -lstdc++
+// Static debian arm64
+#cgo !rookout_dynamic,linux,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu_arm64.a -static -lpthread -lrt -ldl -lz -lstdc++ -lm
 #include <stdlib.h>
 #include <hook_api.h>
 */
