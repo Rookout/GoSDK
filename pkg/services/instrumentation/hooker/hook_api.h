@@ -1,69 +1,67 @@
 #ifndef _HOOK_API_H
 #define _HOOK_API_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
     
-
     
-    int Init(void* user_addr_hint);
-
     
-    int Destroy();
-
+    int RookoutInit(void *user_addr_hint);
     
-    int RegisterFunctionBreakpointsState(void* function_entry_addr, void* function_end_addr, int num_breakpoints, void* breakpoints_addrs, void* breakpoint_execution_callback_addr, void* prologue_callback_addr, void* should_run_prologue, uint32_t function_stack_usage);
-
-
     
-    void* GetInstructionMapping(void* function_entry_addr, void* function_end_addr, int state_id);
-
+    int RookoutDestroy();
     
-    void* GetUnpatchedInstructionMapping(void* function_entry_addr, void* function_end_addr);
-
     
-    int GetFunctionType(void* function_entry_addr, void* function_end_addr);
-
+    int RookoutRegisterFunctionBreakpointsState(void *function_entry_addr, void *function_end_addr, int num_breakpoints,
+                                                void *breakpoints_addrs, void *breakpoint_execution_callback_addr,
+                                                void *prologue_callback_addr, void *should_run_prologue,
+                                                uint32_t function_stack_usage);
     
-    uint64_t GetDangerZoneStartAddress(void* function_entry_addr, void* function_end_addr);
-
     
-    uint64_t GetDangerZoneEndAddress(void* function_entry_addr, void* function_end_addr);
-
+    void *RookoutGetInstructionMapping(void *function_entry_addr, void *function_end_addr, int state_id);
     
-    uint64_t GetHookAddress(void* function_entry_addr, void* function_end_addr, int state_id);
-
     
-    int GetHookSizeBytes(void* function_entry_addr, void* function_end_addr, int state_id);
-
+    void *RookoutGetUnpatchedInstructionMapping(void *function_entry_addr, void *function_end_addr);
     
-    void* GetHookBytesView(void* function_entry_addr, void* function_end_addr, int state_id);
-
     
-    int GetStackUsageJSON(char* stack_usage_buffer, size_t stack_usage_buffer_size);
-
+    int RookoutGetFunctionType(void *function_entry_addr, void *function_end_addr);
     
-    int ApplyBreakpointsState(void* function_entry_addr, void* function_end_addr, int state_id);
-
-
     
-    int ClearAllBreakpoints(void* function_entry_addr, void* function_end_addr);
-
+    uint64_t RookoutGetDangerZoneStartAddress(void *function_entry_addr, void *function_end_addr);
     
-    int TriggerWatchDog(unsigned long long timeout_ms);
-
     
-    void DefuseWatchDog();
-
+    uint64_t RookoutGetDangerZoneEndAddress(void *function_entry_addr, void *function_end_addr);
     
-    const char* GetHookerLastError();
-
-
+    
+    uint64_t RookoutGetHookAddress(void *function_entry_addr, void *function_end_addr, int state_id);
+    
+    
+    int RookoutGetHookSizeBytes(void *function_entry_addr, void *function_end_addr, int state_id);
+    
+    
+    void *RookoutGetHookBytesView(void *function_entry_addr, void *function_end_addr, int state_id);
+    
+    
+    int RookoutGetStackUsageJSON(char *stack_usage_buffer, size_t stack_usage_buffer_size);
+    
+    
+    int RookoutApplyBreakpointsState(void *function_entry_addr, void *function_end_addr, int state_id);
+    
+    
+    int RookoutClearAllBreakpoints(void *function_entry_addr, void *function_end_addr);
+    
+    
+    int RookoutTriggerWatchDog(unsigned long long timeout_ms);
+    
+    
+    void RookoutDefuseWatchDog();
+    
+    
+    const char *RookoutGetHookerLastError();
 
 #ifdef __cplusplus
 }

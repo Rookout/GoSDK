@@ -69,7 +69,7 @@ func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, function
 		bpAddr = unsafe.Pointer(&breakpoints[0])
 	}
 
-	stateId := int(C.RegisterFunctionBreakpointsState(
+	stateId := int(C.RookoutRegisterFunctionBreakpointsState(
 		getUnsafePointer(functionEntry),
 		getUnsafePointer(functionEnd),
 		C.int(len(breakpoints)),
@@ -81,27 +81,27 @@ func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, function
 	))
 
 	if stateId < 0 {
-		return stateId, fmt.Errorf("Couldn't set new function breakpoint state (%v) (%s)\n", breakpoints, C.GoString(C.GetHookerLastError()))
+		return stateId, fmt.Errorf("Couldn't set new function breakpoint state (%v) (%s)\n", breakpoints, C.GoString(C.RookoutGetHookerLastError()))
 	}
 
 	return stateId, nil
 }
 
 func (a *nativeAPIImpl) GetInstructionMapping(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
-	rawAddressMapping := C.GetInstructionMapping(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd), C.int(stateId))
+	rawAddressMapping := C.RookoutGetInstructionMapping(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd), C.int(stateId))
 	var err error = nil
 	if rawAddressMapping == nil {
-		err = fmt.Errorf("Couldn't get instruction mapping (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Couldn't get instruction mapping (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 
 	return uintptr(rawAddressMapping), err
 }
 
 func (a *nativeAPIImpl) GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (uintptr, error) {
-	rawUnpatchedAddressMapping := C.GetUnpatchedInstructionMapping(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd))
+	rawUnpatchedAddressMapping := C.RookoutGetUnpatchedInstructionMapping(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd))
 	var err error = nil
 	if rawUnpatchedAddressMapping == nil {
-		err = fmt.Errorf("Couldn't get unpatched instruction mapping (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Couldn't get unpatched instruction mapping (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 
 	return uintptr(rawUnpatchedAddressMapping), err
@@ -112,9 +112,9 @@ func (a *nativeAPIImpl) GetStackUsageMap() (map[uint64][]map[string]int64, rooko
 	stackUsageMap := make(map[uint64][]map[string]int64)
 	stackUsageBufferPtr := C.malloc(C.ulong(C.sizeof_char * stackUsageBufferSize))
 	defer C.free(stackUsageBufferPtr)
-	stackUsageBufferLen := C.GetStackUsageJSON((*C.char)(stackUsageBufferPtr), C.ulong(stackUsageBufferSize))
+	stackUsageBufferLen := C.RookoutGetStackUsageJSON((*C.char)(stackUsageBufferPtr), C.ulong(stackUsageBufferSize))
 	if stackUsageBufferLen < 0 {
-		return nil, rookoutErrors.NewFailedToGetStackUsageMap(C.GoString(C.GetHookerLastError()))
+		return nil, rookoutErrors.NewFailedToGetStackUsageMap(C.GoString(C.RookoutGetHookerLastError()))
 	}
 	stackUsageBuffer := C.GoBytes(stackUsageBufferPtr, stackUsageBufferLen)
 	err := json.Unmarshal(stackUsageBuffer, &stackUsageMap)
@@ -125,9 +125,9 @@ func (a *nativeAPIImpl) GetStackUsageMap() (map[uint64][]map[string]int64, rooko
 }
 
 func (a *nativeAPIImpl) ApplyBreakpointsState(functionEntry uint64, functionEnd uint64, stateId int) error {
-	ret := int(C.ApplyBreakpointsState(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd), C.int(stateId)))
+	ret := int(C.RookoutApplyBreakpointsState(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd), C.int(stateId)))
 	if ret != 0 {
-		return fmt.Errorf("Couldn't apply breakpoint state (%s)\n", C.GoString(C.GetHookerLastError()))
+		return fmt.Errorf("Couldn't apply breakpoint state (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 
 	return nil
@@ -137,9 +137,9 @@ func (a *nativeAPIImpl) GetHookAddress(functionEntry uint64, functionEnd uint64,
 	var err error = nil
 	funcEntry := getUnsafePointer(functionEntry)
 	funcEnd := getUnsafePointer(functionEnd)
-	hookAddr := uint64(C.GetHookAddress(funcEntry, funcEnd, C.int(stateId)))
+	hookAddr := uint64(C.RookoutGetHookAddress(funcEntry, funcEnd, C.int(stateId)))
 	if hookAddr == uint64(0) {
-		err = fmt.Errorf("Failed to get the hook Address (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Failed to get the hook Address (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 	return uintptr(hookAddr), err
 }
@@ -148,9 +148,9 @@ func (a *nativeAPIImpl) GetHookSizeBytes(functionEntry uint64, functionEnd uint6
 	var err error = nil
 	funcEntry := getUnsafePointer(functionEntry)
 	funcEnd := getUnsafePointer(functionEnd)
-	hookSize := int(C.GetHookSizeBytes(funcEntry, funcEnd, C.int(stateId)))
+	hookSize := int(C.RookoutGetHookSizeBytes(funcEntry, funcEnd, C.int(stateId)))
 	if hookSize < 0 {
-		err = fmt.Errorf("Failed to get the hook size (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Failed to get the hook size (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 	return hookSize, err
 }
@@ -159,9 +159,9 @@ func (a *nativeAPIImpl) GetHookBytes(functionEntry uint64, functionEnd uint64, s
 	var err error = nil
 	funcEntry := getUnsafePointer(functionEntry)
 	funcEnd := getUnsafePointer(functionEnd)
-	hookBytes := unsafe.Pointer(C.GetHookBytesView(funcEntry, funcEnd, C.int(stateId)))
+	hookBytes := unsafe.Pointer(C.RookoutGetHookBytesView(funcEntry, funcEnd, C.int(stateId)))
 	if hookBytes == nil {
-		err = fmt.Errorf("Failed to get the hook bytes (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Failed to get the hook bytes (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 	return uintptr(hookBytes), err
 }
@@ -170,9 +170,9 @@ func (a *nativeAPIImpl) GetFunctionType(functionEntry uint64, functionEnd uint64
 	var err error = nil
 	funcEntry := getUnsafePointer(functionEntry)
 	funcEnd := getUnsafePointer(functionEnd)
-	funcType := int(C.GetFunctionType(funcEntry, funcEnd))
+	funcType := int(C.RookoutGetFunctionType(funcEntry, funcEnd))
 	if funcType < 0 {
-		err = fmt.Errorf("Failed to get the function type (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Failed to get the function type (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 	return types.FunctionType(funcType), err
 }
@@ -181,9 +181,9 @@ func (a *nativeAPIImpl) GetDangerZoneStartAddress(functionEntry uint64, function
 	var err error = nil
 	funcEntry := getUnsafePointer(functionEntry)
 	funcEnd := getUnsafePointer(functionEnd)
-	dangerZoneStart := uint64(C.GetDangerZoneStartAddress(funcEntry, funcEnd))
+	dangerZoneStart := uint64(C.RookoutGetDangerZoneStartAddress(funcEntry, funcEnd))
 	if dangerZoneStart == uint64(0) {
-		err = fmt.Errorf("Failed to get the function danger zone start Address (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Failed to get the function danger zone start Address (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 	return dangerZoneStart, err
 }
@@ -192,37 +192,37 @@ func (a *nativeAPIImpl) GetDangerZoneEndAddress(functionEntry uint64, functionEn
 	var err error = nil
 	funcEntry := getUnsafePointer(functionEntry)
 	funcEnd := getUnsafePointer(functionEnd)
-	dangerZoneStart := uint64(C.GetDangerZoneEndAddress(funcEntry, funcEnd))
+	dangerZoneStart := uint64(C.RookoutGetDangerZoneEndAddress(funcEntry, funcEnd))
 	if dangerZoneStart == uint64(0) {
-		err = fmt.Errorf("Failed to get the function danger zone end Address (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Failed to get the function danger zone end Address (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 	return dangerZoneStart, err
 }
 
 func (a *nativeAPIImpl) TriggerWatchDog(timeoutMS uint64) error {
 	var err error = nil
-	res := int(C.TriggerWatchDog(C.ulonglong(timeoutMS)))
+	res := int(C.RookoutTriggerWatchDog(C.ulonglong(timeoutMS)))
 	if res < 0 {
-		err = fmt.Errorf("Failed to trigger the watchdog (%s)\n", C.GoString(C.GetHookerLastError()))
+		err = fmt.Errorf("Failed to trigger the watchdog (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 	return err
 }
 
 func (a *nativeAPIImpl) DefuseWatchDog() {
-	C.DefuseWatchDog()
+	C.RookoutDefuseWatchDog()
 }
 
 func Init(someFunc func()) rookoutErrors.RookoutError {
-	if C.Init(unsafe.Pointer(reflect.ValueOf(someFunc).Pointer())) != 0 {
-		return rookoutErrors.NewFailedToInitNative(C.GoString(C.GetHookerLastError()))
+	if C.RookoutInit(unsafe.Pointer(reflect.ValueOf(someFunc).Pointer())) != 0 {
+		return rookoutErrors.NewFailedToInitNative(C.GoString(C.RookoutGetHookerLastError()))
 	}
 
 	return nil
 }
 
 func Destroy() error {
-	if C.Destroy() != 0 {
-		return fmt.Errorf("Native `Destroy` failed with error message: %s\n", C.GoString(C.GetHookerLastError()))
+	if C.RookoutDestroy() != 0 {
+		return fmt.Errorf("Native `Destroy` failed with error message: %s\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 
 	return nil
