@@ -1,25 +1,28 @@
 package locations_set
 
 import (
+	"sort"
+	"sync"
+
 	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/augs/locations"
 	"github.com/Rookout/GoSDK/pkg/types"
 	"github.com/go-errors/errors"
 	"github.com/gogo/protobuf/sortkeys"
-	"sort"
-	"sync"
 )
 
 
 type LocationsSet struct {
+	*BreakpointStorage
 	breakpoints     map[*augs.Breakpoint]map[types.AugId]locations.Location
 	breakpointsLock sync.Mutex
 }
 
 func NewLocationsSet() *LocationsSet {
 	return &LocationsSet{
-		breakpoints:     make(map[*augs.Breakpoint]map[types.AugId]locations.Location),
-		breakpointsLock: sync.Mutex{},
+		breakpoints:       make(map[*augs.Breakpoint]map[types.AugId]locations.Location),
+		breakpointsLock:   sync.Mutex{},
+		BreakpointStorage: newBreakpointStorage(),
 	}
 }
 
@@ -39,7 +42,7 @@ func (l *LocationsSet) AddLocation(location locations.Location, breakpoint *augs
 	sort.Slice(breakpoint.Instances, func(i int, j int) bool {
 		return breakpoint.Instances[i].Addr < breakpoint.Instances[j].Addr
 	})
-	if _, exists := l.breakpoints[breakpoint]; exists {
+	if _, ok := l.breakpoints[breakpoint]; ok {
 		l.breakpoints[breakpoint][location.GetAug().GetAugId()] = location
 	} else {
 		l.breakpoints[breakpoint] = map[types.AugId]locations.Location{location.GetAug().GetAugId(): location}
@@ -182,7 +185,7 @@ func (l *LocationsSet) GetBreakpointsToRemoveUnsafe() []*augs.Breakpoint {
 	return toClear
 }
 
-func (l *LocationsSet) FindBreakpointByAddr(addr uint64) (*augs.Breakpoint, *augs.BreakpointInstance, bool) {
+func (l *LocationsSet) FindBreakpointByAddr(addr uint64) (*augs.BreakpointInstance, bool) {
 	l.Lock()
 	defer l.Unlock()
 
@@ -191,9 +194,9 @@ func (l *LocationsSet) FindBreakpointByAddr(addr uint64) (*augs.Breakpoint, *aug
 			return breakpoint.Instances[i].Addr >= addr
 		})
 		if matchingIndex != len(breakpoint.Instances) && breakpoint.Instances[matchingIndex].Addr == addr {
-			return breakpoint, breakpoint.Instances[matchingIndex], true
+			return breakpoint.Instances[matchingIndex], true
 		}
 	}
 
-	return nil, nil, false
+	return nil, false
 }

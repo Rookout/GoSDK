@@ -1,11 +1,16 @@
 package instrumentation
 
 import (
+	"context"
 	"os"
+	"reflect"
 	"strings"
+	"sync/atomic"
+	"time"
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/augs"
+	"github.com/Rookout/GoSDK/pkg/locations_set"
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection/variable"
@@ -13,25 +18,93 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/callback"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/hooker"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/module"
+	"github.com/Rookout/GoSDK/pkg/utils"
 	"github.com/google/uuid"
 )
 
 
 type ProcessManager struct {
-	hooker     hooker.Hooker
-	binaryInfo *binary_info.BinaryInfo
+	hooker          hooker.Hooker
+	binaryInfo      *binary_info.BinaryInfo
+	locations       *locations_set.LocationsSet
+	cancelGCControl context.CancelFunc
+	cancelBPMonitor context.CancelFunc
 }
 
-func NewProcessManager() (pm *ProcessManager, err rookoutErrors.RookoutError) {
+func NewProcessManager(locations *locations_set.LocationsSet, breakpointMonitorInterval time.Duration) (pm *ProcessManager, err rookoutErrors.RookoutError) {
 	bi, err := createBinaryInfo()
 	if err != nil {
 		return nil, err
 	}
 
-	prepForCallback, err := bi.GetUnwrappedFuncPointer(callback.PrepForCallback)
+	h, err := createHooker(bi)
+	defer func() {
+		if err != nil {
+			_ = hooker.Destroy()
+		}
+	}()
 	if err != nil {
 		return nil, err
 	}
+
+	module.Init()
+	p := &ProcessManager{hooker: h, binaryInfo: bi, locations: locations}
+
+	ctxGCControl, cancelGCControl := context.WithCancel(context.Background())
+	defer func() {
+		if err != nil {
+			cancelGCControl()
+		}
+	}()
+	p.cancelGCControl = cancelGCControl
+	triggerChan := make(chan bool, 10000)
+	gcController := newGCController()
+	utils.CreateGoroutine(func() {
+		gcController.start(ctxGCControl, triggerChan)
+	})
+	callback.SetTriggerChan(triggerChan)
+
+	ctxBPMonitor, cancelBPMonitor := context.WithCancel(context.Background())
+	defer func() {
+		if err != nil {
+			cancelBPMonitor()
+		}
+	}()
+	p.cancelBPMonitor = cancelBPMonitor
+	utils.CreateGoroutine(func() {
+		p.monitorBreakpoints(ctxBPMonitor, breakpointMonitorInterval)
+	})
+
+	return p, nil
+}
+
+func (p *ProcessManager) monitorBreakpoints(ctx context.Context, breakpointMonitorInterval time.Duration) {
+	for {
+		monitorTimeout := time.NewTimer(breakpointMonitorInterval)
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-monitorTimeout.C:
+			bpInstances := p.locations.GetBreakpointInstances()
+			for _, bpInstance := range bpInstances {
+				failedCounter := atomic.SwapUint64(bpInstance.FailedCounter, 0)
+				if failedCounter > 0 {
+					locations, ok := p.locations.FindLocationsByBreakpointName(bpInstance.Breakpoint.Name)
+					if !ok {
+						continue
+					}
+
+					for i := range locations {
+						locations[i].SetError(rookoutErrors.NewFailedToExecuteBreakpoint(failedCounter))
+					}
+				}
+			}
+		}
+	}
+}
+
+func createHooker(bi *binary_info.BinaryInfo) (hooker.Hooker, rookoutErrors.RookoutError) {
 	shouldRunPrologue, err := bi.GetUnwrappedFuncPointer(callback.ShouldRunPrologue)
 	if err != nil {
 		return nil, err
@@ -41,15 +114,9 @@ func NewProcessManager() (pm *ProcessManager, err rookoutErrors.RookoutError) {
 		return nil, err
 	}
 
-	h := hooker.New(unsafe.Pointer(prepForCallback),
+	h := hooker.New(unsafe.Pointer(reflect.ValueOf(callback.Callback).Pointer()),
 		unsafe.Pointer(moreStack),
-		unsafe.Pointer(shouldRunPrologue),
-		module.FindFuncMaxSPDelta)
-	defer func() {
-		if err != nil {
-			_ = hooker.Destroy()
-		}
-	}()
+		unsafe.Pointer(shouldRunPrologue))
 
 	err = hooker.Init(funcForInit)
 	if err != nil {
@@ -57,13 +124,7 @@ func NewProcessManager() (pm *ProcessManager, err rookoutErrors.RookoutError) {
 		return nil, err
 	}
 
-	stackUsageMap, err := h.GetStackUsageMap()
-	if err != nil {
-		return nil, err
-	}
-	module.Init(stackUsageMap)
-
-	return &ProcessManager{hooker: h, binaryInfo: bi}, nil
+	return h, nil
 }
 
 func createBinaryInfo() (*binary_info.BinaryInfo, rookoutErrors.RookoutError) {
@@ -87,7 +148,11 @@ func (p *ProcessManager) LineToPC(filename string, lineno int) ([]uint64, string
 }
 
 func (p *ProcessManager) WriteBreakpoint(filename string, lineno int, function *binary_info.Function, addrs []uint64) (*augs.Breakpoint, rookoutErrors.RookoutError) {
-	breakpointId, rookErr := createBreakpointId()
+	if bp, ok := p.locations.FindBreakpointByAddrs(addrs); ok {
+		return bp, nil
+	}
+
+	breakpointID, rookErr := createBreakpointID()
 	if rookErr != nil {
 		return nil, rookErr
 	}
@@ -95,12 +160,12 @@ func (p *ProcessManager) WriteBreakpoint(filename string, lineno int, function *
 		FunctionName: function.Name,
 		File:         filename,
 		Line:         lineno,
-		Stacktrace:   callback.MaxStacktrace,
-		Name:         "rookout" + breakpointId,
+		Stacktrace:   10,
+		Name:         "rookout" + breakpointID,
 	}
 
 	for _, addr := range addrs {
-		bpInstance, err := p.writeBreakpointInstance(filename, lineno, function, addr)
+		bpInstance, err := p.writeBreakpointInstance(bp, addr)
 		if err != nil {
 			return nil, err
 		}
@@ -110,10 +175,22 @@ func (p *ProcessManager) WriteBreakpoint(filename string, lineno int, function *
 	return bp, nil
 }
 
-func (p *ProcessManager) writeBreakpointInstance(filename string, lineno int, function *binary_info.Function, addr uint64) (*augs.BreakpointInstance, rookoutErrors.RookoutError) {
-	filename, lineno, function = p.binaryInfo.PCToLine(addr)
+func (p *ProcessManager) writeBreakpointInstance(bp *augs.Breakpoint, addr uint64) (*augs.BreakpointInstance, rookoutErrors.RookoutError) {
+	if bpInstance, ok := p.locations.FindBreakpointByAddr(addr); ok {
+		return bpInstance, nil
+	}
+
+	bpInstance := augs.NewBreakpointInstance(addr, bp)
+	filename, lineno, biFunction := p.binaryInfo.PCToLine(addr)
+	if function, ok := p.locations.FindFunctionByEntry(biFunction.Entry); ok {
+		bpInstance.Function = function
+	} else {
+		bpInstance.Function = augs.NewFunction(biFunction.Entry, biFunction.End, module.FindFuncMaxSPDelta(biFunction.Entry))
+	}
+
 	logger.Logger().Debugf("Adding breakpoint in %s:%d address=0x%x", filename, lineno, addr)
-	flowRunner, err := p.hooker.StartWritingBreakpoint(addr, function.Entry, function.End)
+
+	flowRunner, err := p.hooker.StartWritingBreakpoint(bpInstance)
 	if err != nil {
 		return nil, rookoutErrors.NewFailedToAddBreakpoint(filename, lineno, err)
 	}
@@ -143,15 +220,14 @@ func (p *ProcessManager) writeBreakpointInstance(filename string, lineno int, fu
 		return nil, rookoutErrors.NewFailedToApplyBreakpointState(filename, lineno, err)
 	}
 
-	variableLocators, err := variable.GetVariableLocators(addr, lineno, function, p.binaryInfo)
+	variableLocators, err := variable.GetVariableLocators(addr, lineno, biFunction, p.binaryInfo)
 	if err != nil {
 		return nil, rookoutErrors.NewFailedToGetVariableLocators(filename, lineno, err)
 	}
+	bpInstance.VariableLocators = variableLocators
 
-	return &augs.BreakpointInstance{
-		Addr:             addr,
-		VariableLocators: variableLocators,
-	}, nil
+	p.locations.AddBreakpointInstance(bpInstance)
+	return bpInstance, nil
 }
 
 func (p *ProcessManager) EraseBreakpoint(bp *augs.Breakpoint) rookoutErrors.RookoutError {
@@ -172,7 +248,7 @@ func (p *ProcessManager) EraseBreakpoint(bp *augs.Breakpoint) rookoutErrors.Rook
 }
 
 func (p *ProcessManager) eraseBreakpointInstance(bp *augs.Breakpoint, bpInstance *augs.BreakpointInstance) rookoutErrors.RookoutError {
-	flowRunner, err := p.hooker.StartErasingBreakpoint(bpInstance.Addr)
+	flowRunner, err := p.hooker.StartErasingBreakpoint(bpInstance)
 	if err != nil {
 		return rookoutErrors.NewFailedToRemoveBreakpoint(bp.File, bp.Line, err)
 	}
@@ -193,19 +269,21 @@ func (p *ProcessManager) eraseBreakpointInstance(bp *augs.Breakpoint, bpInstance
 		return rookoutErrors.NewFailedToApplyBreakpointState(bp.File, bp.Line, err)
 	}
 
+	p.locations.RemoveBreakpointInstance(bpInstance)
+
 	return nil
 }
 
-func createBreakpointId() (string, rookoutErrors.RookoutError) {
-	breakpointId, err := uuid.NewUUID()
+func createBreakpointID() (string, rookoutErrors.RookoutError) {
+	breakpointID, err := uuid.NewUUID()
 	if err != nil {
 		return "", rookoutErrors.NewFailedToCreateID(err)
 	}
-	return strings.ReplaceAll(breakpointId.String(), "-", ""), nil
+	return strings.ReplaceAll(breakpointID.String(), "-", ""), nil
 }
 
 
-func (p *ProcessManager) Clean() rookoutErrors.RookoutError {
+func (_ *ProcessManager) Clean() rookoutErrors.RookoutError {
 	err := hooker.Destroy()
 	if err != nil {
 		return rookoutErrors.NewFailedToDestroyNative(err)

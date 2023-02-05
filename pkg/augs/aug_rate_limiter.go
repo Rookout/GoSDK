@@ -1,11 +1,12 @@
 package augs
 
 import (
+	"sync"
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/types"
-	"sync"
-	"time"
 )
 
 type AugRateLimiter struct {
@@ -120,7 +121,7 @@ func (r *AugRateLimiter) AfterRun(executionId string) (types.AugStatus, rookoutE
 	defer r.dataLock.Unlock()
 
 	data := r.currentData[executionId]
-	duration := time.Now().Sub(data.startTime)
+	duration := time.Since(data.startTime)
 	if duration < r.config.MinRateLimitValue {
 		duration = r.config.MinRateLimitValue
 	}

@@ -1,14 +1,15 @@
 package namespaces
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/Rookout/GoSDK/pkg/config"
 	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection"
 	"github.com/Rookout/GoSDK/pkg/services/collection/variable"
 	"github.com/Rookout/GoSDK/pkg/types"
-	"strconv"
-	"strings"
 )
 
 type FrameNamespace struct {
@@ -95,7 +96,7 @@ func (f *FrameNamespace) GetDump(args string) (types.Namespace, rookoutErrors.Ro
 	_ = c.WriteAttribute("filename", NewGoObjectNamespace(f.collectionService.GetFrame().File))
 	_ = c.WriteAttribute("module", NewGoObjectNamespace(f.collectionService.GetFrame().File))
 	_ = c.WriteAttribute("line", NewGoObjectNamespace(f.collectionService.GetFrame().Line))
-	_ = c.WriteAttribute("function", NewGoObjectNamespace(f.collectionService.GetFrame().Function.Name))
+	_ = c.WriteAttribute("function", NewGoObjectNamespace(f.collectionService.GetFrame().Function))
 
 	return c, nil
 }

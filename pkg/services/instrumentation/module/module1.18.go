@@ -6,7 +6,6 @@ package module
 import (
 	"runtime"
 	"unsafe"
-	_ "unsafe"
 )
 
 

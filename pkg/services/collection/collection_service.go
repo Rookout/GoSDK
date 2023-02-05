@@ -3,28 +3,17 @@ package collection
 import (
 	"errors"
 	"fmt"
+	"go/constant"
+
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/services/collection/registers"
 	"github.com/Rookout/GoSDK/pkg/services/collection/variable"
-	"go/constant"
 )
 
 type Stackframe struct {
-	File     string    `json:"file"`
-	Line     int       `json:"line"`
-	Function *Function `json:"function,omitempty"`
-	PCs      []uint64  `json:"pcs,omitempty"`
-}
-
-
-type Function struct {
-	
-	Name   string `json:"name"`
-	Value  uint64 `json:"value"`
-	Type   byte   `json:"type"`
-	GoType uint64 `json:"goType"`
-	
-	Optimized bool `json:"optimized"`
+	File     string `json:"file"`
+	Line     int    `json:"line"`
+	Function string `json:"function,omitempty"`
 }
 
 type CollectionService struct {

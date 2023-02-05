@@ -4,12 +4,12 @@
 package registers
 
 import (
+	"unsafe"
+
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
 )
 
 type OnStackRegisters struct {
-	
-	
 	x0  uintptr
 	x1  uintptr
 	x2  uintptr
@@ -43,6 +43,52 @@ type OnStackRegisters struct {
 	x30 uintptr 
 	pc  uintptr
 	sp  uintptr
+}
+
+func NewOnStackRegisters(context uintptr) *OnStackRegisters {
+	
+	return &OnStackRegisters{
+		x0:  getRegAtOffset(context, 0x8),
+		x1:  getRegAtOffset(context, 0x10),
+		x2:  getRegAtOffset(context, 0x18),
+		x3:  getRegAtOffset(context, 0x20),
+		x4:  getRegAtOffset(context, 0x28),
+		x5:  getRegAtOffset(context, 0x30),
+		x6:  getRegAtOffset(context, 0x38),
+		x7:  getRegAtOffset(context, 0x40),
+		x8:  getRegAtOffset(context, 0x48),
+		x9:  getRegAtOffset(context, 0x50),
+		x10: getRegAtOffset(context, 0x58),
+		x11: getRegAtOffset(context, 0x60),
+		x12: getRegAtOffset(context, 0x68),
+		x13: getRegAtOffset(context, 0x70),
+		x14: getRegAtOffset(context, 0x78),
+		x15: getRegAtOffset(context, 0x80),
+
+		x16: getRegAtOffset(context, 0x1a0),
+		x17: getRegAtOffset(context, 0x1a8),
+		x18: getRegAtOffset(context, 0x1b0),
+		x21: getRegAtOffset(context, 0x1b8),
+		x22: getRegAtOffset(context, 0x1c0),
+		x23: getRegAtOffset(context, 0x1c8),
+		x24: getRegAtOffset(context, 0x1d0),
+		x25: getRegAtOffset(context, 0x1d8),
+		x26: getRegAtOffset(context, 0x1e0),
+		x27: getRegAtOffset(context, 0x1e8),
+		x28: getRegAtOffset(context, 0x1f0),
+
+		x19: getRegAtOffset(context, 0x1f0+0x120),
+		x20: getRegAtOffset(context, 0x1f0+0x128),
+		x29: getRegAtOffset(context, 0x1f0+0x130), 
+		x30: getRegAtOffset(context, 0x1f0+0x138), 
+		sp:  getRegAtOffset(context, 0x1f0+0x140),
+		pc:  getRegAtOffset(context, 0x1f0+0x148),
+	}
+}
+
+func getRegAtOffset(context uintptr, offset uintptr) uintptr {
+	addr := context + offset
+	return *((*uintptr)(unsafe.Pointer(addr)))
 }
 
 func (o OnStackRegisters) PC() uint64 {

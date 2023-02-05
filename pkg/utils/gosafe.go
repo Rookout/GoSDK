@@ -2,13 +2,15 @@ package utils
 
 import (
 	"context"
-	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"runtime/debug"
+	_ "unsafe"
+
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 )
 
 type OnPanicFuncType func(error)
 
-var onPanicFunc OnPanicFuncType
+var OnPanicFunc OnPanicFuncType
 
 type panicInfo struct {
 	didPanic bool
@@ -17,7 +19,7 @@ type panicInfo struct {
 const allowPanic = false
 
 func SetOnPanicFunc(onPanic OnPanicFuncType) {
-	onPanicFunc = onPanic
+	OnPanicFunc = onPanic
 }
 
 func createHandlePanicFunc(info *panicInfo) func() {
@@ -27,8 +29,8 @@ func createHandlePanicFunc(info *panicInfo) func() {
 		}
 
 		if v := recover(); v != nil {
-			if onPanicFunc != nil {
-				onPanicFunc(rookoutErrors.NewRookPanicInGoroutine(v))
+			if OnPanicFunc != nil {
+				OnPanicFunc(rookoutErrors.NewRookPanicInGoroutine(v))
 			}
 
 			if info != nil {

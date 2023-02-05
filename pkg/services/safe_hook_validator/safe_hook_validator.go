@@ -2,10 +2,31 @@ package safe_hook_validator
 
 import (
 	"fmt"
-	"github.com/Rookout/GoSDK/pkg/services/callstack"
-	"github.com/Rookout/GoSDK/pkg/types"
 	"strings"
+
+	"github.com/Rookout/GoSDK/pkg/services/callstack"
 )
+
+type FunctionType int
+
+const (
+	FunctionType0 FunctionType = iota
+	FunctionType1
+	FunctionType2
+)
+
+func (f FunctionType) String() string {
+	switch f {
+	case FunctionType0:
+		return "Type0"
+	case FunctionType1:
+		return "Type1"
+	case FunctionType2:
+		return "Type2"
+	default:
+		return "Illegal"
+	}
+}
 
 type ValidationErrorFlags int
 
@@ -57,7 +78,7 @@ type AddressRange struct {
 
 
 type ValidatorFactory interface {
-	GetValidator(funcType types.FunctionType, functionRange, dangerRange AddressRange) (Validator, error)
+	GetValidator(funcType FunctionType, functionRange, dangerRange AddressRange) (Validator, error)
 }
 
 type Validator interface {
@@ -67,24 +88,24 @@ type Validator interface {
 type ValidatorFactoryImpl struct {
 }
 
-func (v *ValidatorFactoryImpl) GetValidator(funcType types.FunctionType, functionRange, dangerRange AddressRange) (Validator, error) {
+func (v *ValidatorFactoryImpl) GetValidator(funcType FunctionType, functionRange, dangerRange AddressRange) (Validator, error) {
 	switch funcType {
-	case types.FunctionType0:
+	case FunctionType0:
 		if dangerRange.Start != functionRange.Start+1 {
-			return nil, fmt.Errorf("Danger zone should start after the first byte of the function!")
+			return nil, fmt.Errorf("danger zone should start after the first byte of the function")
 		}
 		return &type0Validator{
 			functionRange: functionRange,
 			dangerRange:   dangerRange,
 		}, nil
-	case types.FunctionType1:
+	case FunctionType1:
 		return &type1Validator{
 			functionRange: functionRange,
 		}, nil
-	case types.FunctionType2:
+	case FunctionType2:
 		return &type2Validator{}, nil
 	}
-	return nil, fmt.Errorf("Illegal function type! Got %d=%s", int(funcType), funcType.String())
+	return nil, fmt.Errorf("illegal function type! Got %d=%s", int(funcType), funcType.String())
 }
 
 type type0Validator struct {

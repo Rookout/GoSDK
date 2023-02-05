@@ -1,18 +1,18 @@
-//go:build !windows && (amd64 || (arm64 && !darwin)) && cgo
+//go:build !windows && (amd64 || arm64) && cgo
 // +build !windows
-// +build amd64 arm64,!darwin
+// +build amd64 arm64
 // +build cgo
 
 package hooker
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"unsafe"
 
+	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"github.com/Rookout/GoSDK/pkg/types"
+	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 )
 
 
@@ -36,6 +36,8 @@ import (
 #cgo rookout_dynamic,linux,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu_arm64.a -lpthread -lrt -ldl -lz -lm -lstdc++
 // Static debian arm64
 #cgo !rookout_dynamic,linux,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_ubuntu_arm64.a -static -lpthread -lrt -ldl -lz -lstdc++ -lm
+// Dynamic macos arm64
+#cgo darwin,arm64 LDFLAGS: -v ${SRCDIR}/libhook_lib_pack_macos_arm64.a -lpthread -lz -lffi -ledit -lm -lc++
 #include <stdlib.h>
 #include <hook_api.h>
 */
@@ -52,39 +54,51 @@ func getUnsafePointer(value uint64) unsafe.Pointer {
 	return unsafe.Pointer(uintptr(value))
 }
 
-func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, functionEnd uint64, breakpoints []uint64, bpCallback, prologueCallback, shouldRunPrologue uintptr, functionStackUsage int32) (int, error) {
+func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, functionEnd uint64, breakpoints []*augs.BreakpointInstance, bpCallback, prologueCallback, shouldRunPrologue uintptr, functionStackUsage int32) (int, error) {
 	
-
+	var breakpointAddrs []uint64
 	var bpAddr unsafe.Pointer
+	var failedCounters []*uint64
+	var failedCountersAddr unsafe.Pointer
 	bpCallbackPtr := unsafe.Pointer(bpCallback)
 	prologueCallbackPtr := unsafe.Pointer(prologueCallback)
 	shouldRunProloguePtr := unsafe.Pointer(shouldRunPrologue)
 
 	if len(breakpoints) == 0 {
-		bpAddr = nil
 		prologueCallbackPtr = nil
 		functionStackUsage = -1
 		shouldRunProloguePtr = nil
 	} else {
-		bpAddr = unsafe.Pointer(&breakpoints[0])
+		breakpointAddrs = make([]uint64, len(breakpoints))
+		for i, bp := range breakpoints {
+			breakpointAddrs[i] = bp.Addr
+		}
+		bpAddr = unsafe.Pointer(&breakpointAddrs[0])
+
+		failedCounters = make([]*uint64, len(breakpoints))
+		failedCountersAddr = unsafe.Pointer(&failedCounters[0])
 	}
 
-	stateId := int(C.RookoutRegisterFunctionBreakpointsState(
+	stateID := int(C.RookoutRegisterFunctionBreakpointsState(
 		getUnsafePointer(functionEntry),
 		getUnsafePointer(functionEnd),
 		C.int(len(breakpoints)),
 		bpAddr,
+		failedCountersAddr,
 		bpCallbackPtr,
 		prologueCallbackPtr,
 		shouldRunProloguePtr,
-		C.uint(functionStackUsage),
-	))
+		C.uint(functionStackUsage)))
 
-	if stateId < 0 {
-		return stateId, fmt.Errorf("Couldn't set new function breakpoint state (%v) (%s)\n", breakpoints, C.GoString(C.RookoutGetHookerLastError()))
+	if stateID < 0 {
+		return stateID, fmt.Errorf("couldn't set new function breakpoint state (%v) (%s)", breakpoints, C.GoString(C.RookoutGetHookerLastError()))
 	}
 
-	return stateId, nil
+	for i := range failedCounters {
+		breakpoints[i].FailedCounter = failedCounters[i]
+	}
+
+	return stateID, nil
 }
 
 func (a *nativeAPIImpl) GetInstructionMapping(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
@@ -105,23 +119,6 @@ func (a *nativeAPIImpl) GetUnpatchedInstructionMapping(functionEntry uint64, fun
 	}
 
 	return uintptr(rawUnpatchedAddressMapping), err
-}
-
-func (a *nativeAPIImpl) GetStackUsageMap() (map[uint64][]map[string]int64, rookoutErrors.RookoutError) {
-	const stackUsageBufferSize = 100000
-	stackUsageMap := make(map[uint64][]map[string]int64)
-	stackUsageBufferPtr := C.malloc(C.ulong(C.sizeof_char * stackUsageBufferSize))
-	defer C.free(stackUsageBufferPtr)
-	stackUsageBufferLen := C.RookoutGetStackUsageJSON((*C.char)(stackUsageBufferPtr), C.ulong(stackUsageBufferSize))
-	if stackUsageBufferLen < 0 {
-		return nil, rookoutErrors.NewFailedToGetStackUsageMap(C.GoString(C.RookoutGetHookerLastError()))
-	}
-	stackUsageBuffer := C.GoBytes(stackUsageBufferPtr, stackUsageBufferLen)
-	err := json.Unmarshal(stackUsageBuffer, &stackUsageMap)
-	if err != nil {
-		return nil, rookoutErrors.NewFailedToParseStackUsageMap(string(stackUsageBuffer), err)
-	}
-	return stackUsageMap, nil
 }
 
 func (a *nativeAPIImpl) ApplyBreakpointsState(functionEntry uint64, functionEnd uint64, stateId int) error {
@@ -166,15 +163,15 @@ func (a *nativeAPIImpl) GetHookBytes(functionEntry uint64, functionEnd uint64, s
 	return uintptr(hookBytes), err
 }
 
-func (a *nativeAPIImpl) GetFunctionType(functionEntry uint64, functionEnd uint64) (types.FunctionType, error) {
-	var err error = nil
+func (a *nativeAPIImpl) GetFunctionType(functionEntry uint64, functionEnd uint64) (safe_hook_validator.FunctionType, error) {
+	var err error
 	funcEntry := getUnsafePointer(functionEntry)
 	funcEnd := getUnsafePointer(functionEnd)
 	funcType := int(C.RookoutGetFunctionType(funcEntry, funcEnd))
 	if funcType < 0 {
 		err = fmt.Errorf("Failed to get the function type (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
-	return types.FunctionType(funcType), err
+	return safe_hook_validator.FunctionType(funcType), err
 }
 
 func (a *nativeAPIImpl) GetDangerZoneStartAddress(functionEntry uint64, functionEnd uint64) (uint64, error) {

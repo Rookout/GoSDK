@@ -4,6 +4,8 @@
 package registers
 
 import (
+	"unsafe"
+
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
 )
 
@@ -28,6 +30,34 @@ type OnStackRegisters struct {
 	RIP    uintptr
 	TLSVal uintptr
 	RSP    uintptr
+}
+
+func NewOnStackRegisters(context uintptr) *OnStackRegisters {
+	
+	return &OnStackRegisters{
+		RDI: getRegAtOffset(context, 0x8),
+		RAX: getRegAtOffset(context, 0x10),
+		RBX: getRegAtOffset(context, 0x18),
+		RCX: getRegAtOffset(context, 0x20),
+		RDX: getRegAtOffset(context, 0x28),
+		RSI: getRegAtOffset(context, 0x30),
+		R8:  getRegAtOffset(context, 0x38),
+		R9:  getRegAtOffset(context, 0x40),
+		R10: getRegAtOffset(context, 0x48),
+		R11: getRegAtOffset(context, 0x50),
+		R14: getRegAtOffset(context, 0x148),
+		R15: getRegAtOffset(context, 0x160),
+		RBP: getRegAtOffset(context, 0x168),
+		RSP: getRegAtOffset(context, 0x170),
+		R12: getRegAtOffset(context, 0x178),
+		R13: getRegAtOffset(context, 0x180),
+		RIP: getRegAtOffset(context, 0x188),
+	}
+}
+
+func getRegAtOffset(context uintptr, offset uintptr) uintptr {
+	addr := context + offset
+	return *((*uintptr)(unsafe.Pointer(addr)))
 }
 
 func (o OnStackRegisters) PC() uint64 {

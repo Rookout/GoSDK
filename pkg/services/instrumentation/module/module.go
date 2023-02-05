@@ -144,9 +144,8 @@ func loadModuleDatas() {
 	}
 }
 
-func Init(stackUsageMap map[uint64][]map[string]int64) {
+func Init() {
 	loadModuleDatas()
-	loadStackUsageMap(stackUsageMap)
 }
 
 func FindModuleDataForType(typeAddr uint64) *moduledata {

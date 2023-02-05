@@ -5,13 +5,20 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/callstack"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 	"github.com/Rookout/GoSDK/pkg/services/suspender"
-	"github.com/Rookout/GoSDK/pkg/types"
 	"syscall"
-	"unsafe"
 )
 
+type HookManager interface {
+	GetHookAddress(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error)
+	GetHookSizeBytes(functionEntry uint64, functionEnd uint64, stateId int) (int, error)
+	GetHookBytes(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error)
+	GetFunctionType(functionEntry uint64, functionEnd uint64) (safe_hook_validator.FunctionType, error)
+	GetDangerZoneStartAddress(functionEntry uint64, functionEnd uint64) (uint64, error)
+	GetDangerZoneEndAddress(functionEntry uint64, functionEnd uint64) (uint64, error)
+}
+
 type SafeHookInstallerCreator func(functionEntry, functionEnd uint64, stateId int,
-	nativeApi types.NativeHookerAPI, goroutineSuspender suspender.Suspender,
+	nativeApi HookManager, goroutineSuspender suspender.Suspender,
 	stb callstack.IStackTraceBuffer, validatorFactory safe_hook_validator.ValidatorFactory) (SafeHookInstaller, error)
 
 type SafeHookInstaller interface {
@@ -30,15 +37,15 @@ type RealSafeHookInstaller struct {
 }
 
 func NewSafeHookInstaller(functionEntry, functionEnd uint64, stateId int,
-	nativeApi types.NativeHookerAPI, goroutineSuspender suspender.Suspender,
+	hookManager HookManager, goroutineSuspender suspender.Suspender,
 	stb callstack.IStackTraceBuffer, validatorFactory safe_hook_validator.ValidatorFactory) (SafeHookInstaller, error) {
 	shi := &RealSafeHookInstaller{goroutineSuspender: goroutineSuspender, stb: stb}
-	err := shi.initHookInfo(nativeApi, functionEntry, functionEnd, stateId)
+	err := shi.initHookInfo(hookManager, functionEntry, functionEnd, stateId)
 	if err != nil {
 		return nil, err
 	}
 
-	err = shi.initValidator(nativeApi, functionEntry, functionEnd, validatorFactory)
+	err = shi.initValidator(hookManager, functionEntry, functionEnd, validatorFactory)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +58,7 @@ func (s *RealSafeHookInstaller) InstallHook() (int, error) {
 	var ok bool
 	var err error = nil
 	var validationRes safe_hook_validator.ValidationErrorFlags
-	var modifyPermissionsRes int
+	var writeBytesRes int
 	s.goroutineSuspender.StopAll()
 	n, ok = s.stb.FillStackTraces()
 	if !ok {
@@ -67,39 +74,30 @@ func (s *RealSafeHookInstaller) InstallHook() (int, error) {
 		return n, err
 	}
 	
-	modifyPermissionsRes = setWritable(s.hookPageStartAddress, s.hookTotalPagesBytes)
-	if modifyPermissionsRes != 0 {
-		s.goroutineSuspender.ResumeAll()
-		err = fmt.Errorf("Failed to set write permissions before setting the hook. Error code: %d", modifyPermissionsRes)
-		return n, err
-	}
-	for i := 0; i < s.hookSizeBytes; i++ {
-		*(*uint8)(unsafe.Pointer(s.hookDstAddr + uintptr(i))) = *(*uint8)(unsafe.Pointer(s.hookSrcAddr + uintptr(i)))
-	}
-	modifyPermissionsRes = setExecutable(s.hookPageStartAddress, s.hookTotalPagesBytes)
-	if modifyPermissionsRes != 0 {
+	writeBytesRes = writeBytes(s.hookDstAddr, s.hookSrcAddr, s.hookSizeBytes)
+	if writeBytesRes != 0 {
 		
 		s.goroutineSuspender.ResumeAll()
-		err = fmt.Errorf("Failed to set execute permissions after setting the hook. Error code: %d", modifyPermissionsRes)
+		err = fmt.Errorf("Failed to set the hook bytes. Error code: %d", writeBytesRes)
 		return n, err
 	}
 	s.goroutineSuspender.ResumeAll()
 	return n, nil
 }
 
-func (s *RealSafeHookInstaller) initHookInfo(nativeApi types.NativeHookerAPI, functionEntry, functionEnd uint64, stateId int) error {
+func (s *RealSafeHookInstaller) initHookInfo(hookManager HookManager, functionEntry, functionEnd uint64, stateId int) error {
 	var err error = nil
-	s.hookSizeBytes, err = nativeApi.GetHookSizeBytes(functionEntry, functionEnd, stateId)
+	s.hookSizeBytes, err = hookManager.GetHookSizeBytes(functionEntry, functionEnd, stateId)
 	if err != nil {
 		return err
 	}
 
-	s.hookDstAddr, err = nativeApi.GetHookAddress(functionEntry, functionEnd, stateId)
+	s.hookDstAddr, err = hookManager.GetHookAddress(functionEntry, functionEnd, stateId)
 	if err != nil {
 		return err
 	}
 
-	s.hookSrcAddr, err = nativeApi.GetHookBytes(functionEntry, functionEnd, stateId)
+	s.hookSrcAddr, err = hookManager.GetHookBytes(functionEntry, functionEnd, stateId)
 	if err != nil {
 		return err
 	}
@@ -113,23 +111,23 @@ func (s *RealSafeHookInstaller) initHookInfo(nativeApi types.NativeHookerAPI, fu
 	return nil
 }
 
-func (s *RealSafeHookInstaller) initValidator(nativeApi types.NativeHookerAPI, functionEntry, functionEnd uint64,
+func (s *RealSafeHookInstaller) initValidator(hookManager HookManager, functionEntry, functionEnd uint64,
 	validatorFactory safe_hook_validator.ValidatorFactory) error {
-	var funcType types.FunctionType
+	var funcType safe_hook_validator.FunctionType
 	var err error = nil
-	funcType, err = nativeApi.GetFunctionType(functionEntry, functionEnd)
+	funcType, err = hookManager.GetFunctionType(functionEntry, functionEnd)
 	if err != nil {
 		return err
 	}
 
 	var dangerZoneStart uint64
-	dangerZoneStart, err = nativeApi.GetDangerZoneStartAddress(functionEntry, functionEnd)
+	dangerZoneStart, err = hookManager.GetDangerZoneStartAddress(functionEntry, functionEnd)
 	if err != nil {
 		return err
 	}
 
 	var dangerZoneEnd uint64
-	dangerZoneEnd, err = nativeApi.GetDangerZoneEndAddress(functionEntry, functionEnd)
+	dangerZoneEnd, err = hookManager.GetDangerZoneEndAddress(functionEntry, functionEnd)
 	if err != nil {
 		return err
 	}

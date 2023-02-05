@@ -1,11 +1,12 @@
-//go:build windows || (!amd64 && !arm64) || !cgo || (darwin && arm64)
-// +build windows !amd64,!arm64 !cgo darwin,arm64
+//go:build windows || (!amd64 && !arm64) || !cgo
+// +build windows !amd64,!arm64 !cgo
 
 package hooker
 
 import (
+	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"github.com/Rookout/GoSDK/pkg/types"
+	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 )
 
 type NativeAPI struct{}
@@ -22,11 +23,11 @@ func Destroy() error {
 	return rookoutErrors.NewUnsupportedPlatform()
 }
 
-func (n *NativeAPI) RegisterFunctionBreakpointsState(functionEntry types.Address, functionEnd types.Address, breakpoints []uint64, bpCallback uintptr, prologueCallback uintptr, shouldRunPrologue uintptr, functionStackUsage int32) (stateId int, err error) {
+func (n *NativeAPI) RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologueCallback uintptr, shouldRunPrologue uintptr, functionStackUsage int32) (stateId int, err error) {
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
 
-func (n *NativeAPI) GetInstructionMapping(functionEntry types.Address, functionEnd types.Address, stateId int) (rawAddressMapping uintptr, err error) {
+func (n *NativeAPI) GetInstructionMapping(functionEntry Address, functionEnd Address, stateId int) (rawAddressMapping uintptr, err error) {
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
 
@@ -38,7 +39,7 @@ func (n *NativeAPI) GetStackUsageMap() (map[uint64][]map[string]int64, rookoutEr
 	return nil, rookoutErrors.NewUnsupportedPlatform()
 }
 
-func (n *NativeAPI) ApplyBreakpointsState(functionEntry types.Address, functionEnd types.Address, stateId int) (err error) {
+func (n *NativeAPI) ApplyBreakpointsState(functionEntry Address, functionEnd Address, stateId int) (err error) {
 	return rookoutErrors.NewUnsupportedPlatform()
 }
 
@@ -54,7 +55,7 @@ func (n *NativeAPI) GetHookBytes(functionEntry uint64, functionEnd uint64, state
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
 
-func (n *NativeAPI) GetFunctionType(functionEntry uint64, functionEnd uint64) (types.FunctionType, error) {
+func (n *NativeAPI) GetFunctionType(functionEntry uint64, functionEnd uint64) (safe_hook_validator.FunctionType, error) {
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
 

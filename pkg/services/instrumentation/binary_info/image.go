@@ -49,7 +49,7 @@ type runtimeTypeDIE struct {
 func (i *Image) registerRuntimeTypeToDIE(entry *dwarf.Entry) {
 	if off, ok := entry.Val(godwarf2.AttrGoRuntimeType).(uint64); ok {
 		if _, ok := i.RuntimeTypeToDIE[off]; !ok {
-			i.RuntimeTypeToDIE[off+i.StaticBase] = runtimeTypeDIE{entry.Offset, -1}
+			i.RuntimeTypeToDIE[off] = runtimeTypeDIE{entry.Offset, -1}
 		}
 	}
 }

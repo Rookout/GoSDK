@@ -4,8 +4,5 @@
 #include "funcdata.h"
 #include "textflag.h"
 
-TEXT ·PrepForCallback(SB), $0
-RET
-
 TEXT ·ShouldRunPrologue(SB), $0
 RET

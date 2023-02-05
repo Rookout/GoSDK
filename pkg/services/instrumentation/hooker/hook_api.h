@@ -16,10 +16,10 @@ extern "C" {
     int RookoutDestroy();
     
     
-    int RookoutRegisterFunctionBreakpointsState(void *function_entry_addr, void *function_end_addr, int num_breakpoints,
-                                                void *breakpoints_addrs, void *breakpoint_execution_callback_addr,
-                                                void *prologue_callback_addr, void *should_run_prologue,
-                                                uint32_t function_stack_usage);
+     int RookoutRegisterFunctionBreakpointsState(void *function_entry_addr, void *function_end_addr, int num_breakpoints,
+                                     void *breakpoints_addrs, void *breakpoint_failed_counters,
+                                     void *breakpoint_execution_callback_addr, void *prologue_callback_addr,
+                                     void *should_run_morestack, uint32_t function_stack_usage);
     
     
     void *RookoutGetInstructionMapping(void *function_entry_addr, void *function_end_addr, int state_id);
@@ -44,9 +44,6 @@ extern "C" {
     
     
     void *RookoutGetHookBytesView(void *function_entry_addr, void *function_end_addr, int state_id);
-    
-    
-    int RookoutGetStackUsageJSON(char *stack_usage_buffer, size_t stack_usage_buffer_size);
     
     
     int RookoutApplyBreakpointsState(void *function_entry_addr, void *function_end_addr, int state_id);

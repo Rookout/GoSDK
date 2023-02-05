@@ -59,14 +59,6 @@ func NewLocationFileLine(arguments types.AugConfiguration, output com_ws.Output,
 	return &location, nil
 }
 
-func (l *LocationFileLine) GetStatus() string {
-	return l.status
-}
-
-func (l *LocationFileLine) GetOutput() com_ws.Output {
-	return l.output
-}
-
 func (l *LocationFileLine) GetLineno() int {
 	return l.lineno
 }

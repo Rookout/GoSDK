@@ -10,18 +10,18 @@ import (
 	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/locations_set"
 	"github.com/Rookout/GoSDK/pkg/logger"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection"
 	"github.com/Rookout/GoSDK/pkg/services/collection/go_id"
 	"github.com/Rookout/GoSDK/pkg/services/collection/registers"
+	"github.com/Rookout/GoSDK/pkg/services/go_runtime"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/binary_info"
 	"github.com/Rookout/GoSDK/pkg/utils"
 )
 
 var BinaryInfo *binary_info.BinaryInfo
 var locationsSet *locations_set.LocationsSet
-var originalGCPercent int
-var collectionCounter int
-var setGCPercentLock sync.Mutex
+var triggerChan chan bool
 
 func SetBinaryInfo(binaryInfoIn *binary_info.BinaryInfo) {
 	BinaryInfo = binaryInfoIn
@@ -31,60 +31,52 @@ func SetLocationsSet(locationsSetIn *locations_set.LocationsSet) {
 	locationsSet = locationsSetIn
 }
 
+func SetTriggerChan(triggerChanIn chan bool) {
+	triggerChan = triggerChanIn
+}
+
 type BreakpointInfo struct {
 	Stacktrace []collection.Stackframe
 	regs       registers.Registers
 }
 
+func collectStacktrace(regs *registers.OnStackRegisters, g go_runtime.GPtr, maxStacktrace int) []collection.Stackframe {
+	stacktrace := make([]collection.Stackframe, 0, maxStacktrace)
 
-func collectStacktrace(bp *augs.Breakpoint, pcs []uintptr) (*BreakpointInfo, error) {
-	bpi := &BreakpointInfo{}
-	if bp.Stacktrace > 0 {
-		frames := runtime.CallersFrames(pcs)
-		frameCount := len(pcs)
-		if len(pcs) > bp.Stacktrace-1 {
-			frameCount = bp.Stacktrace - 1
-		}
-
-		
-		bpi.Stacktrace = append(bpi.Stacktrace, collection.Stackframe{
-			File:     bp.File,
-			Line:     bp.Line,
-			Function: &collection.Function{Name: bp.FunctionName},
-		})
-
-		more := true
-		frame := runtime.Frame{}
-		for i := 0; i < frameCount; i++ {
-			if !more {
-				
-				logger.Logger().Warningf("Expected more frames but more is false: %d/%d\n", i, frameCount)
-				break
-			}
-
-			frame, more = frames.Next()
-			
-			
-			
-			
-			
-			function := &collection.Function{
-				Name:      frame.Func.Name(),
-				Type:      0,
-				Value:     uint64(frame.Entry),
-				GoType:    0,
-				Optimized: false,
-			}
-			bpi.Stacktrace = append(bpi.Stacktrace,
-				collection.Stackframe{
-					File:     frame.File,
-					Line:     frame.Line,
-					Function: function,
-				})
-		}
+	if maxStacktrace == 0 {
+		return stacktrace
 	}
 
-	return bpi, nil
+	pcs := make([]uintptr, maxStacktrace)
+	
+	frameCount := go_runtime.Callers(uintptr(regs.PC()), uintptr(regs.SP()), g, pcs)
+	pcs = pcs[:frameCount]
+	frames := runtime.CallersFrames(pcs)
+
+	more := true
+	frame := runtime.Frame{}
+	for i := 0; i < frameCount; i++ {
+		if !more {
+			
+			logger.Logger().Warningf("Expected more frames but more is false: %d/%d\n", i, frameCount)
+			break
+		}
+
+		frame, more = frames.Next()
+		
+		
+		
+		
+		
+		stacktrace = append(stacktrace,
+			collection.Stackframe{
+				File:     frame.File,
+				Line:     frame.Line,
+				Function: frame.Func.Name(),
+			})
+	}
+
+	return stacktrace
 }
 
 func printBytesAt(sp, count uint64, prefixes []string) uint64 {
@@ -117,39 +109,50 @@ func printStack(stackRegs registers.OnStackRegisters) {
 	stackPtr = printBytesAt(stackPtr, 2, []string{"rdx", "rdi"})
 }
 
-const MaxStacktrace = 4
+//go:linkname systemstack runtime.systemstack
+func systemstack(func())
 
-func callback(stackRegs registers.OnStackRegisters) {
-	setGCPercentLock.Lock()
-	if collectionCounter == 0 {
-		originalGCPercent = debug.SetGCPercent(-1)
-	}
-	collectionCounter++
-	setGCPercentLock.Unlock()
+//go:nosplit
+func Callback() {
+	context := getContext()
+	g := go_runtime.Getg()
 
-	defer func() {
-		setGCPercentLock.Lock()
-		defer setGCPercentLock.Unlock()
-
-		collectionCounter--
-		if collectionCounter == 0 {
-			debug.SetGCPercent(originalGCPercent)
-		}
-	}()
-	
-	
-	goid := go_id.CurrentGoID()
-	pcs := make([]uintptr, MaxStacktrace-1)
-	
-	frameCount := runtime.Callers(4, pcs)
-	utils.CreateBlockingGoroutine(func() {
-		pcs = pcs[:frameCount]
-		collectBreakpoint(stackRegs, pcs, goid)
-	})
+	goCollect(context, g)
 }
 
-func collectBreakpoint(regs registers.OnStackRegisters, pcs []uintptr, goid int) {
-	bp, bpInstance, ok := locationsSet.FindBreakpointByAddr(regs.PC())
+//go:nosplit
+func goCollect(context uintptr, g go_runtime.GPtr) {
+	var waitChan chan struct{}
+
+	systemstack(func() {
+		triggerChan <- true
+		waitChan = make(chan struct{})
+
+		
+		go func() {
+			defer func() {
+				waitChan <- struct{}{}
+				triggerChan <- false
+				if v := recover(); v != nil {
+					if utils.OnPanicFunc != nil {
+						utils.OnPanicFunc(rookoutErrors.NewRookPanicInGoroutine(v))
+					}
+
+					return
+				}
+			}()
+			debug.SetPanicOnFault(true)
+
+			collectBreakpoint(context, g)
+		}()
+	})
+
+	<-waitChan
+}
+
+func collectBreakpoint(context uintptr, g go_runtime.GPtr) {
+	regs := registers.NewOnStackRegisters(context)
+	bpInstance, ok := locationsSet.FindBreakpointByAddr(regs.PC())
 	if !ok {
 		file, line, function := BinaryInfo.PCToLine(regs.PC())
 		var functionName string
@@ -161,17 +164,20 @@ func collectBreakpoint(regs registers.OnStackRegisters, pcs []uintptr, goid int)
 		return
 	}
 
-	bpInfo, err := collectStacktrace(bp, pcs)
-	if err != nil {
-		logger.Logger().WithError(err).Errorf("failed to collect breakpoint info")
-		return
-	}
+	goid := go_id.GetGoID(g)
+	stacktrace := collectStacktrace(regs, g, bpInstance.Breakpoint.Stacktrace)
+	
+	stacktrace[0].Line = bpInstance.Breakpoint.Line
 
-	bpInfo.regs = regs
-	reportBreakpoint(bp, bpInstance, bpInfo, goid)
+	bpInfo := &BreakpointInfo{
+		Stacktrace: stacktrace,
+		regs:       regs,
+	}
+	reportBreakpoint(bpInstance, bpInfo, goid)
 }
 
-func reportBreakpoint(bp *augs.Breakpoint, bpInstance *augs.BreakpointInstance, bpInfo *BreakpointInfo, goid int) {
+func reportBreakpoint(bpInstance *augs.BreakpointInstance, bpInfo *BreakpointInfo, goid int) {
+	bp := bpInstance.Breakpoint
 	locations, exists := locationsSet.FindLocationsByBreakpointName(bp.Name)
 	if !exists {
 		logger.Logger().Errorf("Breakpoint %s (on %s:%d - 0x%x) triggered but the breakpoint doesn't exist.", bp.Name, bp.File, bp.Line, bpInfo.regs.PC())

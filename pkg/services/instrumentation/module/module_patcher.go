@@ -6,7 +6,6 @@ package module
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"sync"
 	"unsafe"
 
@@ -25,38 +24,10 @@ type AddressMapping struct {
 	OriginalAddress uintptr
 }
 
-type stackUsageInfo struct {
-	offset    uintptr 
-	valueDiff int32
-}
-
-type PCSPNativeInfo struct {
-	BpOpcodesSizeInBytes          int
-	BpStackUsage                  int32
-	PrologueAfterUsingStackOffset int
-	PrologueStackUsage            int32
-}
-
-var stackUsageMap map[uintptr][]stackUsageInfo
-
-func loadStackUsageMap(unparsedStackUsageMap map[uint64][]map[string]int64) {
-	valueDiffKey := "valueDiff"
-	offsetKey := "offset"
-	stackUsageMap = make(map[uintptr][]stackUsageInfo)
-	for marker, m := range unparsedStackUsageMap {
-		for _, info := range m {
-			stackUsageMap[uintptr(marker)] = append(stackUsageMap[uintptr(marker)], stackUsageInfo{
-				offset:    uintptr(info[offsetKey]),
-				valueDiff: int32(info[valueDiffKey]),
-			})
-		}
-	}
-}
-
 const BPMarker uintptr = 0xffffffffffffffff
 const PrologueMarker uintptr = 0xaaaaaaaaaaaaaaaa
 
-var callbacksMarkers = [...]uintptr{BPMarker, PrologueMarker}
+var callbacksMarkers = map[uintptr]interface{}{BPMarker: nil, PrologueMarker: nil}
 
 func FindFuncMaxSPDelta(addr uint64) int32 {
 	if f := FindFunc(uintptr(addr)); f._func != nil {
@@ -100,10 +71,8 @@ func bufferToAddressMapping(addressMappingsBufferPointer unsafe.Pointer, origFun
 
 		
 		
-		for _, callbackMarker := range callbacksMarkers {
-			if origAddress == callbackMarker {
-				origOffset = origAddress
-			}
+		if _, ok := callbacksMarkers[origAddress]; ok {
+			origOffset = origAddress
 		}
 
 		addressMappings = append(addressMappings, AddressMapping{newAddress, origAddress})
@@ -230,7 +199,7 @@ type allPCDataPatchInfo struct {
 
 func (m *moduleDataPatcher) patchPCData() (*allPCDataPatchInfo, error) {
 	if m.state.pcDataPatched {
-		return nil, errors.New("Attempted to patch the pcData twice.")
+		return nil, errors.New("attempted to patch the pcData twice")
 	}
 	info := &allPCDataPatchInfo{pcdataInfo: make([]*pcDataTableInfo, m.function.npcdata)}
 	for tableIndex := 0; tableIndex < int(m.function.npcdata); tableIndex++ {
@@ -285,10 +254,12 @@ func (m *moduleDataPatcher) patchPCData() (*allPCDataPatchInfo, error) {
 
 func (m *moduleDataPatcher) patchPCSP() (*pcDataTableInfo, error) {
 	if m.state.pcspPatched {
-		return nil, errors.New("Attempted to patch the pcsp twice")
+		return nil, errors.New("attempted to patch the pcsp twice")
 	}
 
-	newPCSP, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.function.pcsp)), m.offsetMappings, stackUsageMap)
+	newPCSP, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.function.pcsp)), m.offsetMappings, func(start uintptr, end uintptr) ([]PCDataEntry, error) {
+		return generatePCSP(start+m.newFuncEntryAddress, end+m.newFuncEntryAddress)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +285,7 @@ func (m *moduleDataPatcher) patchPCSP() (*pcDataTableInfo, error) {
 
 func (m *moduleDataPatcher) patchPCFile() (*pcDataTableInfo, error) {
 	if m.state.pcFilePatched {
-		return nil, errors.New("Attempted to patch the pcFile twice.")
+		return nil, errors.New("attempted to patch the pcFile twice")
 	}
 
 	newPCFile, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.function.pcfile)), m.offsetMappings, nil)
@@ -411,9 +382,9 @@ func addModule(newModule *moduledata) {
 
 
 
-func PatchModuleData(addr uint64, rawAddressMapping unsafe.Pointer, stateId int) error {
-	function := FindFunc(uintptr(addr)) 
-	moduleName := "Rookout-" + funcName(function) + "-" + strconv.Itoa(stateId)
+func PatchModuleData(addr uint64, rawAddressMapping unsafe.Pointer, stateID int) error {
+	function := FindFunc(uintptr(addr))
+	moduleName := fmt.Sprintf("Rookout-%s[%x]-%d", funcName(function), function.getEntry(), stateID)
 	if _, ok := modules[moduleName]; ok {
 		return nil
 	}
@@ -425,6 +396,12 @@ func PatchModuleData(addr uint64, rawAddressMapping unsafe.Pointer, stateId int)
 	data.newFuncEndAddress = data.addressMappings[len(data.addressMappings)-1].NewAddress
 	data.origModule = function.datap
 	data.newPclntable = append(data.newPclntable, data.origModule.pclntable...)
+	funcOffset, exists := findFuncOffsetInModule(data.origFuncEntryAddress, data.origModule)
+	if !exists {
+		return errors.New("couldn't find func offset in module data")
+	}
+	data.funcOffset = funcOffset
+
 	
 	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
 		dumpBuffer(data.newFuncEntryAddress, data.newFuncEndAddress, "New function")
@@ -432,11 +409,6 @@ func PatchModuleData(addr uint64, rawAddressMapping unsafe.Pointer, stateId int)
 		dumpBuffer(data.origFuncEntryAddress, oldFuncEnd, "Original function")
 	}
 
-	if funcOffset, exists := findFuncOffsetInModule(data.origFuncEntryAddress, data.origModule); exists {
-		data.funcOffset = funcOffset
-	} else {
-		return errors.New("couldn't find func offset in module data")
-	}
 	if err := data.patchFuncAddress(); err != nil {
 		return err
 	}

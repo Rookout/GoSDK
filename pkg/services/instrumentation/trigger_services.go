@@ -1,6 +1,8 @@
 package instrumentation
 
 import (
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/types"
 	"github.com/go-errors/errors"
 )
@@ -9,12 +11,15 @@ type TriggerServices struct {
 	instrumentationService *InstrumentationService
 }
 
+const breakpointMonitorInterval = 10 * time.Second
+
 func NewTriggerServices() (*TriggerServices, error) {
-	if inst, err := NewInstrumentationService(); err == nil {
-		return &TriggerServices{instrumentationService: inst}, nil
-	} else {
+	inst, err := NewInstrumentationService(breakpointMonitorInterval)
+	if err != nil {
 		return nil, err
 	}
+
+	return &TriggerServices{instrumentationService: inst}, nil
 }
 
 func (t TriggerServices) GetInstrumentation() *InstrumentationService {

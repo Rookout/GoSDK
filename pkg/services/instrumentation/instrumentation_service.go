@@ -1,6 +1,10 @@
 package instrumentation
 
 import (
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/augs/locations"
 	"github.com/Rookout/GoSDK/pkg/locations_set"
 	"github.com/Rookout/GoSDK/pkg/logger"
@@ -8,9 +12,6 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/callback"
 	"github.com/Rookout/GoSDK/pkg/types"
 	"github.com/pkg/errors"
-	"strings"
-	"sync"
-	"time"
 )
 
 const staleBreakpointClearInterval = 10 * time.Second
@@ -21,13 +22,15 @@ type InstrumentationService struct {
 	locations           *locations_set.LocationsSet
 	staleBreakpointsGC  *ZombieCollector
 	instrumentationLock *sync.Mutex
+
+	breakpointFailedCounter uint64
 }
 
-func NewInstrumentationService() (*InstrumentationService, rookoutErrors.RookoutError) {
+func NewInstrumentationService(breakpointMonitorInterval time.Duration) (*InstrumentationService, rookoutErrors.RookoutError) {
 	locationsSet := locations_set.NewLocationsSet()
 	callback.SetLocationsSet(locationsSet)
 
-	processManager, rookErr := NewProcessManager()
+	processManager, rookErr := NewProcessManager(locationsSet, breakpointMonitorInterval)
 	if rookErr != nil {
 		return nil, rookErr
 	}
@@ -74,8 +77,6 @@ func (i *InstrumentationService) addAug(location locations.Location) {
 	if err := location.SetActive(); err != nil {
 		logger.Logger().WithError(err).Errorf("Unable to set status of location %s to active", location.GetAugId())
 	}
-
-	return
 }
 
 func (i *InstrumentationService) setBreakpoint(location locations.Location) rookoutErrors.RookoutError {
@@ -87,39 +88,33 @@ func (i *InstrumentationService) setBreakpoint(location locations.Location) rook
 		return err
 	}
 
-	if breakpoint, exists := i.locations.FindBreakpointByAddrs(addrs); exists {
-		i.locations.AddLocation(location, breakpoint)
-		logger.Logger().Infof("Successfully added aug to existing breakpoint on file %s line %d", filename, lineno)
-		return nil
-	}
-
 	breakpoint, rookErr := i.processManager.WriteBreakpoint(filename, lineno, function, addrs)
 	if rookErr != nil {
 		return rookErr
 	}
 
 	i.locations.AddLocation(location, breakpoint)
-	logger.Logger().Infof("Successfully placed new breakpoint on file %s line %d", filename, lineno)
+	logger.Logger().Infof("Successfully placed breakpoint on file %s line %d", filename, lineno)
 
 	return nil
 }
 
-func (i *InstrumentationService) RemoveAug(augId types.AugId) error {
+func (i *InstrumentationService) RemoveAug(augID types.AugId) error {
 	i.instrumentationLock.Lock()
 	defer i.instrumentationLock.Unlock()
 
-	return i.removeAug(augId)
+	return i.removeAug(augID)
 }
 
 
-func (i *InstrumentationService) removeAug(augId types.AugId) error {
-	logger.Logger().Debugf("Attempting to remove aug %s", augId)
-	bp, exists := i.locations.FindBreakpointByAugId(augId)
+func (i *InstrumentationService) removeAug(augID types.AugId) error {
+	logger.Logger().Debugf("Attempting to remove aug %s", augID)
+	bp, exists := i.locations.FindBreakpointByAugId(augID)
 	if !exists {
-		return errors.Errorf("no aug found with id %s", augId)
+		return errors.Errorf("no aug found with id %s", augID)
 	}
 
-	i.locations.RemoveLocation(augId)
+	i.locations.RemoveLocation(augID)
 	shouldClear, err := i.locations.ShouldClearBreakpoint(bp)
 	if err != nil {
 		return err
@@ -132,7 +127,7 @@ func (i *InstrumentationService) removeAug(augId types.AugId) error {
 		}
 		i.locations.RemoveBreakpoint(bp)
 	}
-	logger.Logger().Infof("Successfully removed aug ID %s", augId)
+	logger.Logger().Infof("Successfully removed aug ID %s", augID)
 	return nil
 }
 
@@ -140,20 +135,20 @@ func (i *InstrumentationService) ReplaceAllRules(newAugs map[types.AugId]locatio
 	i.instrumentationLock.Lock()
 	defer i.instrumentationLock.Unlock()
 
-	augIdsToRemove := make([]types.AugId, 0)
+	var augIDsToRemove []types.AugId
 	for _, location := range i.locations.Locations() {
 		if _, exists := newAugs[location.GetAug().GetAugId()]; exists {
 			
 			delete(newAugs, location.GetAug().GetAugId())
 		} else {
-			augIdsToRemove = append(augIdsToRemove, location.GetAug().GetAugId())
+			augIDsToRemove = append(augIDsToRemove, location.GetAug().GetAugId())
 		}
 	}
 
-	for _, augId := range augIdsToRemove {
-		err := i.removeAug(augId)
+	for _, augID := range augIDsToRemove {
+		err := i.removeAug(augID)
 		if err != nil {
-			logger.Logger().WithError(err).Errorf("Failed to clear aug %s", augId)
+			logger.Logger().WithError(err).Errorf("Failed to clear aug %s", augID)
 			
 			continue
 		}

@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/Rookout/GoSDK/pkg"
-	"github.com/Rookout/GoSDK/pkg/information"
 	"os"
 	"runtime"
+
+	"github.com/Rookout/GoSDK/pkg"
+	"github.com/Rookout/GoSDK/pkg/information"
 )
 
 func main() {

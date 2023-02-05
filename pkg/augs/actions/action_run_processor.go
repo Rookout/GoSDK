@@ -44,7 +44,7 @@ func NewActionRunProcessor(arguments types.AugConfiguration, processorFactory Pr
 		for _, rawPostOp := range rawPostOps {
 			postOps = append(postOps, rawPostOp.(map[string]interface{}))
 		}
-		postProcessor, err = processorFactory.GetProcessor(postOps)
+		postProcessor, _ = processorFactory.GetProcessor(postOps)
 	}
 
 	return &actionRunProcessor{

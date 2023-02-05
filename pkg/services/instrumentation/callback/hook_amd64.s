@@ -5,93 +5,25 @@
 #include "textflag.h"
 
 
- 
- 
- TEXT ·ShouldRunPrologue(SB), NOSPLIT, $0
- NO_LOCAL_POINTERS
- ADDQ $1000, R12 
- MOVQ SP, R13 
- SUBQ R12, R13 
- MOVQ (TLS), R12 
- MOVQ 0x10(R12), R12 
- CMPQ R13, R12
- JGE NoRunPrologue 
- RunPrologue:
- MOVQ $0x1, R13
- RET
- NoRunPrologue:
- MOVQ $0x0, R13
- RET
-
-TEXT ·PrepForCallback(SB), NOSPLIT, $144
 
 
-
+TEXT ·ShouldRunPrologue(SB), NOSPLIT, $0
 NO_LOCAL_POINTERS
+ADDQ $100, R12 
+MOVQ SP, R13 
+SUBQ R12, R13 
+MOVQ (TLS), R12 
+MOVQ 0x10(R12), R12 
+CMPQ R13, R12
+JGE NoRunPrologue 
+RunPrologue:
+MOVQ $0x1, R13
+RET
+NoRunPrologue:
+MOVQ $0x0, R13
+RET
 
 
-MOVQ SP,BX
-
-
-
-
-ADDQ $560, BX
-MOVQ BX,136(SP)
-MOVQ TLS, BX 
-MOVQ BX,128(SP)
-MOVQ SP,AX 
-
-
-
-
-ADDQ $168, AX 
-MOVQ (AX), BX
-MOVQ BX, 120(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 112(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 104(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 96(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 88(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 80(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 72(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 64(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 56(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 48(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 40(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 32(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 24(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, 16(SP) 
-
-ADDQ $264, AX
-MOVQ (AX), BX
-MOVQ BX, 8(SP) 
-ADDQ $8, AX
-MOVQ (AX), BX
-MOVQ BX, (SP) 
-CALL ·callback(SB)
+TEXT ·getContext(SB), NOSPLIT, $0-8
+MOVQ R12, ret+0(FP)
 RET

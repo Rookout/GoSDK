@@ -469,7 +469,6 @@ func (v packageVarsByAddr) Swap(i int, j int)      { v[i], v[j] = v[j], v[i] }
 
 func (bi *BinaryInfo) loadDebugInfoMapsCompileUnit(ctxt *loadDebugInfoMapsContext, image *Image, reader *dwarf.Reader, cu *compileUnit) error {
 	hasAttrGoPkgName := GoVersionAfterOrEqual(1, 13)
-	runtime.Version()
 
 	depth := 0
 

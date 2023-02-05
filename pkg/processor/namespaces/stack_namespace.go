@@ -2,11 +2,12 @@ package namespaces
 
 import (
 	"container/list"
+	"strconv"
+
 	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection"
 	"github.com/Rookout/GoSDK/pkg/types"
-	"strconv"
 )
 
 const defaultTracebackDepth = 1000
@@ -57,7 +58,7 @@ func (s *StackNamespace) Traceback(args string) (types.Namespace, rookoutErrors.
 		_ = containerNamespace.WriteAttribute("filename", NewGoObjectNamespace(stackFrame.File))
 		_ = containerNamespace.WriteAttribute("module", NewGoObjectNamespace(stackFrame.File))
 		_ = containerNamespace.WriteAttribute("line", NewGoObjectNamespace(stackFrame.Line))
-		_ = containerNamespace.WriteAttribute("function", NewGoObjectNamespace(stackFrame.Function.Name))
+		_ = containerNamespace.WriteAttribute("function", NewGoObjectNamespace(stackFrame.Function))
 
 		l.PushBack(containerNamespace)
 	}

@@ -1,5 +1,8 @@
-//go:build go1.15 && !go1.20 && cgo
-// +build go1.15,!go1.20,cgo
+//go:build go1.15 && !go1.20 && cgo && (amd64 || arm64)
+// +build go1.15
+// +build !go1.20
+// +build cgo
+// +build amd64 arm64
 
 package rookout
 

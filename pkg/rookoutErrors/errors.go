@@ -589,26 +589,6 @@ func NewRookMessageSizeExceeded(messageSize int, maxMessageSize int) RookoutErro
 		})
 }
 
-func NewFailedToGetStackUsageMap(reason string) RookoutError {
-	return newRookoutError(
-		"FailedToGetStackUsageMap",
-		"Failed to get stack usage map from native",
-		nil,
-		map[string]interface{}{
-			"reason": reason,
-		})
-}
-
-func NewFailedToParseStackUsageMap(buffer string, externalErr error) RookoutError {
-	return newRookoutError(
-		"FailedToParseStackUsageMap",
-		"Failed to parse stack usage map from native",
-		externalErr,
-		map[string]interface{}{
-			"buffer": buffer,
-		})
-}
-
 func NewUnwrappedFuncNotFound(funcName string) RookoutError {
 	return newRookoutError(
 		"UnwrappedFuncNotFound",
@@ -633,4 +613,15 @@ func NewUnsupportedPlatform() RookoutError {
 		desc,
 		nil,
 		map[string]interface{}{})
+}
+
+func NewFailedToExecuteBreakpoint(failedCount uint64) RookoutError {
+	return newRookoutError(
+		"FailedToExecuteBreakpoint",
+		fmt.Sprintf("%d breakpoint executions failed because registers backup buffer was full", failedCount),
+		nil,
+		map[string]interface{}{
+			"failedCount": failedCount,
+		},
+	)
 }
