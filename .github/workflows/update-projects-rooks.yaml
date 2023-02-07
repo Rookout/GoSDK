@@ -28,6 +28,12 @@ jobs:
           repository: Rookout/logs-handler
           token: ${{ secrets.SONARIO_GITHUB_TOKEN }}
           path: logs-handler
+      - name: Checkout data-pipelines repo
+        uses: actions/checkout@v3
+        with:
+          repository: Rookout/data-pipelines
+          token: ${{ secrets.SONARIO_GITHUB_TOKEN }}
+          path: data-pipelines
       - name: Update management
         working-directory: ./management
         run: |
@@ -41,6 +47,17 @@ jobs:
           git push
       - name: Update logs-handler
         working-directory: ./logs-handler
+        run: |
+          go get -u github.com/Rookout/GoSDK@${{env.GO_ROOK_VERSION}}
+          git config --global user.email "sonario@rookout.com"
+          git config --global user.name "sonariorobot"
+          git remote -v
+          git add -A
+          git status
+          git commit -m "Update GoSDK to: {{env.GO_ROOK_VERSION}}"
+          git push
+      - name: Update data-pipelines
+        working-directory: ./data-pipelines
         run: |
           go get -u github.com/Rookout/GoSDK@${{env.GO_ROOK_VERSION}}
           git config --global user.email "sonario@rookout.com"
