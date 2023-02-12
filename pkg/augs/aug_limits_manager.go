@@ -9,7 +9,7 @@ import (
 type LimitsManager interface {
 	AddLimiter(newLimiter Limiter)
 	GetAllLimiters() []Limiter
-	BeforeRun(executionId string) bool
+	BeforeRun(executionId string, skipLimiters bool) bool
 	AfterRun(executionId string)
 }
 
@@ -44,7 +44,7 @@ func (l *limitsManager) cancelAllLimiters(executionId string) {
 	}
 }
 
-func (l *limitsManager) setupAllLimiters(executionId string) bool {
+func (l *limitsManager) setupAllLimiters(executionId string, skipLimiters bool) bool {
 	for _, limiter := range l.limiters {
 		status, err := limiter.BeforeRun(executionId)
 		if status == types.Active {
@@ -56,10 +56,12 @@ func (l *limitsManager) setupAllLimiters(executionId string) bool {
 			_ = l.output.SendRuleStatus(l.augId, l.augStatus, err)
 		}
 
-		return false
+		if !skipLimiters {
+			return false
+		}
 	}
 
-	if l.augStatus != types.Active {
+	if l.augStatus != types.Active && !skipLimiters {
 		l.augStatus = types.Active
 		_ = l.output.SendRuleStatus(l.augId, l.augStatus, nil)
 	}
@@ -67,8 +69,8 @@ func (l *limitsManager) setupAllLimiters(executionId string) bool {
 	return true
 }
 
-func (l *limitsManager) BeforeRun(executionId string) bool {
-	if ok := l.setupAllLimiters(executionId); !ok {
+func (l *limitsManager) BeforeRun(executionId string, skipLimiters bool) bool {
+	if ok := l.setupAllLimiters(executionId, skipLimiters); !ok {
 		l.cancelAllLimiters(executionId)
 		return false
 	}

@@ -22,13 +22,15 @@ type aug struct {
 	output        com_ws.Output
 	condition     types.Condition
 	limitsManager LimitsManager
+	executed      bool
 }
 
 func NewAug(augId types.AugId, action actions.Action, output com_ws.Output) Aug {
 	return &aug{
-		augId:  augId,
-		action: action,
-		output: output,
+		augId:    augId,
+		action:   action,
+		output:   output,
+		executed: false,
 	}
 }
 
@@ -64,6 +66,7 @@ func (a *aug) execute(collectionService *collection.CollectionService, reportId 
 		}
 	}
 
+	a.executed = true
 	err = a.action.Execute(a.augId, reportId, namespace.GetAugNamespace(), a.output)
 	if err != nil {
 		logger.Logger().WithError(err).Warningf("Error while executing aug: %s", a.augId)
@@ -83,7 +86,8 @@ func (a *aug) Execute(collectionService *collection.CollectionService) {
 		logger.Logger().Warningf("Aug (%s) has no limiters", a.augId)
 	}
 
-	if ok := a.limitsManager.BeforeRun(executionId); ok {
+	shouldSkipLimiters := (!a.executed) && (a.condition == nil)
+	if ok := a.limitsManager.BeforeRun(executionId, shouldSkipLimiters); ok {
 		a.execute(collectionService, executionId)
 		a.limitsManager.AfterRun(executionId)
 	}

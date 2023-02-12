@@ -235,7 +235,23 @@ func (s *singleton) Start(opts *RookOptions) (err error) {
 	logger.SetLoggerOutput(output)
 	utils.SetQuiet(s.config.LoggingConfiguration.Quiet)
 
-	return s.connect()
+	err = s.connect()
+	if err != nil {
+		return err
+	}
+
+	buildOpts, buildInfo, verifyBuildOptsErr := utils.GetBuildOpts()
+	if verifyBuildOptsErr != nil {
+		logger.Logger().WithError(verifyBuildOptsErr).Warning("Failed to read the build flags")
+		return err
+	}
+	logger.Logger().Infof("Got build info:%v", buildInfo)
+	verifyBuildOptsErr = utils.ValidateBuildOpts(buildOpts)
+	if verifyBuildOptsErr != nil {
+		logger.Logger().WithError(verifyBuildOptsErr).Warning("Validation of build flags failed.")
+		return err
+	}
+	return err
 }
 
 func (s *singleton) Stop() {
@@ -276,7 +292,6 @@ func (s *singleton) connect() (err error) {
 	s.agentCom = agentCom
 	s.augManager = aug_manager.NewAugManager(s.triggerServices, s.output, s.config.LocationsConfiguration)
 	s.commandHandler = aug_manager.NewCommandHandler(s.agentCom, s.augManager)
-
 	return agentCom.ConnectToAgent()
 }
 

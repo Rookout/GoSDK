@@ -41,16 +41,15 @@ type BreakpointInfo struct {
 }
 
 func collectStacktrace(regs *registers.OnStackRegisters, g go_runtime.GPtr, maxStacktrace int) []collection.Stackframe {
-	stacktrace := make([]collection.Stackframe, 0, maxStacktrace)
-
 	if maxStacktrace == 0 {
-		return stacktrace
+		maxStacktrace = 1 
 	}
 
 	pcs := make([]uintptr, maxStacktrace)
 	
 	frameCount := go_runtime.Callers(uintptr(regs.PC()), uintptr(regs.SP()), g, pcs)
 	pcs = pcs[:frameCount]
+	stacktrace := make([]collection.Stackframe, 0, frameCount)
 	frames := runtime.CallersFrames(pcs)
 
 	more := true

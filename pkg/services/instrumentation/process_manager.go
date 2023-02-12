@@ -22,6 +22,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const maxStackFrames = 128 
+
 
 type ProcessManager struct {
 	hooker          hooker.Hooker
@@ -160,7 +162,7 @@ func (p *ProcessManager) WriteBreakpoint(filename string, lineno int, function *
 		FunctionName: function.Name,
 		File:         filename,
 		Line:         lineno,
-		Stacktrace:   10,
+		Stacktrace:   maxStackFrames,
 		Name:         "rookout" + breakpointID,
 	}
 

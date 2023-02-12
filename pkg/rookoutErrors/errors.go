@@ -625,3 +625,19 @@ func NewFailedToExecuteBreakpoint(failedCount uint64) RookoutError {
 		},
 	)
 }
+
+func NewReadBuildFlagsError() RookoutError {
+	return newRookoutError(
+		"ReadBuildFlagsError",
+		"Couldn't read the build flags. Verify the application was built with go build",
+		nil,
+		map[string]interface{}{})
+}
+
+func NewValidateBuildFlagsError(err error) RookoutError {
+	return newRookoutError(
+		"ValidateBuildFlagsError",
+		"The application wasn't built with -gcflags all=-dwarflocationlists=true or it was built with either -ldflags -s or -w",
+		err,
+		map[string]interface{}{})
+}
