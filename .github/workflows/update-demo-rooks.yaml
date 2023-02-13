@@ -37,7 +37,7 @@ jobs:
           git remote -v
           git add -A
           git status
-          git commit -m "Update GoSDK to: {{env.GO_ROOK_VERSION}}"
+          git commit -m "Update GoSDK to: ${{env.GO_ROOK_VERSION}}"
           git push
       - name: Update microservices-demo
         working-directory: ./microservices-demo
@@ -56,5 +56,5 @@ jobs:
           git remote -v
           git add -A
           git status
-          git commit -m "Update GoSDK to: {{env.GO_ROOK_VERSION}}"
+          git commit -m "Update GoSDK to: ${{env.GO_ROOK_VERSION}}"
           git push

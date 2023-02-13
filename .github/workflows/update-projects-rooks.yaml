@@ -43,7 +43,7 @@ jobs:
           git remote -v
           git add -A
           git status
-          git commit -m "Update GoSDK to: {{env.GO_ROOK_VERSION}}"
+          git commit -m "Update GoSDK to: ${{env.GO_ROOK_VERSION}}"
           git push
       - name: Update logs-handler
         working-directory: ./logs-handler
@@ -54,7 +54,7 @@ jobs:
           git remote -v
           git add -A
           git status
-          git commit -m "Update GoSDK to: {{env.GO_ROOK_VERSION}}"
+          git commit -m "Update GoSDK to: ${{env.GO_ROOK_VERSION}}"
           git push
       - name: Update data-pipelines
         working-directory: ./data-pipelines
@@ -65,5 +65,5 @@ jobs:
           git remote -v
           git add -A
           git status
-          git commit -m "Update GoSDK to: {{env.GO_ROOK_VERSION}}"
+          git commit -m "Update GoSDK to: ${{env.GO_ROOK_VERSION}}"
           git push
