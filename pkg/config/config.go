@@ -85,7 +85,7 @@ func GetDefaultConfiguration() DynamicConfiguration {
 			MaxAugTime:           400 * time.Millisecond,
 			MaxAugTimeMultiplier: 1,
 			RateLimiterConfiguration: RateLimiterConfiguration{
-				MinRateLimitValue:           (1 * time.Millisecond) / 10,
+				MinRateLimitValue:           20000 * time.Nanosecond,
 				GlobalRateLimit:             os.Getenv("ROOKOUT_GLOBAL_RATE_LIMIT"),
 				GlobalRateLimitQuotaMS:      "",
 				GlobalRateLimitWindowSizeMS: "",
