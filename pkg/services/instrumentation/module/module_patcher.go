@@ -27,7 +27,7 @@ type AddressMapping struct {
 const BPMarker uintptr = 0xffffffffffffffff
 const PrologueMarker uintptr = 0xaaaaaaaaaaaaaaaa
 
-var callbacksMarkers = map[uintptr]interface{}{BPMarker: nil, PrologueMarker: nil}
+var CallbacksMarkers = map[uintptr]interface{}{BPMarker: nil, PrologueMarker: nil}
 
 func FindFuncMaxSPDelta(addr uint64) int32 {
 	if f := FindFunc(uintptr(addr)); f._func != nil {
@@ -43,53 +43,6 @@ func patchUInt32WithPointer(ptr unsafe.Pointer, value uint32) {
 
 func patchUInt64WithPointer(ptr unsafe.Pointer, value uint64) {
 	*(*uint64)(ptr) = value
-}
-
-
-
-func cArrayToUint64Slice(arrayPointer unsafe.Pointer, count int) []uint64 {
-	return (*[1 << 28]uint64)(arrayPointer)[:count:count]
-}
-
-
-
-
-func bufferToAddressMapping(addressMappingsBufferPointer unsafe.Pointer, origFuncAddress uintptr) (addressMappings []AddressMapping,
-	offsetMappings []AddressMapping) {
-	addressMappingsCount := *(*uint64)(addressMappingsBufferPointer)
-	
-	addressMappingsBufferPointer = unsafe.Pointer(uintptr(addressMappingsBufferPointer) + unsafe.Sizeof(uint64(0)))
-	addressMappingsSlice := cArrayToUint64Slice(addressMappingsBufferPointer, int(addressMappingsCount)*2)
-
-	newFuncAddress := uintptr(addressMappingsSlice[0])
-
-	for i := 0; i < len(addressMappingsSlice); i += 2 {
-		newAddress := uintptr(addressMappingsSlice[i])
-		origAddress := uintptr(addressMappingsSlice[i+1])
-		newOffset := newAddress - newFuncAddress
-		origOffset := origAddress - origFuncAddress
-
-		
-		
-		if _, ok := callbacksMarkers[origAddress]; ok {
-			origOffset = origAddress
-		}
-
-		addressMappings = append(addressMappings, AddressMapping{newAddress, origAddress})
-		offsetMappings = append(offsetMappings, AddressMapping{newOffset, origOffset})
-	}
-	
-	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
-		fmt.Printf("Address mapping\n")
-		for _, p := range addressMappings {
-			fmt.Printf("0x%016x:0x%016x\n", p.OriginalAddress, p.NewAddress)
-		}
-		fmt.Printf("Address offsets\n")
-		for _, p := range offsetMappings {
-			fmt.Printf("0x%016x:0x%016x\n", p.OriginalAddress, p.NewAddress)
-		}
-	}
-	return addressMappings, offsetMappings
 }
 
 
@@ -382,15 +335,26 @@ func addModule(newModule *moduledata) {
 
 
 
-func PatchModuleData(addr uint64, rawAddressMapping unsafe.Pointer, stateID int) error {
-	function := FindFunc(uintptr(addr))
+func PatchModuleData(addressMappings []AddressMapping, offsetMappings []AddressMapping, stateID int) error {
+	function := FindFunc(uintptr(addressMappings[1].OriginalAddress))
 	moduleName := fmt.Sprintf("Rookout-%s[%x]-%d", funcName(function), function.getEntry(), stateID)
 	if _, ok := modules[moduleName]; ok {
 		return nil
 	}
 
+	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
+		fmt.Printf("Address mapping\n")
+		for _, p := range addressMappings {
+			fmt.Printf("0x%016x:0x%016x\n", p.OriginalAddress, p.NewAddress)
+		}
+		fmt.Printf("Address offsets\n")
+		for _, p := range offsetMappings {
+			fmt.Printf("0x%016x:0x%016x\n", p.OriginalAddress, p.NewAddress)
+		}
+	}
+
 	data := &moduleDataPatcher{function: &function, name: moduleName}
-	data.addressMappings, data.offsetMappings = bufferToAddressMapping(rawAddressMapping, function.getEntry())
+	data.addressMappings, data.offsetMappings = addressMappings, offsetMappings
 	data.origFuncEntryAddress = function.getEntry()
 	data.newFuncEntryAddress = data.addressMappings[0].NewAddress
 	data.newFuncEndAddress = data.addressMappings[len(data.addressMappings)-1].NewAddress

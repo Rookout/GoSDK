@@ -1,6 +1,8 @@
 package augs
 
 import (
+	"unsafe"
+
 	"github.com/Rookout/GoSDK/pkg/services/collection/variable"
 )
 
@@ -39,13 +41,17 @@ func NewBreakpointInstance(addr uint64, breakpoint *Breakpoint) *BreakpointInsta
 }
 
 type Function struct {
-	Entry                  uint64
-	End                    uint64
-	StackFrameSize         int32
-	GetBreakpointInstances func() []*BreakpointInstance
+	Entry                   uint64
+	End                     uint64
+	StackFrameSize          int32
+	GetBreakpointInstances  func() []*BreakpointInstance
+	MiddleTrampolineAddress unsafe.Pointer
+	FinalTrampolinePointer  *uint64
+	PatchedBytes            []byte
+	Hooked                  bool
 }
 
-func NewFunction(entry uint64, end uint64, stackFrameSize int32) *Function {
+func NewFunction(entry uint64, end uint64, stackFrameSize int32, middleTrampolineAddress unsafe.Pointer, finalTrampolinePointer *uint64) *Function {
 	return &Function{
 		Entry:          entry,
 		End:            end,
@@ -53,5 +59,8 @@ func NewFunction(entry uint64, end uint64, stackFrameSize int32) *Function {
 		GetBreakpointInstances: func() []*BreakpointInstance {
 			return []*BreakpointInstance{}
 		},
+		MiddleTrampolineAddress: middleTrampolineAddress,
+		FinalTrampolinePointer:  finalTrampolinePointer,
+		Hooked:                  false,
 	}
 }

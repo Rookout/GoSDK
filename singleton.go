@@ -2,12 +2,15 @@ package rookout
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/Rookout/GoSDK/pkg"
 	"github.com/Rookout/GoSDK/pkg/information"
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"os"
 )
+
+//go:generate go generate ./trampoline/
 
 func memberToString(memberName string, member interface{}) string {
 	if member != nil {

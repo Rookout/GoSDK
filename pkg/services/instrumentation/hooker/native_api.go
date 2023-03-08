@@ -12,6 +12,7 @@ import (
 
 	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/module"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 )
 
@@ -47,6 +48,42 @@ type nativeAPIImpl struct{}
 
 func NewNativeAPI() *nativeAPIImpl {
 	return &nativeAPIImpl{}
+}
+
+
+
+func cArrayToUint64Slice(arrayPointer unsafe.Pointer, count int) []uint64 {
+	return (*[1 << 28]uint64)(arrayPointer)[:count:count]
+}
+
+
+
+
+func bufferToAddressMapping(addressMappingsBufferPointer unsafe.Pointer, origFuncAddress uintptr) (addressMappings []module.AddressMapping,
+	offsetMappings []module.AddressMapping) {
+	addressMappingsCount := *(*uint64)(addressMappingsBufferPointer)
+	
+	addressMappingsBufferPointer = unsafe.Pointer(uintptr(addressMappingsBufferPointer) + unsafe.Sizeof(uint64(0)))
+	addressMappingsSlice := cArrayToUint64Slice(addressMappingsBufferPointer, int(addressMappingsCount)*2)
+
+	newFuncAddress := uintptr(addressMappingsSlice[0])
+
+	for i := 0; i < len(addressMappingsSlice); i += 2 {
+		newAddress := uintptr(addressMappingsSlice[i])
+		origAddress := uintptr(addressMappingsSlice[i+1])
+		newOffset := newAddress - newFuncAddress
+		origOffset := origAddress - origFuncAddress
+
+		
+		
+		if _, ok := module.CallbacksMarkers[origAddress]; ok {
+			origOffset = origAddress
+		}
+
+		addressMappings = append(addressMappings, module.AddressMapping{newAddress, origAddress})
+		offsetMappings = append(offsetMappings, module.AddressMapping{newOffset, origOffset})
+	}
+	return addressMappings, offsetMappings
 }
 
 func getUnsafePointer(value uint64) unsafe.Pointer {
@@ -101,24 +138,33 @@ func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, function
 	return stateID, nil
 }
 
-func (a *nativeAPIImpl) GetInstructionMapping(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
+func (a *nativeAPIImpl) GetInstructionMapping(functionEntry uint64, functionEnd uint64, stateId int) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error) {
 	rawAddressMapping := C.RookoutGetInstructionMapping(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd), C.int(stateId))
-	var err error = nil
 	if rawAddressMapping == nil {
-		err = fmt.Errorf("Couldn't get instruction mapping (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
+		return nil, nil, fmt.Errorf("Couldn't get instruction mapping (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 
-	return uintptr(rawAddressMapping), err
+	addressMappings, offsetMappings = bufferToAddressMapping(rawAddressMapping, uintptr(functionEntry))
+	return addressMappings, offsetMappings, nil
 }
 
-func (a *nativeAPIImpl) GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (uintptr, error) {
+
+func (a *nativeAPIImpl) GetStateEntryAddr(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
+	addressMappings, _, err := a.GetInstructionMapping(functionEntry, functionEnd, stateId)
+	if err != nil {
+		return 0, err
+	}
+	return addressMappings[0].NewAddress, nil
+}
+
+func (a *nativeAPIImpl) GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error) {
 	rawUnpatchedAddressMapping := C.RookoutGetUnpatchedInstructionMapping(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd))
-	var err error = nil
 	if rawUnpatchedAddressMapping == nil {
-		err = fmt.Errorf("Couldn't get unpatched instruction mapping (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
+		return nil, nil, fmt.Errorf("Couldn't get unpatched instruction mapping (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 
-	return uintptr(rawUnpatchedAddressMapping), err
+	addressMappings, offsetMappings = bufferToAddressMapping(rawUnpatchedAddressMapping, uintptr(functionEntry))
+	return addressMappings, offsetMappings, nil
 }
 
 func (a *nativeAPIImpl) ApplyBreakpointsState(functionEntry uint64, functionEnd uint64, stateId int) error {
@@ -130,37 +176,14 @@ func (a *nativeAPIImpl) ApplyBreakpointsState(functionEntry uint64, functionEnd 
 	return nil
 }
 
-func (a *nativeAPIImpl) GetHookAddress(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
-	var err error = nil
+func (a *nativeAPIImpl) GetHookAddress(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, rookoutErrors.RookoutError) {
 	funcEntry := getUnsafePointer(functionEntry)
 	funcEnd := getUnsafePointer(functionEnd)
 	hookAddr := uint64(C.RookoutGetHookAddress(funcEntry, funcEnd, C.int(stateId)))
-	if hookAddr == uint64(0) {
-		err = fmt.Errorf("Failed to get the hook Address (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
+	if hookAddr == 0 {
+		return 0, rookoutErrors.NewFailedToGetHookAddress(C.GoString(C.RookoutGetHookerLastError()))
 	}
-	return uintptr(hookAddr), err
-}
-
-func (a *nativeAPIImpl) GetHookSizeBytes(functionEntry uint64, functionEnd uint64, stateId int) (int, error) {
-	var err error = nil
-	funcEntry := getUnsafePointer(functionEntry)
-	funcEnd := getUnsafePointer(functionEnd)
-	hookSize := int(C.RookoutGetHookSizeBytes(funcEntry, funcEnd, C.int(stateId)))
-	if hookSize < 0 {
-		err = fmt.Errorf("Failed to get the hook size (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
-	}
-	return hookSize, err
-}
-
-func (a *nativeAPIImpl) GetHookBytes(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
-	var err error = nil
-	funcEntry := getUnsafePointer(functionEntry)
-	funcEnd := getUnsafePointer(functionEnd)
-	hookBytes := unsafe.Pointer(C.RookoutGetHookBytesView(funcEntry, funcEnd, C.int(stateId)))
-	if hookBytes == nil {
-		err = fmt.Errorf("Failed to get the hook bytes (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
-	}
-	return uintptr(hookBytes), err
+	return uintptr(hookAddr), nil
 }
 
 func (a *nativeAPIImpl) GetFunctionType(functionEntry uint64, functionEnd uint64) (safe_hook_validator.FunctionType, error) {
@@ -172,28 +195,6 @@ func (a *nativeAPIImpl) GetFunctionType(functionEntry uint64, functionEnd uint64
 		err = fmt.Errorf("Failed to get the function type (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
 	}
 	return safe_hook_validator.FunctionType(funcType), err
-}
-
-func (a *nativeAPIImpl) GetDangerZoneStartAddress(functionEntry uint64, functionEnd uint64) (uint64, error) {
-	var err error = nil
-	funcEntry := getUnsafePointer(functionEntry)
-	funcEnd := getUnsafePointer(functionEnd)
-	dangerZoneStart := uint64(C.RookoutGetDangerZoneStartAddress(funcEntry, funcEnd))
-	if dangerZoneStart == uint64(0) {
-		err = fmt.Errorf("Failed to get the function danger zone start Address (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
-	}
-	return dangerZoneStart, err
-}
-
-func (a *nativeAPIImpl) GetDangerZoneEndAddress(functionEntry uint64, functionEnd uint64) (uint64, error) {
-	var err error = nil
-	funcEntry := getUnsafePointer(functionEntry)
-	funcEnd := getUnsafePointer(functionEnd)
-	dangerZoneStart := uint64(C.RookoutGetDangerZoneEndAddress(funcEntry, funcEnd))
-	if dangerZoneStart == uint64(0) {
-		err = fmt.Errorf("Failed to get the function danger zone end Address (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
-	}
-	return dangerZoneStart, err
 }
 
 func (a *nativeAPIImpl) TriggerWatchDog(timeoutMS uint64) error {

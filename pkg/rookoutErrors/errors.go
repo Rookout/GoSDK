@@ -74,7 +74,7 @@ func (r RookoutErrorImpl) Stack() []byte {
 
 }
 
-func newRookoutError(errorType string, description string, externalError error, arguments map[string]interface{}) RookoutError {
+func newRookoutError(errorType string, description string, externalError error, arguments map[string]interface{}) *RookoutErrorImpl {
 	if externalError == nil {
 		externalError = errors.Wrap(description, 2)
 	}
@@ -230,6 +230,141 @@ func NewBadFunctionNameException(functionName string) RookoutError {
 		nil,
 		map[string]interface{}{
 			"functionName": functionName,
+		})
+}
+
+func NewInvalidProcMapsStartAddress(line string, startAddress string, externalErr error) RookoutError {
+	return newRookoutError(
+		"InvalidProcMapsStartEndAddress",
+		"Expected start address in proc maps line to be uint",
+		externalErr,
+		map[string]interface{}{
+			"line":         line,
+			"startAddress": startAddress,
+		},
+	)
+}
+
+func NewInvalidProcMapsEndAddress(line string, endAddress string, externalErr error) RookoutError {
+	return newRookoutError(
+		"InvalidProcMapsEndAddress",
+		"Expected end address in proc maps line to be uint",
+		externalErr,
+		map[string]interface{}{
+			"line":       line,
+			"endAddress": endAddress,
+		},
+	)
+}
+
+func NewInvalidProcMapsAddresses(line string, addresses string) RookoutError {
+	return newRookoutError(
+		"InvalidProcMapsAddresses",
+		"Expected startAddress-endAddress in proc maps line",
+		nil,
+		map[string]interface{}{
+			"line":      line,
+			"addresses": addresses,
+		},
+	)
+}
+
+func NewInvalidProcMapsLine(line string) RookoutError {
+	return newRookoutError(
+		"InvalidProcMapsLine",
+		"Expected at least 5 fields in proc maps line",
+		nil,
+		map[string]interface{}{
+			"line": line,
+		},
+	)
+}
+
+func NewFailedToOpenProcMapsFile(externalErr error) RookoutError {
+	return newRookoutError(
+		"FailedToOpenProcMapsFile",
+		"Unable to open /proc/self/maps",
+		externalErr,
+		map[string]interface{}{},
+	)
+}
+
+func NewFailedToWriteBytes(errno int) *RookoutErrorImpl {
+	return newRookoutError(
+		"FailedToWriteBytes",
+		"Failed to write hook bytes",
+		nil,
+		map[string]interface{}{
+			"errno": errno,
+		},
+	)
+}
+
+func NewFailedToCollectGoroutinesInfo(numGoroutines int) RookoutError {
+	return newRookoutError(
+		"FailedToCollectGoroutinesInfo",
+		"Failed to collect all goroutines info",
+		nil,
+		map[string]interface{}{
+			"numGoroutines": numGoroutines,
+		},
+	)
+}
+
+func NewUnsafeToInstallHook(reason string) RookoutError {
+	return newRookoutError(
+		"UnsafeToInstallHook",
+		"Detected it's unsafe to install hook at this time",
+		nil,
+		map[string]interface{}{
+			"reason": reason,
+		},
+	)
+}
+
+func NewFailedToGetStateEntryAddr(functionEntry uint64, functionEnd uint64, stateID int, externalErr error) RookoutError {
+	return newRookoutError(
+		"FailedToGetStateEntryAddr",
+		"Unable to get state entry addr",
+		externalErr,
+		map[string]interface{}{
+			"functionEntry": functionEntry,
+			"functionEnd":   functionEnd,
+			"stateID":       stateID,
+		})
+}
+
+func NewInvalidBranchDest(hookAddr uintptr, stateAddr uintptr, stateID int) RookoutError {
+	return newRookoutError(
+		"InvalidBranchDest",
+		"Tried to encode an invalid branch instruction - relative distance isn't dividable by 4",
+		nil,
+		map[string]interface{}{
+			"hookAddr":  hookAddr,
+			"stateAddr": stateAddr,
+			"stateID":   stateID,
+		})
+}
+
+func NewBranchDestTooFar(hookAddr uintptr, stateAddr uintptr, stateID int) RookoutError {
+	return newRookoutError(
+		"BranchDestTooFar",
+		"Tried to encode an invalid branch instruction - relative distance is too long to be encoded into 26 bit immediate",
+		nil,
+		map[string]interface{}{
+			"hookAddr":  hookAddr,
+			"stateAddr": stateAddr,
+			"stateID":   stateID,
+		})
+}
+
+func NewFailedToGetHookAddress(errorMsg string) RookoutError {
+	return newRookoutError(
+		"FailedToGetHookAddress",
+		"Failed to get hook address from native",
+		nil,
+		map[string]interface{}{
+			"errorMsg": errorMsg,
 		})
 }
 
@@ -466,6 +601,14 @@ func NewFailedToAddBreakpoint(filename string, lineno int, err error) RookoutErr
 		})
 }
 
+func NewAllTrampolineAddressesInUse() RookoutError {
+	return newRookoutError(
+		"AllTrampolineAddressesInUse",
+		"Can't add another breakpoint since all trampolines are in use",
+		nil,
+		map[string]interface{}{})
+}
+
 func NewFailedToRemoveBreakpoint(filename string, lineno int, err error) RookoutError {
 	return newRookoutError(
 		"FailedToRemoveBreakpoint",
@@ -640,4 +783,28 @@ func NewValidateBuildFlagsError(err error) RookoutError {
 		"The application wasn't built with -gcflags all=-dwarflocationlists=true or it was built with either -ldflags -s or -w",
 		err,
 		map[string]interface{}{})
+}
+
+func NewMprotectFailed(address uintptr, size int, permissions int, err string) RookoutError {
+	return newRookoutError(
+		"MprotectFailed",
+		"Tried to change permissions of memory area but failed",
+		nil,
+		map[string]interface{}{
+			"address":     address,
+			"size":        size,
+			"permissions": permissions,
+			"err":         err,
+		})
+}
+
+func NewFailedToGetCurrentMemoryProtection(address uint64, size uint64) RookoutError {
+	return newRookoutError(
+		"FailedToGetCurrentMemoryProtection",
+		"Failed to get current memory protection",
+		nil,
+		map[string]interface{}{
+			"address": address,
+			"size":    size,
+		})
 }

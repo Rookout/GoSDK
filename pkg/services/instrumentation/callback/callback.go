@@ -123,8 +123,9 @@ func Callback() {
 func goCollect(context uintptr, g go_runtime.GPtr) {
 	var waitChan chan struct{}
 
+	triggerChan <- true
+
 	systemstack(func() {
-		triggerChan <- true
 		waitChan = make(chan struct{})
 
 		

@@ -6,7 +6,9 @@ import (
 
 	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/logger"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/callstack"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/module"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_installer"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 	"github.com/Rookout/GoSDK/pkg/services/suspender"
@@ -19,10 +21,10 @@ const (
 )
 
 type BreakpointFlowRunner interface {
-	GetAddressMapping() (unsafe.Pointer, error)
-	GetUnpatchedAddressMapping() (unsafe.Pointer, error)
+	GetAddressMapping() ([]module.AddressMapping, []module.AddressMapping, error)
+	GetUnpatchedAddressMapping() ([]module.AddressMapping, []module.AddressMapping, error)
 	ApplyBreakpointsState() error
-	IsPatched() bool
+	IsDefaultState() bool
 	ID() int
 	DefaultID() int
 }
@@ -39,30 +41,49 @@ type breakpointFlowRunner struct {
 	nativeAPI        NativeHookerAPI
 	info             BreakpointFlowRunnerInitializationInfo
 	stateID          int
-	functionEntry    uint64
-	functionEnd      uint64
+	function         *augs.Function
+	jumpDestination  uintptr
 }
 
-func (c *breakpointFlowRunner) GetAddressMapping() (unsafe.Pointer, error) {
-	mapping, err := c.nativeAPI.GetInstructionMapping(c.functionEntry, c.functionEnd, c.stateID)
-	return unsafe.Pointer(mapping), err
+func (c *breakpointFlowRunner) GetAddressMapping() ([]module.AddressMapping, []module.AddressMapping, error) {
+	return c.nativeAPI.GetInstructionMapping(c.function.Entry, c.function.End, c.stateID)
 }
 
-func (c *breakpointFlowRunner) GetUnpatchedAddressMapping() (unsafe.Pointer, error) {
-	mapping, err := c.nativeAPI.GetUnpatchedInstructionMapping(c.functionEntry, c.functionEnd)
-	return unsafe.Pointer(mapping), err
+func (c *breakpointFlowRunner) GetUnpatchedAddressMapping() ([]module.AddressMapping, []module.AddressMapping, error) {
+	return c.nativeAPI.GetUnpatchedInstructionMapping(c.function.Entry, c.function.End)
 }
 
-func (c *breakpointFlowRunner) ApplyBreakpointsState() error {
-	var err error = nil
+func (c *breakpointFlowRunner) installHook() (err error) {
 	var shi safe_hook_installer.SafeHookInstaller
 	var numGoroutines int
+	hookWriter, err := c.getHookWriter()
+	if err != nil {
+		return err
+	}
+	hookManager := safe_hook_installer.NewHookManager(hookWriter.HookAddr, hookWriter.Hook, c.nativeAPI.GetFunctionType)
+
+	err = hookWriter.AddWritePermission()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		restoreErr := hookWriter.RestorePermissions()
+		if restoreErr != nil {
+			logger.Logger().WithError(restoreErr).Warning("Unable to restore memory section to original permissions")
+		}
+
+		
+		if err == nil {
+			err = restoreErr
+		}
+	}()
+
 	for attempt := 1; attempt <= InstallHookNumAttempts; attempt++ {
 		if attempt > 1 {
 			
 			time.Sleep(InstallHookAttemptDelayMS * time.Millisecond)
 		}
-		shi, err = c.installerCreator(c.functionEntry, c.functionEnd, c.stateID, c.nativeAPI,
+		shi, err = c.installerCreator(c.function.Entry, c.function.End, c.stateID, hookWriter, hookManager,
 			suspender.GetSuspender(), callstack.NewStackTraceBuffer(), &safe_hook_validator.ValidatorFactoryImpl{})
 		if err != nil {
 			
@@ -80,11 +101,12 @@ func (c *breakpointFlowRunner) ApplyBreakpointsState() error {
 			continue
 		}
 		
+		c.function.Hooked = !c.IsDefaultState()
 		break
 	}
 	if err == nil {
 		
-		notifyErr := c.nativeAPI.ApplyBreakpointsState(c.functionEntry, c.functionEnd, c.stateID)
+		notifyErr := c.nativeAPI.ApplyBreakpointsState(c.function.Entry, c.function.End, c.stateID)
 		if notifyErr != nil {
 			logger.Logger().Warningf("Failed to notify the native on installing the breakpoint (%v). However, the breakpoint was installed successfully.", notifyErr)
 			
@@ -93,8 +115,39 @@ func (c *breakpointFlowRunner) ApplyBreakpointsState() error {
 	return err
 }
 
-func (c *breakpointFlowRunner) IsPatched() bool {
-	return c.stateID > 0
+func (c *breakpointFlowRunner) getHookWriter() (*safe_hook_installer.HookWriter, rookoutErrors.RookoutError) {
+	hookAddr, err := c.nativeAPI.GetHookAddress(c.function.Entry, c.function.End, c.stateID)
+	if err != nil {
+		return nil, err
+	}
+	hook, err := c.buildHook(hookAddr)
+	if err != nil {
+		return nil, err
+	}
+	return safe_hook_installer.NewHookWriter(hookAddr, hook), nil
+}
+
+func (c *breakpointFlowRunner) buildHook(hookAddr uintptr) ([]byte, rookoutErrors.RookoutError) {
+	if c.IsDefaultState() {
+		return c.function.PatchedBytes, nil
+	}
+
+	hook, err := c.buildJMP(hookAddr)
+	if err != nil {
+		return nil, err
+	}
+	if c.function.PatchedBytes == nil {
+		
+		c.function.PatchedBytes = make([]byte, len(hook))
+		for i := range hook {
+			c.function.PatchedBytes[i] = *((*byte)(unsafe.Pointer(hookAddr + uintptr(i))))
+		}
+	}
+	return hook, nil
+}
+
+func (c *breakpointFlowRunner) IsDefaultState() bool {
+	return c.stateID == c.DefaultID()
 }
 
 func (c *breakpointFlowRunner) ID() int {
@@ -114,8 +167,7 @@ func NewFlowRunner(nativeAPI NativeHookerAPI, initInfo BreakpointFlowRunnerIniti
 		installerCreator: installerFactory,
 		info:             initInfo,
 		stateID:          stateID,
-		functionEntry:    initInfo.Function.Entry,
-		functionEnd:      initInfo.Function.End,
+		function:         initInfo.Function,
 		nativeAPI:        nativeAPI,
 	}, nil
 }

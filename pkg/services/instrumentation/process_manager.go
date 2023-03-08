@@ -24,13 +24,13 @@ import (
 
 const maxStackFrames = 128 
 
-
 type ProcessManager struct {
-	hooker          hooker.Hooker
-	binaryInfo      *binary_info.BinaryInfo
-	locations       *locations_set.LocationsSet
-	cancelGCControl context.CancelFunc
-	cancelBPMonitor context.CancelFunc
+	hooker            hooker.Hooker
+	binaryInfo        *binary_info.BinaryInfo
+	locations         *locations_set.LocationsSet
+	trampolineManager *trampolineManager
+	cancelGCControl   context.CancelFunc
+	cancelBPMonitor   context.CancelFunc
 }
 
 func NewProcessManager(locations *locations_set.LocationsSet, breakpointMonitorInterval time.Duration) (pm *ProcessManager, err rookoutErrors.RookoutError) {
@@ -50,7 +50,7 @@ func NewProcessManager(locations *locations_set.LocationsSet, breakpointMonitorI
 	}
 
 	module.Init()
-	p := &ProcessManager{hooker: h, binaryInfo: bi, locations: locations}
+	p := &ProcessManager{hooker: h, binaryInfo: bi, locations: locations, trampolineManager: newTrampolineManager()}
 
 	ctxGCControl, cancelGCControl := context.WithCancel(context.Background())
 	defer func() {
@@ -177,18 +177,33 @@ func (p *ProcessManager) WriteBreakpoint(filename string, lineno int, function *
 	return bp, nil
 }
 
+func (p *ProcessManager) getFunction(biFunction *binary_info.Function) (*augs.Function, rookoutErrors.RookoutError) {
+	if function, ok := p.locations.FindFunctionByEntry(biFunction.Entry); ok {
+		return function, nil
+	}
+
+	finalTrampolinePointer, middleTrampolineAddress, err := p.trampolineManager.getTrampolineAddress()
+	if err != nil {
+		return nil, err
+	}
+	function := augs.NewFunction(biFunction.Entry, biFunction.End, module.FindFuncMaxSPDelta(biFunction.Entry), middleTrampolineAddress, finalTrampolinePointer)
+
+	p.locations.AddFunction(function)
+	return function, nil
+}
+
 func (p *ProcessManager) writeBreakpointInstance(bp *augs.Breakpoint, addr uint64) (*augs.BreakpointInstance, rookoutErrors.RookoutError) {
 	if bpInstance, ok := p.locations.FindBreakpointByAddr(addr); ok {
 		return bpInstance, nil
 	}
 
-	bpInstance := augs.NewBreakpointInstance(addr, bp)
 	filename, lineno, biFunction := p.binaryInfo.PCToLine(addr)
-	if function, ok := p.locations.FindFunctionByEntry(biFunction.Entry); ok {
-		bpInstance.Function = function
-	} else {
-		bpInstance.Function = augs.NewFunction(biFunction.Entry, biFunction.End, module.FindFuncMaxSPDelta(biFunction.Entry))
+	function, rookErr := p.getFunction(biFunction)
+	if rookErr != nil {
+		return nil, rookErr
 	}
+	bpInstance := augs.NewBreakpointInstance(addr, bp)
+	bpInstance.Function = function
 
 	logger.Logger().Debugf("Adding breakpoint in %s:%d address=0x%x", filename, lineno, addr)
 
@@ -197,12 +212,12 @@ func (p *ProcessManager) writeBreakpointInstance(bp *augs.Breakpoint, addr uint6
 		return nil, rookoutErrors.NewFailedToAddBreakpoint(filename, lineno, err)
 	}
 
-	rawAddressMapping, err := flowRunner.GetAddressMapping()
+	addressMappings, offsetMappings, err := flowRunner.GetAddressMapping()
 	if err != nil {
 		return nil, rookoutErrors.NewFailedToGetAddressMapping(filename, lineno, err)
 	}
 
-	rawUnpatchedAddressMapping, err := flowRunner.GetUnpatchedAddressMapping()
+	unpatchedAddressMappings, unpatchedOffsetMappings, err := flowRunner.GetUnpatchedAddressMapping()
 	if err != nil {
 		return nil, rookoutErrors.NewFailedToGetUnpatchedAddressMapping(filename, lineno, err)
 	}
@@ -210,10 +225,10 @@ func (p *ProcessManager) writeBreakpointInstance(bp *augs.Breakpoint, addr uint6
 	
 	
 	
-	if err = module.PatchModuleData(addr, rawUnpatchedAddressMapping, flowRunner.DefaultID()); err != nil {
+	if err = module.PatchModuleData(unpatchedAddressMappings, unpatchedOffsetMappings, flowRunner.DefaultID()); err != nil {
 		return nil, rookoutErrors.NewFailedToPatchModule(filename, lineno, err)
 	}
-	if err = module.PatchModuleData(addr, rawAddressMapping, flowRunner.ID()); err != nil {
+	if err = module.PatchModuleData(addressMappings, offsetMappings, flowRunner.ID()); err != nil {
 		return nil, rookoutErrors.NewFailedToPatchModule(filename, lineno, err)
 	}
 
@@ -255,13 +270,13 @@ func (p *ProcessManager) eraseBreakpointInstance(bp *augs.Breakpoint, bpInstance
 		return rookoutErrors.NewFailedToRemoveBreakpoint(bp.File, bp.Line, err)
 	}
 
-	if flowRunner.IsPatched() {
-		rawAddressMapping, err := flowRunner.GetAddressMapping()
+	if !flowRunner.IsDefaultState() {
+		addressMappings, offsetMappings, err := flowRunner.GetAddressMapping()
 		if err != nil {
 			return rookoutErrors.NewFailedToGetAddressMapping(bp.File, bp.Line, err)
 		}
 
-		err = module.PatchModuleData(bpInstance.Addr, rawAddressMapping, flowRunner.ID())
+		err = module.PatchModuleData(addressMappings, offsetMappings, flowRunner.ID())
 		if err != nil {
 			return rookoutErrors.NewFailedToPatchModule(bp.File, bp.Line, err)
 		}

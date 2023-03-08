@@ -6,6 +6,7 @@ package hooker
 import (
 	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/module"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 )
 
@@ -27,12 +28,14 @@ func (n *NativeAPI) RegisterFunctionBreakpointsState(functionEntry Address, func
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
 
-func (n *NativeAPI) GetInstructionMapping(functionEntry Address, functionEnd Address, stateId int) (rawAddressMapping uintptr, err error) {
+func (n *NativeAPI) GetInstructionMapping(_ uint64, _ uint64, _ int) ([]module.AddressMapping, []module.AddressMapping, error) {
+	return nil, nil, rookoutErrors.NewUnsupportedPlatform()
+}
+func (n *NativeAPI) GetStateEntryAddr(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
-
-func (n *NativeAPI) GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (uintptr, error) {
-	return 0, rookoutErrors.NewUnsupportedPlatform()
+func (n *NativeAPI) GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error) {
+	return nil, nil, rookoutErrors.NewUnsupportedPlatform()
 }
 
 func (n *NativeAPI) GetStackUsageMap() (map[uint64][]map[string]int64, rookoutErrors.RookoutError) {
@@ -43,15 +46,7 @@ func (n *NativeAPI) ApplyBreakpointsState(functionEntry Address, functionEnd Add
 	return rookoutErrors.NewUnsupportedPlatform()
 }
 
-func (n *NativeAPI) GetHookAddress(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
-	return 0, rookoutErrors.NewUnsupportedPlatform()
-}
-
-func (n *NativeAPI) GetHookSizeBytes(functionEntry uint64, functionEnd uint64, stateId int) (int, error) {
-	return 0, rookoutErrors.NewUnsupportedPlatform()
-}
-
-func (n *NativeAPI) GetHookBytes(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
+func (n *NativeAPI) GetHookAddress(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, rookoutErrors.RookoutError) {
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
 

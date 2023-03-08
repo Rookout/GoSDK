@@ -223,7 +223,7 @@ func generateCallbackPCDataEntries(callbackOffset uintptr, entryAfterCallbackVal
 
 func addCallbacksEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMapping, pcDataGenerator func(uintptr, uintptr) ([]PCDataEntry, error)) ([]PCDataEntry, error) {
 	for mapIndex, mapping := range offsetMappings {
-		if _, ok := callbacksMarkers[mapping.OriginalAddress]; ok {
+		if _, ok := CallbacksMarkers[mapping.OriginalAddress]; ok {
 			entries, err := pcDataGenerator(mapping.NewAddress, offsetMappings[mapIndex+1].NewAddress)
 			if err != nil {
 				return nil, err

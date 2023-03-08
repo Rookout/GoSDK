@@ -5,6 +5,8 @@ import (
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/augs"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/module"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_installer"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 )
@@ -27,15 +29,12 @@ type hookerImpl struct {
 
 type NativeHookerAPI interface {
 	RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologueCallback uintptr, shouldRunPrologue uintptr, functionStackUsage int32) (stateID int, err error)
-	GetInstructionMapping(functionEntry Address, functionEnd Address, stateID int) (rawAddressMapping uintptr, err error)
-	GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (uintptr, error)
+	GetInstructionMapping(functionEntry Address, functionEnd Address, stateID int) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error)
+	GetStateEntryAddr(functionEntry Address, functionEnd Address, stateID int) (uintptr, error)
+	GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error)
 	ApplyBreakpointsState(functionEntry Address, functionEnd Address, stateID int) (err error)
-	GetHookAddress(functionEntry uint64, functionEnd uint64, stateID int) (uintptr, error)
-	GetHookSizeBytes(functionEntry uint64, functionEnd uint64, stateID int) (int, error)
-	GetHookBytes(functionEntry uint64, functionEnd uint64, stateID int) (uintptr, error)
+	GetHookAddress(functionEntry uint64, functionEnd uint64, stateID int) (uintptr, rookoutErrors.RookoutError)
 	GetFunctionType(functionEntry uint64, functionEnd uint64) (safe_hook_validator.FunctionType, error)
-	GetDangerZoneStartAddress(functionEntry uint64, functionEnd uint64) (uint64, error)
-	GetDangerZoneEndAddress(functionEntry uint64, functionEnd uint64) (uint64, error)
 	TriggerWatchDog(timeoutMS uint64) error
 	DefuseWatchDog()
 }

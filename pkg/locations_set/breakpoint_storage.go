@@ -45,10 +45,18 @@ func (b *BreakpointStorage) AddBreakpointInstance(bpInstance *augs.BreakpointIns
 	b.functions[bpInstance.Function] = bpInstances
 }
 
+func (b *BreakpointStorage) AddFunction(function *augs.Function) {
+	b.storageLock.Lock()
+	defer b.storageLock.Unlock()
+
+	b.addFunction(function)
+}
+
 func (b *BreakpointStorage) addFunction(function *augs.Function) {
 	function.GetBreakpointInstances = func() []*augs.BreakpointInstance {
 		return b.FindBreakpointsByFunctionEntry(function.Entry)
 	}
+	b.functions[function] = nil
 }
 
 func (b *BreakpointStorage) RemoveBreakpointInstance(bpInstance *augs.BreakpointInstance) {
