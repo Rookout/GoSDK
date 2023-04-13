@@ -1,6 +1,13 @@
 package pkg
 
 import (
+	"os"
+	"regexp"
+	"runtime/debug"
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/Rookout/GoSDK/pkg/aug_manager"
 	"github.com/Rookout/GoSDK/pkg/com_ws"
 	"github.com/Rookout/GoSDK/pkg/config"
@@ -9,23 +16,16 @@ import (
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation"
 	"github.com/Rookout/GoSDK/pkg/utils"
-	"os"
-	"regexp"
-	"runtime/debug"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 type singleton struct {
-	config          config.DynamicConfiguration
 	output          com_ws.Output
 	agentCom        com_ws.AgentCom
 	commandHandler  *aug_manager.CommandHandler
 	augManager      aug_manager.AugManager
 	triggerServices *instrumentation.TriggerServices
 
-	opts *RookOptions
+	opts *config.RookOptions
 
 	started         bool
 	servicesStarted bool
@@ -56,7 +56,7 @@ func createSingleton() *singleton {
 	}
 }
 
-func initOptsFromEnv(opts *RookOptions) (err error) {
+func initOptsFromEnv(opts *config.RookOptions) error {
 	if !opts.Debug {
 		rookoutDebug, _ := os.LookupEnv("ROOKOUT_DEBUG")
 		opts.Debug = utils.Contains(utils.TrueValues, rookoutDebug)
@@ -112,9 +112,6 @@ func initOptsFromEnv(opts *RookOptions) (err error) {
 		opts.Quiet = utils.Contains(utils.TrueValues, quiet)
 	}
 
-	skipSslVerify, ok := os.LookupEnv("ROOKOUT_SKIP_SSL_VERIFY")
-	opts.skipSslVerify = ok && utils.Contains(utils.TrueValues, skipSslVerify)
-
 	if opts.Port == 0 {
 		if port, ok := os.LookupEnv("ROOKOUT_CONTROLLER_PORT"); ok {
 			if p, ok := strconv.Atoi(port); ok == nil {
@@ -124,27 +121,28 @@ func initOptsFromEnv(opts *RookOptions) (err error) {
 	}
 
 	if len(opts.Labels) == 0 {
+		var err error
 		if opts.Labels, err = getLabelsFromEnv(opts.Labels); err != nil {
 			return err
 		}
 	}
 
-	return
+	return nil
 }
 
 
-func normalizeOpts(opts *RookOptions) (err error) {
+func normalizeOpts(opts *config.RookOptions) error {
 	Sanitize(opts)
 	if opts.Token == "" && opts.Host == "" {
 		return rookoutErrors.NewRookMissingToken()
 	} else if opts.Token != "" {
-		if err = validateToken(opts.Token); err != nil {
+		if err := validateToken(opts.Token); err != nil {
 			return err
 		}
 	}
 
 	if opts.Host == "" {
-		opts.Host = ControllerAddress_HOST
+		opts.Host = ControllerAddressHost
 	}
 
 	if opts.Host == "staging.cloud.agent.rookout.com" || opts.Host == "cloud.agent.rookout.com" {
@@ -156,7 +154,7 @@ func normalizeOpts(opts *RookOptions) (err error) {
 	}
 
 	if opts.Port == 0 {
-		opts.Port = ControllerAddress_PORT
+		opts.Port = ControllerAddressPort
 	}
 
 	if opts.LogLevel == "" {
@@ -164,7 +162,7 @@ func normalizeOpts(opts *RookOptions) (err error) {
 	}
 
 	for key := range opts.Labels {
-		if err = validateLabel(key); err != nil {
+		if err := validateLabel(key); err != nil {
 			return err
 		}
 	}
@@ -174,38 +172,14 @@ func normalizeOpts(opts *RookOptions) (err error) {
 		opts.LogToStderr = true
 	}
 
-	return
+	return nil
 }
 
-func (s *singleton) updateConfig() {
-	if s.opts.LogLevel != "" {
-		s.config.LoggingConfiguration.LogLevel = s.opts.LogLevel
-	}
-
-	if s.opts.LogFile != "" {
-		s.config.LoggingConfiguration.FileName = s.opts.LogFile
-	}
-
-	s.config.LoggingConfiguration.LogToStderr = s.opts.LogToStderr
-
-	if s.opts.Debug {
-		s.config.LoggingConfiguration.Debug = true
-		s.config.LoggingConfiguration.LogLevel = "DEBUG"
-		s.config.LoggingConfiguration.LogToStderr = true
-	}
-
-	if s.opts.Quiet {
-		s.config.LoggingConfiguration.Quiet = s.opts.Quiet
-	}
-}
-
-func (s *singleton) Start(opts *RookOptions) (err error) {
+func (s *singleton) Start(opts *config.RookOptions) (err error) {
 	if s.started {
-		return
+		return nil
 	}
 
-	s.config = config.GetDefaultConfiguration()
-	config.UpdateObjectDumpConfigDefaults(s.config.ObjectDumpConfigDefaults)
 	s.opts = opts
 
 	s.started = true
@@ -217,9 +191,9 @@ func (s *singleton) Start(opts *RookOptions) (err error) {
 		return err
 	}
 
-	s.updateConfig()
+	config.UpdateFromOpts(*s.opts)
 
-	logger.Init(s.opts.Debug, s.opts.LogLevel, s.config.LoggingConfiguration)
+	logger.Init(s.opts.Debug, s.opts.LogLevel)
 	logger.InitHandlers(s.opts.LogToStderr, s.opts.LogToFile, s.opts.LogFile)
 	utils.SetOnPanicFunc(func(err error) {
 		logger.Logger().WithError(err).Fatalf("Caught panic in goroutine, stack trace: %s\n", string(debug.Stack()))
@@ -227,13 +201,12 @@ func (s *singleton) Start(opts *RookOptions) (err error) {
 
 	s.triggerServices, err = instrumentation.NewTriggerServices()
 	if err != nil {
-		return
+		return err
 	}
 
-	output := com_ws.NewOutputWs(s.config.OutputWsConfiguration)
+	output := com_ws.NewOutputWs()
 	s.output = output
 	logger.SetLoggerOutput(output)
-	utils.SetQuiet(s.config.LoggingConfiguration.Quiet)
 
 	err = s.connect()
 	if err != nil {
@@ -260,7 +233,6 @@ func (s *singleton) Stop() {
 	}
 
 	s.triggerServices.Close()
-	return
 }
 
 func (s *singleton) Flush() {
@@ -275,22 +247,21 @@ func (s *singleton) connect() (err error) {
 	agentCom, err := com_ws.NewAgentComWs(
 		com_ws.NewWebSocketClient,
 		s.output,
-		com_ws.NewBackoff(s.config.AgentComWsConfiguration.BackoffConfig),
+		com_ws.NewBackoff(),
 		s.opts.Host,
 		s.opts.Port,
 		s.opts.Proxy,
 		s.opts.Token,
 		s.opts.Labels,
 		true,
-		s.opts.skipSslVerify,
-		s.config.AgentComWsConfiguration)
+	)
 	if err != nil {
 		return err
 	}
 
 	s.output.SetAgentCom(agentCom)
 	s.agentCom = agentCom
-	s.augManager = aug_manager.NewAugManager(s.triggerServices, s.output, s.config.LocationsConfiguration)
+	s.augManager = aug_manager.NewAugManager(s.triggerServices, s.output)
 	s.commandHandler = aug_manager.NewCommandHandler(s.agentCom, s.augManager)
 	return agentCom.ConnectToAgent()
 }

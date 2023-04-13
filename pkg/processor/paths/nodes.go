@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	rookoutTypes "github.com/Rookout/GoSDK/pkg/types"
 	"go/constant"
 	"go/token"
 	"go/types"
@@ -27,7 +26,7 @@ type node interface {
 
 type executableNode interface {
 	node
-	Execute(namespace rookoutTypes.Namespace) (valueNode, rookoutErrors.RookoutError)
+	Execute(namespace namespaces.Namespace) (valueNode, rookoutErrors.RookoutError)
 }
 
 type valueNode interface {
@@ -226,7 +225,7 @@ func newListNode(nodes []node) *listNode {
 	return l
 }
 
-func (l *listNode) Execute(namespace rookoutTypes.Namespace) (valueNode, rookoutErrors.RookoutError) {
+func (l *listNode) Execute(namespace namespaces.Namespace) (valueNode, rookoutErrors.RookoutError) {
 	var err rookoutErrors.RookoutError
 	for i, n := range l.nodes {
 		if executable, ok := n.(executableNode); ok {
@@ -267,7 +266,7 @@ func newComparisonNode(left node, opt *optNode, right node) node {
 	}
 }
 
-func (c *comparisonNode) Execute(namespace rookoutTypes.Namespace) (n valueNode, err rookoutErrors.RookoutError) {
+func (c *comparisonNode) Execute(namespace namespaces.Namespace) (n valueNode, err rookoutErrors.RookoutError) {
 	left := c.left
 	right := c.right
 	if executable, ok := left.(executableNode); ok {
@@ -295,7 +294,7 @@ func newNamespaceNode(operations []pathOperation) *namespaceNode {
 	return n
 }
 
-func (n *namespaceNode) Execute(namespace rookoutTypes.Namespace) (valueNode, rookoutErrors.RookoutError) {
+func (n *namespaceNode) Execute(namespace namespaces.Namespace) (valueNode, rookoutErrors.RookoutError) {
 	if namespace == nil {
 		return nil, rookoutErrors.NewRookInvalidArithmeticPathException("unable to Execute namespace operations on nil", nil)
 	}
@@ -313,10 +312,10 @@ func (n *namespaceNode) Execute(namespace rookoutTypes.Namespace) (valueNode, ro
 }
 
 type namespaceResultNode struct {
-	namespace rookoutTypes.Namespace
+	namespace namespaces.Namespace
 }
 
-func newNamespaceResultNode(namespace rookoutTypes.Namespace) *namespaceResultNode {
+func newNamespaceResultNode(namespace namespaces.Namespace) *namespaceResultNode {
 	n := &namespaceResultNode{}
 	n.namespace = namespace
 	return n

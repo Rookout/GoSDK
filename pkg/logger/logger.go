@@ -1,19 +1,28 @@
 package logger
 
 import (
+	"fmt"
+	"runtime"
+
 	"github.com/Rookout/GoSDK/pkg/config"
 	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/sirupsen/logrus"
-	"runtime"
 
 	logrus_lumberjack "github.com/fallais/logrus-lumberjack-hook"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"golang.org/x/time/rate"
 	"os"
 	"path/filepath"
 	"time"
+
+	"golang.org/x/time/rate"
 )
+
+func QuietPrintln(msg string) {
+	if !config.LoggingConfig().Quiet {
+		fmt.Println(msg)
+	}
+}
 
 type LoggerOutput interface {
 	SendLogMessage(level pb.LogMessage_LogLevel, time time.Time, filename string, lineno int, text string, args map[string]interface{}) error
@@ -42,14 +51,14 @@ func getNilLogger(debug bool, level string) *logrus.Logger {
 var logger *logrus.Logger = nil
 var isDebug = false
 
-func Init(debug bool, level string, config config.LoggingConfiguration) {
+func Init(debug bool, level string) {
 	isDebug = debug
 	logger = getNilLogger(debug, level)
 }
 
 func Logger() *logrus.Logger {
 	if logger == nil {
-		Init(isDebug, "debug", config.GetDefaultConfiguration().LoggingConfiguration)
+		Init(isDebug, "debug")
 	}
 	return logger
 }

@@ -21,13 +21,13 @@ type Limiter interface {
 
 type limitsManager struct {
 	limiters  []Limiter
-	augId     types.AugId
+	augID     types.AugID
 	augStatus types.AugStatus
 	output    com_ws.Output
 }
 
-func NewLimitsManager(augId types.AugId, output com_ws.Output) LimitsManager {
-	return &limitsManager{augId: augId, output: output, augStatus: types.Active}
+func NewLimitsManager(augID types.AugID, output com_ws.Output) LimitsManager {
+	return &limitsManager{augID: augID, output: output, augStatus: types.Active}
 }
 
 func (l *limitsManager) AddLimiter(newLimiter Limiter) {
@@ -53,7 +53,7 @@ func (l *limitsManager) setupAllLimiters(executionId string, skipLimiters bool) 
 
 		if l.augStatus == types.Active {
 			l.augStatus = status
-			_ = l.output.SendRuleStatus(l.augId, l.augStatus, err)
+			_ = l.output.SendRuleStatus(l.augID, l.augStatus, err)
 		}
 
 		if !skipLimiters {
@@ -63,7 +63,7 @@ func (l *limitsManager) setupAllLimiters(executionId string, skipLimiters bool) 
 
 	if l.augStatus != types.Active && !skipLimiters {
 		l.augStatus = types.Active
-		_ = l.output.SendRuleStatus(l.augId, l.augStatus, nil)
+		_ = l.output.SendRuleStatus(l.augID, l.augStatus, nil)
 	}
 
 	return true
@@ -87,7 +87,7 @@ func (l *limitsManager) AfterRun(executionId string) {
 
 		if l.augStatus == types.Active {
 			l.augStatus = status
-			_ = l.output.SendRuleStatus(l.augId, l.augStatus, err)
+			_ = l.output.SendRuleStatus(l.augID, l.augStatus, err)
 		}
 	}
 }

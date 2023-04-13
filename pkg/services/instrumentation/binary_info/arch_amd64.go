@@ -7,12 +7,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/Rookout/GoSDK/pkg/services/collection/registers"
-	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/frame"
-	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
 	"io"
 	"math"
 	"strings"
+
+	"github.com/Rookout/GoSDK/pkg/services/collection/registers"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/frame"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
 )
 
 const (
@@ -87,122 +88,6 @@ func FixFrameUnwindContext(fctxt *frame.FrameContext, pc uint64, bi *BinaryInfo)
 
 	return fctxt
 }
-
-
-
-
-const amd64cgocallSPOffsetSaveSlot = 0x28
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

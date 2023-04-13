@@ -31,12 +31,12 @@ func (t TriggerServices) GetInstrumentation() *InstrumentationService {
 	return nil
 }
 
-func (t TriggerServices) RemoveAug(augId types.AugId) error {
+func (t TriggerServices) RemoveAug(augID types.AugID) error {
 	if t.instrumentationService != nil {
-		return t.instrumentationService.RemoveAug(augId)
+		return t.instrumentationService.RemoveAug(augID)
 	}
 
-	return errors.Errorf("Couldn't remove aug (%s), instrumentationService is nil", augId)
+	return errors.Errorf("Couldn't remove aug (%s), instrumentationService is nil", augID)
 }
 
 func (t TriggerServices) ClearAugs() {

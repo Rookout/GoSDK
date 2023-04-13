@@ -4,10 +4,8 @@ import (
 	"container/list"
 	"strconv"
 
-	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection"
-	"github.com/Rookout/GoSDK/pkg/types"
 )
 
 const defaultTracebackDepth = 1000
@@ -22,11 +20,11 @@ func NewStackNamespace(collectionService *collection.CollectionService) *StackNa
 	}
 }
 
-func (s *StackNamespace) ReadKey(_ interface{}) (types.Namespace, rookoutErrors.RookoutError) {
+func (s *StackNamespace) ReadKey(_ interface{}) (Namespace, rookoutErrors.RookoutError) {
 	return nil, rookoutErrors.NewNotImplemented()
 }
 
-func (s *StackNamespace) CallMethod(name string, args string) (types.Namespace, rookoutErrors.RookoutError) {
+func (s *StackNamespace) CallMethod(name string, args string) (Namespace, rookoutErrors.RookoutError) {
 	switch name {
 	case "traceback":
 		return s.Traceback(args)
@@ -36,7 +34,7 @@ func (s *StackNamespace) CallMethod(name string, args string) (types.Namespace, 
 	return nil, rookoutErrors.NewRookMethodNotFound(name)
 }
 
-func (s *StackNamespace) Traceback(args string) (types.Namespace, rookoutErrors.RookoutError) {
+func (s *StackNamespace) Traceback(args string) (Namespace, rookoutErrors.RookoutError) {
 	depth := 0
 	if len(args) > 0 {
 		var err error
@@ -63,14 +61,14 @@ func (s *StackNamespace) Traceback(args string) (types.Namespace, rookoutErrors.
 		l.PushBack(containerNamespace)
 	}
 
-	return NewListNamespace(l, int32(depth), map[string]types.Namespace{}), nil
+	return NewTracebackNamespace(s.collectionService.StackTraceElements, depth), nil
 }
 
-func (s *StackNamespace) ReadAttribute(_ string) (types.Namespace, rookoutErrors.RookoutError) {
+func (s *StackNamespace) ReadAttribute(_ string) (Namespace, rookoutErrors.RookoutError) {
 	return nil, rookoutErrors.NewNotImplemented()
 }
 
-func (s *StackNamespace) WriteAttribute(_ string, _ types.Namespace) rookoutErrors.RookoutError {
+func (s *StackNamespace) WriteAttribute(_ string, _ Namespace) rookoutErrors.RookoutError {
 	return rookoutErrors.NewNotImplemented()
 }
 
@@ -78,18 +76,6 @@ func (s *StackNamespace) GetObject() interface{} {
 	return nil
 }
 
-func (s *StackNamespace) ToProtobuf(logErrors bool) *pb.Variant {
-	return GetErrorVariant(rookoutErrors.NewNotImplemented(), logErrors)
-}
-
-func (s *StackNamespace) ToDict() map[string]interface{} {
-	panic("not implemented")
-}
-
-func (s *StackNamespace) ToSimpleDict() interface{} {
-	panic("not implemented")
-}
-
-func (s StackNamespace) Filter(_ []types.FieldFilter) rookoutErrors.RookoutError {
-	return nil
+func (s *StackNamespace) Serialize(serializer Serializer) {
+	dumpError(serializer, rookoutErrors.NewNotImplemented())
 }

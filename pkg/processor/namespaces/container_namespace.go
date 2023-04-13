@@ -1,28 +1,27 @@
 package namespaces
 
 import (
-	pb "github.com/Rookout/GoSDK/pkg/protobuf"
-	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"github.com/Rookout/GoSDK/pkg/types"
 	"io"
+
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 )
 
 type ContainerNamespace struct {
-	Obj     map[string]types.Namespace
+	Obj     map[string]Namespace
 	OnClose func() error
 }
 
 func NewEmptyContainerNamespace() *ContainerNamespace {
 	c := &ContainerNamespace{
-		Obj: make(map[string]types.Namespace),
+		Obj: make(map[string]Namespace),
 	}
 
 	return c
 }
 
-func NewContainerNamespace(initObj *map[string]types.Namespace) *ContainerNamespace {
+func NewContainerNamespace(initObj *map[string]Namespace) *ContainerNamespace {
 	if nil == initObj {
-		initObj = &map[string]types.Namespace{}
+		initObj = &map[string]Namespace{}
 	}
 
 	c := &ContainerNamespace{
@@ -32,7 +31,7 @@ func NewContainerNamespace(initObj *map[string]types.Namespace) *ContainerNamesp
 	return c
 }
 
-func (c ContainerNamespace) CallMethod(name string, _ string) (types.Namespace, rookoutErrors.RookoutError) {
+func (c *ContainerNamespace) CallMethod(name string, _ string) (Namespace, rookoutErrors.RookoutError) {
 	switch name {
 	case "size":
 		return NewGoObjectNamespace(len(c.Obj)), nil
@@ -42,88 +41,36 @@ func (c ContainerNamespace) CallMethod(name string, _ string) (types.Namespace, 
 	}
 }
 
-func (c ContainerNamespace) ReadAttribute(name string) (types.Namespace, rookoutErrors.RookoutError) {
+func (c *ContainerNamespace) ReadAttribute(name string) (Namespace, rookoutErrors.RookoutError) {
 	if val, ok := c.Obj[name]; ok {
 		return val, nil
 	}
 	return nil, rookoutErrors.NewRookAttributeNotFoundException(name)
 }
 
-func (c ContainerNamespace) WriteAttribute(name string, value types.Namespace) rookoutErrors.RookoutError {
+func (c *ContainerNamespace) WriteAttribute(name string, value Namespace) rookoutErrors.RookoutError {
 	c.Obj[name] = value
 	return nil
 }
 
-func (c ContainerNamespace) ReadKey(_ interface{}) (types.Namespace, rookoutErrors.RookoutError) {
+func (c *ContainerNamespace) ReadKey(_ interface{}) (Namespace, rookoutErrors.RookoutError) {
 	return nil, rookoutErrors.NewNotImplemented()
 }
 
-func (c ContainerNamespace) GetObject() interface{} {
+func (c *ContainerNamespace) GetObject() interface{} {
 	return &c.Obj
 }
 
-func (c ContainerNamespace) ToProtobuf(logErrors bool) *pb.Variant {
-	v := &pb.Variant{}
-	defer recoverFromPanic(recover(), v, logErrors)
-
-	v.VariantType = pb.Variant_VARIANT_NAMESPACE
-
-	attributes := make([]*pb.Variant_NamedValue, 0)
-	for k, val := range c.Obj {
-
-		dumpedValue := val.ToProtobuf(logErrors)
-
-		attributes = append(attributes, &pb.Variant_NamedValue{
-			Name:  k,
-			Value: dumpedValue,
-		})
+func (c *ContainerNamespace) Serialize(serializer Serializer) {
+	names := make([]string, 0, len(c.Obj))
+	for k := range c.Obj {
+		names = append(names, k)
 	}
 
-	v.Value = &pb.Variant_NamespaceValue{
-		NamespaceValue: &pb.Variant_Namespace{
-			Attributes: attributes}}
-
-	return v
-}
-
-func (c ContainerNamespace) ToDict() map[string]interface{} {
-	result := make(map[string]interface{})
-
-	for k, v := range c.Obj {
-		result[k] = v.ToDict()
+	getNamedValue := func(i int) (string, Namespace) {
+		return names[i], c.Obj[names[i]]
 	}
-
-	return result
-}
-
-func (c ContainerNamespace) ToSimpleDict() interface{} {
-	result := make(map[string]interface{})
-
-	for k, v := range c.Obj {
-		result[k] = v.ToSimpleDict()
-	}
-
-	return result
-}
-
-func (c ContainerNamespace) Filter(filters []types.FieldFilter) rookoutErrors.RookoutError {
-	for _, filter := range filters {
-		for name, value := range c.Obj {
-			if filter.FilterType == FilterFieldName {
-				if filter.Pattern.Match([]byte(name)) {
-					c.Obj[name] = NewGoObjectNamespace(FilteredFieldReplacement)
-					continue
-				}
-			}
-
-			err := value.Filter(filters)
-
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	serializer.dumpNamespace(getNamedValue, len(c.Obj))
 }
 
 func (c ContainerNamespace) Close() error {

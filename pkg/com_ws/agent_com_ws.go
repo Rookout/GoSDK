@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"net/url"
+	"strings"
+
 	"github.com/Rookout/GoSDK/pkg/common"
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/information"
@@ -13,16 +16,11 @@ import (
 	"github.com/Rookout/GoSDK/pkg/utils"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/anypb"
-	"net/url"
-	"strings"
-	"sync/atomic"
-	"unsafe"
 )
 
 type Callable func(*anypb.Any)
 
 type AgentCom interface {
-	UpdateConfig(config config.AgentComWsConfiguration)
 	ConnectToAgent() error
 	RegisterCallback(string, Callable)
 	Send([]byte) rookoutErrors.RookoutError
@@ -36,10 +34,9 @@ type messageCallback struct {
 }
 
 type agentComWs struct {
-	config                   *config.AgentComWsConfiguration
-	agentId                  string
+	agentID                  string
 	output                   Output
-	agentUrl                 *url.URL
+	agentURL                 *url.URL
 	proxy                    *url.URL
 	token                    string
 	callbacks                map[string][]messageCallback
@@ -52,52 +49,43 @@ type agentComWs struct {
 	clientCreator            WebSocketClientCreator
 	client                   WebSocketClient
 	backoff                  Backoff
-	skipSslVerify            bool
 }
 
 func NewAgentComWs(clientCreator WebSocketClientCreator, output Output, backoff Backoff, agentHost string, agentPort int, proxy string,
-	token string, labels map[string]string, printOnInitialConnection bool, skipSslVerify bool, config config.AgentComWsConfiguration) (*agentComWs, error) {
+	token string, labels map[string]string, printOnInitialConnection bool) (*agentComWs, error) {
+	var a agentComWs
 	var err error
-	a := &agentComWs{}
 	a.stopCtx, a.stopCtxCancel = context.WithCancel(context.Background())
 	a.setId()
-	a.agentUrl, err = buildAgentUrl(agentHost, agentPort)
+	a.agentURL, err = buildAgentURL(agentHost, agentPort)
 	if err != nil {
 		return nil, err
 	}
-	proxyUrl, err := buildProxyUrl(proxy)
+	proxyUrl, err := buildProxyURL(proxy)
 	if err != nil {
 		logger.Logger().Fatalln("Bad proxy address: " + err.Error())
 		return nil, err
 	}
-	a.config = &config
 	a.proxy = proxyUrl
 	a.agentInfo, err = information.Collect(labels, "")
-	a.agentInfo.AgentId = a.agentId
+	if err != nil {
+		return nil, err
+	}
+	a.agentInfo.AgentId = a.agentID
 	a.token = token
 	a.callbacks = map[string][]messageCallback{}
 	a.printOnInitialConnection = printOnInitialConnection
-	a.outgoingChan = NewSizeLimitedChannel(config.SizeLimitedChannelConfiguration)
+	a.outgoingChan = NewSizeLimitedChannel()
 	a.gotInitialAugs = make(chan bool, 1)
 	a.clientCreator = clientCreator
 	a.backoff = backoff
 	a.output = output
-	a.output.SetAgentId(a.agentId)
-	a.skipSslVerify = skipSslVerify
+	a.output.SetAgentID(a.agentID)
 
-	return a, nil
+	return &a, nil
 }
 
-func (a *agentComWs) UpdateConfig(config config.AgentComWsConfiguration) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&a.config)), unsafe.Pointer(&config))
-	a.backoff.UpdateConfig(config.BackoffConfig)
-	a.outgoingChan.UpdateConfig(config.SizeLimitedChannelConfiguration)
-	if a.client != nil {
-		a.client.UpdateConfig(config.WebSocketClientConfig)
-	}
-}
-
-func buildProxyUrl(proxy string) (*url.URL, error) {
+func buildProxyURL(proxy string) (*url.URL, error) {
 	if proxy == "" {
 		return nil, nil
 	}
@@ -107,7 +95,7 @@ func buildProxyUrl(proxy string) (*url.URL, error) {
 	return url.Parse(proxy)
 }
 
-func buildAgentUrl(agentHost string, agentPort int) (*url.URL, error) {
+func buildAgentURL(agentHost string, agentPort int) (*url.URL, error) {
 	if agentHost != "" && !strings.Contains(agentHost, "://") {
 		agentHost = "ws://" + agentHost
 	}
@@ -117,7 +105,7 @@ func buildAgentUrl(agentHost string, agentPort int) (*url.URL, error) {
 
 func (a *agentComWs) setId() {
 	id, _ := uuid.New().MarshalBinary()
-	a.agentId = hex.EncodeToString(id)
+	a.agentID = hex.EncodeToString(id)
 }
 
 func (a *agentComWs) on(messageName string, callback Callable, persistent bool) {
@@ -130,7 +118,7 @@ func (a *agentComWs) RegisterCallback(messageName string, callback Callable) {
 }
 
 func (a *agentComWs) ConnectToAgent() error {
-	connectionTimeoutCtx, cancelConnectionTimeoutCtx := context.WithTimeout(context.Background(), a.config.ConnectionTimeout)
+	connectionTimeoutCtx, cancelConnectionTimeoutCtx := context.WithTimeout(context.Background(), config.AgentComWsConfig().ConnectionTimeout)
 	defer cancelConnectionTimeoutCtx()
 	connErrorsChan := make(chan error)
 
@@ -172,7 +160,7 @@ func (a *agentComWs) connectLoop(connErrorsChan chan error) {
 
 		logger.Logger().Info("Connecting to controller.")
 		connectionCtx, err := func() (context.Context, error) {
-			connectCtx, cancelConnectCtx := context.WithTimeout(a.stopCtx, a.config.ConnectTimeout)
+			connectCtx, cancelConnectCtx := context.WithTimeout(a.stopCtx, config.AgentComWsConfig().ConnectTimeout)
 			defer cancelConnectCtx()
 			return a.connect(connectCtx)
 		}()
@@ -193,8 +181,8 @@ func (a *agentComWs) connectLoop(connErrorsChan chan error) {
 		}
 		if a.printOnInitialConnection {
 			a.printOnInitialConnection = false
-			utils.QuietPrintln("[Rookout] Successfully connected to controller.")
-			logger.Logger().Debug("[Rookout] Agent ID is " + a.agentId)
+			logger.QuietPrintln("[Rookout] Successfully connected to controller.")
+			logger.Logger().Debug("[Rookout] Agent ID is " + a.agentID)
 		}
 		logger.Logger().Info("Connected successfully to cloud controller")
 		logger.Logger().Info("Finished initialization")
@@ -212,7 +200,7 @@ func (a *agentComWs) connectLoop(connErrorsChan chan error) {
 
 func (a *agentComWs) connect(ctx context.Context) (context.Context, error) {
 	
-	a.client = a.clientCreator(a.stopCtx, a.agentUrl, a.token, a.proxy, a.agentInfo, a.skipSslVerify, a.config.WebSocketClientConfig)
+	a.client = a.clientCreator(a.stopCtx, a.agentURL, a.token, a.proxy, a.agentInfo)
 	err := a.dialAndHandshake(ctx, a.client)
 	if err != nil {
 		return nil, err

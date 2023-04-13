@@ -2,18 +2,16 @@ package com_ws
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"sync"
-	"sync/atomic"
-	"time"
-	"unsafe"
 )
 
 
 
 type SizeLimitedChannel struct {
-	config         *config.SizeLimitedChannelConfiguration
 	channel        chan []byte
 	bytesInChannel int
 	channelLock    sync.Mutex
@@ -21,10 +19,9 @@ type SizeLimitedChannel struct {
 	flushing       bool
 }
 
-func NewSizeLimitedChannel(config config.SizeLimitedChannelConfiguration) *SizeLimitedChannel {
+func NewSizeLimitedChannel() *SizeLimitedChannel {
 	return &SizeLimitedChannel{
-		config:      &config,
-		channel:     make(chan []byte, config.MaxQueueLength),
+		channel:     make(chan []byte, config.SizeLimitedChannelConfig().MaxQueueLength),
 		doneChannel: make(chan []struct{}, 1),
 	}
 }
@@ -32,12 +29,13 @@ func (s *SizeLimitedChannel) Offer(message []byte) rookoutErrors.RookoutError {
 	s.channelLock.Lock()
 	defer s.channelLock.Unlock()
 
-	if len(message) > s.config.MaxMessageSize {
+	maxMessageSize := config.SizeLimitedChannelConfig().MaxMessageSize
+	if len(message) > maxMessageSize {
 		
 		
-		return rookoutErrors.NewRookMessageSizeExceeded(len(message), s.config.MaxMessageSize)
+		return rookoutErrors.NewRookMessageSizeExceeded(len(message), maxMessageSize)
 	}
-	if s.bytesInChannel+len(message) > s.config.MaxBytesInChannel {
+	if s.bytesInChannel+len(message) > config.SizeLimitedChannelConfig().MaxBytesInChannel {
 		return rookoutErrors.NewRookOutputQueueFull()
 	}
 
@@ -48,10 +46,6 @@ func (s *SizeLimitedChannel) Offer(message []byte) rookoutErrors.RookoutError {
 	default:
 		return rookoutErrors.NewRookOutputQueueFull()
 	}
-}
-
-func (s *SizeLimitedChannel) UpdateConfig(config config.SizeLimitedChannelConfiguration) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&s.config)), unsafe.Pointer(&config))
 }
 
 func (s *SizeLimitedChannel) Poll(ctx context.Context) []byte {
@@ -89,7 +83,7 @@ func (s *SizeLimitedChannel) Flush() rookoutErrors.RookoutError {
 	s.setFlushing(true)
 	defer func() { s.setFlushing(false) }()
 
-	timeout := s.config.FlushTimeout
+	timeout := config.SizeLimitedChannelConfig().FlushTimeout
 
 	select {
 	case <-s.doneChannel:

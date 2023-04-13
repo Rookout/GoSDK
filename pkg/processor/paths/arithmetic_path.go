@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	rookoutTypes "github.com/Rookout/GoSDK/pkg/types"
 	"go/token"
 	"strings"
 )
 
 type Path interface {
-	ReadFrom(rootNamespace rookoutTypes.Namespace) (rookoutTypes.Namespace, rookoutErrors.RookoutError)
-	WriteTo(rootNamespace rookoutTypes.Namespace, value rookoutTypes.Namespace) rookoutErrors.RookoutError
+	ReadFrom(rootNamespace namespaces.Namespace) (namespaces.Namespace, rookoutErrors.RookoutError)
+	WriteTo(rootNamespace namespaces.Namespace, value namespaces.Namespace) rookoutErrors.RookoutError
 }
 
 type ArithmeticPath struct {
@@ -62,7 +61,7 @@ func NewArithmeticPath(configuration interface{}) (*ArithmeticPath, rookoutError
 	return arithmeticPath, nil
 }
 
-func (a ArithmeticPath) ReadFrom(rootNamespace rookoutTypes.Namespace) (rookoutTypes.Namespace, rookoutErrors.RookoutError) {
+func (a ArithmeticPath) ReadFrom(rootNamespace namespaces.Namespace) (namespaces.Namespace, rookoutErrors.RookoutError) {
 	var res valueNode
 	var err rookoutErrors.RookoutError
 	if operations, ok := a.operations.(executableNode); ok {
@@ -86,7 +85,7 @@ func (a ArithmeticPath) ReadFrom(rootNamespace rookoutTypes.Namespace) (rookoutT
 	}
 }
 
-func (a ArithmeticPath) WriteTo(namespace rookoutTypes.Namespace, value rookoutTypes.Namespace) rookoutErrors.RookoutError {
+func (a ArithmeticPath) WriteTo(namespace namespaces.Namespace, value namespaces.Namespace) rookoutErrors.RookoutError {
 	if operations, ok := a.operations.(executableNode); ok {
 		_, _ = operations.Execute(namespace)
 	}

@@ -4,11 +4,10 @@ import (
 	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection"
-	"github.com/Rookout/GoSDK/pkg/types"
 )
 
 type augNamespace struct {
-	namespace types.Namespace
+	namespace namespaces.Namespace
 }
 
 func newAugNamespace(collectionService *collection.CollectionService) (*augNamespace, rookoutErrors.RookoutError) {
@@ -59,6 +58,6 @@ func newAugNamespace(collectionService *collection.CollectionService) (*augNames
 	}, nil
 }
 
-func (a *augNamespace) GetAugNamespace() types.Namespace {
+func (a *augNamespace) GetAugNamespace() namespaces.Namespace {
 	return a.namespace
 }

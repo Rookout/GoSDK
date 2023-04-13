@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
 	"github.com/Rookout/GoSDK/pkg/processor/operations"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/types"
@@ -26,7 +27,7 @@ func NewProcessor(configuration []types.AugConfiguration, factory operationFacto
 	return &processor{operationList: operationList}, nil
 }
 
-func (p *processor) Process(namespace types.Namespace) {
+func (p *processor) Process(namespace namespaces.Namespace) {
 	for _, operation := range p.operationList {
 		operation.Execute(namespace)
 	}

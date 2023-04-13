@@ -5,30 +5,24 @@ import (
 	"github.com/Rookout/GoSDK/pkg/augs/actions"
 	"github.com/Rookout/GoSDK/pkg/augs/conditions"
 	"github.com/Rookout/GoSDK/pkg/com_ws"
-	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/types"
-	"sync/atomic"
-	"unsafe"
 )
 
 type LocationFactory struct {
-	config                    *config.LocationsConfiguration
 	output                    com_ws.Output
 	processorFactory          actions.ProcessorFactory
-	ConditionCreator          types.ConditionCreatorFunc
+	ConditionCreator          conditions.ConditionCreatorFunc
 	AugCreator                AugCreatorFunc
 	LocationFileLineCreator   LocationFileLineCreatorFunc
 	ActionRunProcessorCreator ActionRunProcessorCreatorFunc
 }
 type ActionRunProcessorCreatorFunc func(configuration types.AugConfiguration, factory actions.ProcessorFactory) (actions.Action, rookoutErrors.RookoutError)
-type AugCreatorFunc func(types.AugId, actions.Action, com_ws.Output) augs.Aug
+type AugCreatorFunc func(types.AugID, actions.Action, com_ws.Output) augs.Aug
 type LocationFileLineCreatorFunc func(types.AugConfiguration, com_ws.Output, augs.Aug) (Location, rookoutErrors.RookoutError)
 
-func NewLocationFactory(output com_ws.Output, processorFactory actions.ProcessorFactory, config config.LocationsConfiguration) *LocationFactory {
-	augs.GetLimitProvider().UpdateConfig(config)
+func NewLocationFactory(output com_ws.Output, processorFactory actions.ProcessorFactory) *LocationFactory {
 	return &LocationFactory{
-		config:                    &config,
 		output:                    output,
 		processorFactory:          processorFactory,
 		ConditionCreator:          conditions.NewCondition,
@@ -38,14 +32,10 @@ func NewLocationFactory(output com_ws.Output, processorFactory actions.Processor
 	}
 }
 
-func (l *LocationFactory) UpdateConfig(config config.LocationsConfiguration) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&l.config)), unsafe.Pointer(&config))
-}
-
 func (l *LocationFactory) GetLocation(configuration types.AugConfiguration) (Location, rookoutErrors.RookoutError) {
 	var err error
 
-	augId, ok := configuration["id"].(string)
+	augID, ok := configuration["id"].(string)
 	if !ok {
 		return nil, rookoutErrors.NewRookAugInvalidKey("id", configuration)
 	}
@@ -60,9 +50,9 @@ func (l *LocationFactory) GetLocation(configuration types.AugConfiguration) (Loc
 		return nil, err.(rookoutErrors.RookoutError)
 	}
 
-	aug := l.AugCreator(augId, action, l.output)
+	aug := l.AugCreator(augID, action, l.output)
 
-	limitsManager, err := augs.GetLimitProvider().GetLimitManager(configuration, augId, l.output)
+	limitsManager, err := augs.GetLimitProvider().GetLimitManager(configuration, augID, l.output)
 	if err != nil {
 		return nil, err.(rookoutErrors.RookoutError)
 	}

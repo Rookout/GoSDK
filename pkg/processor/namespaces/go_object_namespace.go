@@ -2,11 +2,10 @@ package namespaces
 
 import (
 	"container/list"
-	"github.com/Rookout/GoSDK/pkg/config"
-	pb "github.com/Rookout/GoSDK/pkg/protobuf"
-	"github.com/Rookout/GoSDK/pkg/types"
-	"github.com/Rookout/GoSDK/pkg/utils"
 	"reflect"
+
+	"github.com/Rookout/GoSDK/pkg/config"
+	"github.com/Rookout/GoSDK/pkg/utils"
 
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 )
@@ -25,7 +24,7 @@ func NewGoObjectNamespace(o interface{}) *GoObjectNamespace {
 	return g
 }
 
-func (g *GoObjectNamespace) GetSize(_ string, _ string) types.Namespace {
+func (g *GoObjectNamespace) GetSize(_ string, _ string) Namespace {
 	reflectedValue := reflect.ValueOf(g.Obj)
 	if reflectedValue.Kind() == reflect.Ptr {
 		reflectedValue = reflectedValue.Elem()
@@ -50,7 +49,7 @@ func (g *GoObjectNamespace) GetSize(_ string, _ string) types.Namespace {
 	return nil
 }
 
-func (g *GoObjectNamespace) CallMethod(name string, args string) (types.Namespace, rookoutErrors.RookoutError) {
+func (g *GoObjectNamespace) CallMethod(name string, args string) (Namespace, rookoutErrors.RookoutError) {
 	switch name {
 	case "type":
 		if nil == g.Obj {
@@ -78,19 +77,15 @@ func (g *GoObjectNamespace) CallMethod(name string, args string) (types.Namespac
 	}
 }
 
-func (g *GoObjectNamespace) ReadAttribute(name string) (types.Namespace, rookoutErrors.RookoutError) {
-	attribute, err := utils.GetStructAttribute(g.Obj, name)
-	if nil == err {
-		return NewGoObjectNamespace(attribute), nil
-	}
-	return nil, rookoutErrors.NewRookAttributeNotFoundException(name)
+func (g *GoObjectNamespace) ReadAttribute(name string) (Namespace, rookoutErrors.RookoutError) {
+	return NewValueNamespace(reflect.ValueOf(g.Obj)).ReadAttribute(name)
 }
 
-func (g *GoObjectNamespace) WriteAttribute(_ string, _ types.Namespace) rookoutErrors.RookoutError {
+func (g *GoObjectNamespace) WriteAttribute(_ string, _ Namespace) rookoutErrors.RookoutError {
 	return rookoutErrors.NewNotImplemented()
 }
 
-func (g *GoObjectNamespace) ReadComplexKey(key interface{}) types.Namespace {
+func (g *GoObjectNamespace) ReadComplexKey(key interface{}) Namespace {
 	if g.Obj == nil {
 		return nil
 	}
@@ -110,7 +105,7 @@ func (g *GoObjectNamespace) ReadComplexKey(key interface{}) types.Namespace {
 	return nil
 }
 
-func (g *GoObjectNamespace) ReadKey(key interface{}) (types.Namespace, rookoutErrors.RookoutError) {
+func (g *GoObjectNamespace) ReadKey(key interface{}) (Namespace, rookoutErrors.RookoutError) {
 	if g.Obj == nil {
 		return nil, rookoutErrors.NewAgentKeyNotFoundException("", key, nil)
 	}
@@ -152,73 +147,8 @@ func (g *GoObjectNamespace) GetObject() interface{} {
 	return g.Obj
 }
 
-func getGoCommonType(o interface{}) string {
-	if o == nil {
-		return "nil"
-	}
-
-	reflectedValue := reflect.ValueOf(o)
-
-	if reflectedValue.Kind() == reflect.Ptr {
-		reflectedValue = reflectedValue.Elem()
-	}
-
-	t := reflectedValue.Type().String()
-
-	switch {
-	case t == "bool":
-		return "bool"
-	case utils.Contains(utils.IntTypes, t):
-		return "int"
-	case utils.Contains(utils.StringTypes, t):
-		return "string"
-	case utils.Contains(utils.FloatTypes, t):
-		return "float"
-	case utils.Contains(utils.ComplexTypes, t):
-		return "complex"
-	case "time.Time" == t:
-		return "datetime"
-	case "list.List" == t:
-		return "list"
-	}
-
-	switch reflectedValue.Kind() {
-	case reflect.Array:
-		return "array"
-	case reflect.Map:
-		return "dict"
-	}
-
-	return "no common type"
-}
-
-func (g *GoObjectNamespace) ToProtobuf(logErrors bool) *pb.Variant {
-	v := &pb.Variant{}
-	defer recoverFromPanic(recover(), v, logErrors)
-
-	if err := dumpGoObject(g.GetObject(), v, 0, g.ObjectDumpConf, logErrors); nil != err {
-		return GetErrorVariant(err, logErrors)
-	}
-
-	return v
-}
-
-func (g *GoObjectNamespace) ToDict() map[string]interface{} {
-	return map[string]interface{}{
-		"@namespace":     "GoObjectNamespace",
-		"@common_type":   getGoCommonType(g.Obj),
-		"@original_type": getGoCommonType(g.Obj),
-		"@attributes":    map[string]interface{}{},
-		"@value":         g.Obj,
-	}
-}
-
-func (g *GoObjectNamespace) ToSimpleDict() interface{} {
-	return g.Obj
-}
-
-func (g *GoObjectNamespace) Filter(_ []types.FieldFilter) rookoutErrors.RookoutError {
-	return nil
+func (g *GoObjectNamespace) Serialize(serializer Serializer) {
+	dumpInterface(serializer, g.Obj, g.ObjectDumpConf)
 }
 
 func (g *GoObjectNamespace) GetObjectDumpConfig() config.ObjectDumpConfig {

@@ -15,7 +15,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
@@ -75,11 +74,6 @@ type BinaryInfo struct {
 
 	ElfDynamicSection ElfDynamicSection
 
-	lastModified time.Time 
-
-	closer         io.Closer
-	sepDebugCloser io.Closer
-
 	
 	
 	
@@ -95,8 +89,6 @@ type BinaryInfo struct {
 
 	types       map[string]dwarfRef
 	packageVars []packageVar 
-
-	gStructOffset uint64
 
 	
 	
@@ -902,11 +894,10 @@ func (bi *BinaryInfo) LocationExpr(entry godwarf.Entry, attr dwarf.Attr, pc uint
 }
 
 type LocationExpr struct {
-	isBlock   bool
-	isEscaped bool
-	off       int64
-	pc        uint64
-	instr     []byte
+	isBlock bool
+	off     int64
+	pc      uint64
+	instr   []byte
 }
 
 

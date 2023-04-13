@@ -2,11 +2,12 @@ package binary_info
 
 import (
 	"debug/dwarf"
-	godwarf2 "github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
-	"github.com/hashicorp/golang-lru/simplelru"
 	"io"
 	"sort"
 	"sync"
+
+	godwarf2 "github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
+	"github.com/hashicorp/golang-lru/simplelru"
 )
 
 
@@ -36,7 +37,6 @@ type Image struct {
 	
 	RuntimeTypeToDIE map[uint64]runtimeTypeDIE
 
-	loadErrMu    sync.Mutex
 	loadErr      error
 	debugLineStr []byte
 }

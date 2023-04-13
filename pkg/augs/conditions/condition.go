@@ -1,24 +1,30 @@
 package conditions
 
 import (
+	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
 	"github.com/Rookout/GoSDK/pkg/processor/paths"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"github.com/Rookout/GoSDK/pkg/types"
 )
 
-type Condition struct {
+type ConditionCreatorFunc func(string) (Condition, rookoutErrors.RookoutError)
+
+type Condition interface {
+	Evaluate(namespace namespaces.Namespace) (bool, rookoutErrors.RookoutError)
+}
+
+type condition struct {
 	path paths.Path
 }
 
-func NewCondition(condition string) (types.Condition, rookoutErrors.RookoutError) {
-	path, err := paths.NewArithmeticPath(condition)
+func NewCondition(conditionString string) (Condition, rookoutErrors.RookoutError) {
+	path, err := paths.NewArithmeticPath(conditionString)
 	if err != nil {
 		return nil, err
 	}
-	return &Condition{path: path}, nil
+	return &condition{path: path}, nil
 }
 
-func (c *Condition) Evaluate(namespace types.Namespace) (bool, rookoutErrors.RookoutError) {
+func (c *condition) Evaluate(namespace namespaces.Namespace) (bool, rookoutErrors.RookoutError) {
 	res, err := c.path.ReadFrom(namespace)
 	if err != nil {
 		return false, err

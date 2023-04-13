@@ -3,16 +3,18 @@ package pkg
 import (
 	"reflect"
 	"strings"
+
+	"github.com/Rookout/GoSDK/pkg/config"
 )
 
-var sanitizeBlacklist = map[string]struct{}{"Labels": struct{}{}}
+var sanitizeBlacklist = map[string]struct{}{"Labels": {}}
 
 func isBlacklisted(str string) bool {
 	_, ok := sanitizeBlacklist[str]
 	return ok
 }
 
-func Sanitize(obj *RookOptions) {
+func Sanitize(obj *config.RookOptions) {
 	fields := reflect.TypeOf(*obj)
 	value := reflect.ValueOf(obj)
 	for i := 0; i < fields.NumField(); i++ {

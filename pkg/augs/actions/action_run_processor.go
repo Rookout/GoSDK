@@ -8,7 +8,7 @@ import (
 )
 
 type Processor interface {
-	Process(namespace types.Namespace)
+	Process(namespace namespaces.Namespace)
 }
 
 type ProcessorFactory interface {
@@ -16,7 +16,7 @@ type ProcessorFactory interface {
 }
 
 type Action interface {
-	Execute(augId types.AugId, reportId string, namespace types.Namespace, output com_ws.Output) rookoutErrors.RookoutError
+	Execute(augID types.AugID, reportID string, namespace namespaces.Namespace, output com_ws.Output) rookoutErrors.RookoutError
 }
 
 type actionRunProcessor struct {
@@ -53,7 +53,7 @@ func NewActionRunProcessor(arguments types.AugConfiguration, processorFactory Pr
 	}, nil
 }
 
-func (a *actionRunProcessor) Execute(augId types.AugId, reportId string, namespace types.Namespace, output com_ws.Output) (err rookoutErrors.RookoutError) {
+func (a *actionRunProcessor) Execute(augID types.AugID, reportID string, namespace namespaces.Namespace, output com_ws.Output) rookoutErrors.RookoutError {
 	a.processor.Process(namespace)
 	attribute, err := namespace.ReadAttribute("store")
 	if err != nil {
@@ -63,7 +63,7 @@ func (a *actionRunProcessor) Execute(augId types.AugId, reportId string, namespa
 	if _, ok := attribute.(*namespaces.ContainerNamespace); ok {
 		attribute.(*namespaces.ContainerNamespace).OnClose = namespace.(*namespaces.ContainerNamespace).OnClose
 	}
-	output.SendUserMessage(augId, reportId, attribute)
+	output.SendUserMessage(augID, reportID, attribute)
 
 	if a.postProcessor != nil {
 		a.postProcessor.Process(namespace)

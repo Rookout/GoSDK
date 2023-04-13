@@ -3,6 +3,7 @@ package operations
 import (
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
+	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
 	"github.com/Rookout/GoSDK/pkg/processor/paths"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/types"
@@ -14,7 +15,7 @@ type pathPair struct {
 }
 
 type Operation interface {
-	Execute(namespace types.Namespace)
+	Execute(namespace namespaces.Namespace)
 }
 
 type pathFactory interface {
@@ -60,7 +61,7 @@ func NewSet(configuration types.AugConfiguration, factory pathFactory) (*Set, ro
 	return &set, nil
 }
 
-func (s *Set) Execute(namespace types.Namespace) {
+func (s *Set) Execute(namespace namespaces.Namespace) {
 	for _, pathPair := range s.pathList {
 		value, err := pathPair.source.ReadFrom(namespace)
 		if err != nil {

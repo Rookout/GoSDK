@@ -3,6 +3,8 @@ package variable
 import (
 	"debug/dwarf"
 	"errors"
+	"strings"
+
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/services/collection/memory"
@@ -11,7 +13,6 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/frame"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
-	"strings"
 )
 
 func GetVariableLocators(pc uint64, line int, function *binary_info.Function, binaryInfo *binary_info.BinaryInfo) ([]*VariableLocator, error) {
@@ -73,6 +74,9 @@ func NewVariableLocator(entry *godwarf.Tree, function *binary_info.Function, pc 
 	}
 
 	instr, _, err := binaryInfo.LocationExpr(entry.Entry, dwarf.AttrLocation, pc)
+	if err != nil {
+		return nil, err
+	}
 
 	locator, err := op.NewDwarfLocator(instr, binaryInfo.PointerSize)
 	if err != nil {
@@ -83,7 +87,7 @@ func NewVariableLocator(entry *godwarf.Tree, function *binary_info.Function, pc 
 	return v, nil
 }
 
-func (v *VariableLocator) Locate(regs registers.Registers, dictAddr uint64, objectDumpConfig config.ObjectDumpConfig) *Variable {
+func (v *VariableLocator) Locate(regs registers.Registers, dictAddr uint64, variablesCache map[VariablesCacheKey]VariablesCacheValue, objectDumpConfig config.ObjectDumpConfig) *Variable {
 	var mem memory.MemoryReader = &memory.ProcMemory{}
 	var addr int64
 	var pieces []op.Piece
@@ -106,7 +110,7 @@ func (v *VariableLocator) Locate(regs registers.Registers, dictAddr uint64, obje
 		}
 	}
 
-	newVar := NewVariable(v.VariableName, uint64(addr), v.variableType, mem, v.binaryInfo, objectDumpConfig, dictAddr)
+	newVar := NewVariable(v.VariableName, uint64(addr), v.variableType, mem, v.binaryInfo, objectDumpConfig, dictAddr, variablesCache)
 	if pieces != nil {
 		newVar.Flags |= VariableFakeAddress
 	}
@@ -127,6 +131,9 @@ func (v *VariableLocator) advanceRegs(regs registers.Registers) (op.DwarfRegiste
 	}
 
 	cfareg, err := executeFrameRegRule(0, framectx.CFA, 0, dwarfRegs, v.binaryInfo)
+	if err != nil {
+		return op.DwarfRegisters{}, err
+	}
 	if cfareg == nil {
 		return op.DwarfRegisters{}, errors.New("no cfareg")
 	}

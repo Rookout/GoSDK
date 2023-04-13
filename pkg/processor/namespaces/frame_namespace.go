@@ -5,11 +5,9 @@ import (
 	"strings"
 
 	"github.com/Rookout/GoSDK/pkg/config"
-	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection"
 	"github.com/Rookout/GoSDK/pkg/services/collection/variable"
-	"github.com/Rookout/GoSDK/pkg/types"
 )
 
 type FrameNamespace struct {
@@ -24,7 +22,7 @@ func NewFrameNamespace(collectionService *collection.CollectionService) *FrameNa
 	}
 }
 
-func (f *FrameNamespace) CallMethod(name string, args string) (types.Namespace, rookoutErrors.RookoutError) {
+func (f *FrameNamespace) CallMethod(name string, args string) (Namespace, rookoutErrors.RookoutError) {
 	switch name {
 	case "filename":
 		return NewGoObjectNamespace(f.collectionService.GetFrame().File), nil
@@ -55,7 +53,7 @@ func (f *FrameNamespace) variablesToLocals(vars []*variable.Variable, config con
 	}
 }
 
-func (f *FrameNamespace) GetLocals(args string) (types.Namespace, rookoutErrors.RookoutError) {
+func (f *FrameNamespace) GetLocals(args string) (Namespace, rookoutErrors.RookoutError) {
 	maxDepth := 0
 	dumpConfig := config.GetDefaultDumpConfig()
 
@@ -77,7 +75,7 @@ func (f *FrameNamespace) GetLocals(args string) (types.Namespace, rookoutErrors.
 	}
 
 	f.variablesToLocals(vars, dumpConfig)
-	locals := make(map[string]types.Namespace, len(f.locals))
+	locals := make(map[string]Namespace, len(f.locals))
 	for name, local := range f.locals {
 		locals[name] = local
 	}
@@ -85,7 +83,7 @@ func (f *FrameNamespace) GetLocals(args string) (types.Namespace, rookoutErrors.
 	return NewContainerNamespace(&locals), nil
 }
 
-func (f *FrameNamespace) GetDump(args string) (types.Namespace, rookoutErrors.RookoutError) {
+func (f *FrameNamespace) GetDump(args string) (*ContainerNamespace, rookoutErrors.RookoutError) {
 	c := NewEmptyContainerNamespace()
 
 	locals, err := f.GetLocals(args)
@@ -101,7 +99,7 @@ func (f *FrameNamespace) GetDump(args string) (types.Namespace, rookoutErrors.Ro
 	return c, nil
 }
 
-func (f *FrameNamespace) ReadAttribute(name string) (types.Namespace, rookoutErrors.RookoutError) {
+func (f *FrameNamespace) ReadAttribute(name string) (Namespace, rookoutErrors.RookoutError) {
 	
 	if local, ok := f.locals[name]; ok {
 		if local.ObjectDumpConf.IsTailored {
@@ -122,11 +120,11 @@ func (f *FrameNamespace) ReadAttribute(name string) (types.Namespace, rookoutErr
 	return obj, nil
 }
 
-func (f *FrameNamespace) WriteAttribute(_ string, _ types.Namespace) rookoutErrors.RookoutError {
+func (f *FrameNamespace) WriteAttribute(_ string, _ Namespace) rookoutErrors.RookoutError {
 	return rookoutErrors.NewNotImplemented()
 }
 
-func (f *FrameNamespace) ReadKey(_ interface{}) (types.Namespace, rookoutErrors.RookoutError) {
+func (f *FrameNamespace) ReadKey(_ interface{}) (Namespace, rookoutErrors.RookoutError) {
 	return nil, rookoutErrors.NewNotImplemented()
 }
 
@@ -134,19 +132,7 @@ func (f *FrameNamespace) GetObject() interface{} {
 	return nil
 }
 
-func (f *FrameNamespace) ToProtobuf(logErrors bool) *pb.Variant {
+func (f *FrameNamespace) Serialize(serializer Serializer) {
 	dump, _ := f.GetDump("")
-	return dump.ToProtobuf(logErrors)
-}
-
-func (f FrameNamespace) ToDict() map[string]interface{} {
-	panic("not implemented")
-}
-
-func (f FrameNamespace) ToSimpleDict() interface{} {
-	panic("not implemented")
-}
-
-func (f FrameNamespace) Filter(_ []types.FieldFilter) rookoutErrors.RookoutError {
-	return nil
+	dump.Serialize(serializer)
 }

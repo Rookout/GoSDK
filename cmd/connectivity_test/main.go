@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 
+	rookout "github.com/Rookout/GoSDK"
 	"github.com/Rookout/GoSDK/pkg"
 	"github.com/Rookout/GoSDK/pkg/information"
 )
@@ -25,7 +26,7 @@ func main() {
 
 func startSingleton() error {
 	s := pkg.GetSingleton()
-	err := s.Start(&pkg.RookOptions{})
+	err := s.Start(&rookout.RookOptions{})
 	if err != nil {
 		return err
 	}

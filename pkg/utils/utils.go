@@ -2,9 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/sirupsen/logrus"
 	"net/url"
 	"os"
 	"path"
@@ -12,6 +9,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
+
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/sirupsen/logrus"
 )
 
 const backendCompatibleIsoTimeFormat = "2006-01-02T15:04:05.000000Z"
@@ -192,4 +194,8 @@ func Int64Max(a int64, b int64) int64 {
 	}
 
 	return b
+}
+
+func UnsafePointer(value reflect.Value) unsafe.Pointer {
+	return unsafe.Pointer(value.Pointer())
 }

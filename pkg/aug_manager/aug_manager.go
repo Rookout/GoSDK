@@ -1,22 +1,20 @@
 package aug_manager
 
 import (
-	"github.com/Rookout/GoSDK/pkg/augs"
+	"sync"
+
 	"github.com/Rookout/GoSDK/pkg/augs/locations"
 	"github.com/Rookout/GoSDK/pkg/com_ws"
-	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/processor"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation"
 	"github.com/Rookout/GoSDK/pkg/types"
-	"sync"
 )
 
 type AugManager interface {
-	UpdateConfig(config.LocationsConfiguration)
-	InitializeAugs(map[types.AugId]types.AugConfiguration)
+	InitializeAugs(map[types.AugID]types.AugConfiguration)
 	AddAug(types.AugConfiguration)
-	RemoveAug(types.AugId) error
+	RemoveAug(types.AugID) error
 	ClearAugs()
 }
 
@@ -25,41 +23,36 @@ type augManager struct {
 	output          com_ws.Output
 	factory         *locations.LocationFactory
 
-	augIds     map[types.AugId]interface{}
-	augIdsLock sync.Mutex
+	augIDs     map[types.AugID]interface{}
+	augIDsLock sync.Mutex
 }
 
-func NewAugManager(triggerServices *instrumentation.TriggerServices, output com_ws.Output, config config.LocationsConfiguration) *augManager {
-	augFactory := locations.NewLocationFactory(output, processor.NewProcessorFactory(), config)
-	return &augManager{triggerServices: triggerServices, output: output, factory: augFactory, augIds: make(map[types.AugId]interface{}), augIdsLock: sync.Mutex{}}
+func NewAugManager(triggerServices *instrumentation.TriggerServices, output com_ws.Output) *augManager {
+	augFactory := locations.NewLocationFactory(output, processor.NewProcessorFactory())
+	return &augManager{triggerServices: triggerServices, output: output, factory: augFactory, augIDs: make(map[types.AugID]interface{}), augIDsLock: sync.Mutex{}}
 }
 
-func (a *augManager) UpdateConfig(config config.LocationsConfiguration) {
-	a.factory.UpdateConfig(config)
-	augs.GetLimitProvider().UpdateConfig(config)
-}
+func (a *augManager) InitializeAugs(augConfigs map[types.AugID]types.AugConfiguration) {
+	a.augIDsLock.Lock()
+	defer a.augIDsLock.Unlock()
 
-func (a *augManager) InitializeAugs(augConfigs map[types.AugId]types.AugConfiguration) {
-	a.augIdsLock.Lock()
-	defer a.augIdsLock.Unlock()
-
-	leftovers := make(map[types.AugId]struct{})
-	for k := range a.augIds {
+	leftovers := make(map[types.AugID]struct{})
+	for k := range a.augIDs {
 		leftovers[k] = struct{}{}
 	}
 
-	for augId, augConf := range augConfigs {
-		if _, ok := leftovers[augId]; ok {
-			delete(leftovers, augId)
+	for augID, augConf := range augConfigs {
+		if _, ok := leftovers[augID]; ok {
+			delete(leftovers, augID)
 		} else {
 			a.addAug(augConf)
 		}
 	}
 
-	for augId := range leftovers {
-		err := a.removeAug(augId)
+	for augID := range leftovers {
+		err := a.removeAug(augID)
 		if err != nil {
-			logger.Logger().WithError(err).Errorf("failed to remove leftover aug (%s)", augId)
+			logger.Logger().WithError(err).Errorf("failed to remove leftover aug (%s)", augID)
 		}
 	}
 }
@@ -69,60 +62,60 @@ func (a *augManager) addAug(configuration types.AugConfiguration) {
 	if err != nil {
 		logger.Logger().WithError(err).Errorln("Failed to parse aug")
 
-		if augId, ok := configuration["id"].(types.AugId); ok {
+		if augID, ok := configuration["id"].(types.AugID); ok {
 			
-			_ = a.output.SendRuleStatus(augId, "Error", err)
+			_ = a.output.SendRuleStatus(augID, "Error", err)
 		}
 		return
 	}
 
-	if _, exists := a.augIds[aug.GetAugId()]; exists {
-		logger.Logger().Debugf("Aug already exists - %s\n", aug.GetAugId())
+	if _, exists := a.augIDs[aug.GetAugID()]; exists {
+		logger.Logger().Debugf("Aug already exists - %s\n", aug.GetAugID())
 		return
 	}
 
 	a.triggerServices.GetInstrumentation().AddAug(aug)
-	a.augIds[aug.GetAugId()] = struct{}{}
+	a.augIDs[aug.GetAugID()] = struct{}{}
 }
 
 func (a *augManager) AddAug(configuration types.AugConfiguration) {
-	a.augIdsLock.Lock()
-	defer a.augIdsLock.Unlock()
+	a.augIDsLock.Lock()
+	defer a.augIDsLock.Unlock()
 
 	a.addAug(configuration)
 }
 
-func (a *augManager) removeAug(augId types.AugId) error {
-	logger.Logger().Debugf("Removing aug - %s\n", augId)
+func (a *augManager) removeAug(augID types.AugID) error {
+	logger.Logger().Debugf("Removing aug - %s\n", augID)
 
-	err := a.triggerServices.RemoveAug(augId)
+	err := a.triggerServices.RemoveAug(augID)
 	if err != nil {
 		return err
 	}
 
-	delete(a.augIds, augId)
+	delete(a.augIDs, augID)
 	return nil
 }
 
-func (a *augManager) RemoveAug(augId types.AugId) error {
-	a.augIdsLock.Lock()
-	defer a.augIdsLock.Unlock()
+func (a *augManager) RemoveAug(augID types.AugID) error {
+	a.augIDsLock.Lock()
+	defer a.augIDsLock.Unlock()
 
-	return a.removeAug(augId)
+	return a.removeAug(augID)
 }
 
 func (a *augManager) ClearAugs() {
 	logger.Logger().Debugf("Clearing all augs\n")
 
-	var idsCopy []types.AugId
-	for k := range a.augIds {
+	var idsCopy []types.AugID
+	for k := range a.augIDs {
 		idsCopy = append(idsCopy, k)
 	}
 
-	for _, augId := range idsCopy {
-		err := a.RemoveAug(augId)
+	for _, augID := range idsCopy {
+		err := a.RemoveAug(augID)
 		if err != nil {
-			logger.Logger().WithError(err).Errorf("failed to clear aug (%s)", augId)
+			logger.Logger().WithError(err).Errorf("failed to clear aug (%s)", augID)
 		}
 	}
 

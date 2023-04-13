@@ -5,12 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/Rookout/GoSDK/pkg/config"
-	"github.com/Rookout/GoSDK/pkg/logger"
-	"github.com/Rookout/GoSDK/pkg/services/collection/memory"
-	"github.com/Rookout/GoSDK/pkg/services/instrumentation/binary_info"
-	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
-	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
 	"go/constant"
 	"go/token"
 	"math"
@@ -19,6 +13,13 @@ import (
 	"strings"
 	"time"
 	"unsafe"
+
+	"github.com/Rookout/GoSDK/pkg/config"
+	"github.com/Rookout/GoSDK/pkg/logger"
+	"github.com/Rookout/GoSDK/pkg/services/collection/memory"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/binary_info"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
 )
 
 
@@ -33,7 +34,7 @@ const (
 
 type variableFlags uint16
 
-var variablesPool = make(chan *Variable, 102400)
+var variablesPool = make(chan *internalVariable, 102400)
 
 const (
 	
@@ -69,14 +70,27 @@ const (
 
 
 type Variable struct {
-	Addr      uint64
-	OnlyAddr  bool
 	Name      string
 	DwarfType godwarf.Type
-	RealType  godwarf.Type
-	Kind      reflect.Kind
-	Mem       memory.MemoryReader
-	bi        *binary_info.BinaryInfo
+	*internalVariable
+}
+
+
+
+
+
+
+
+
+
+
+type internalVariable struct {
+	Addr     uint64
+	OnlyAddr bool
+	RealType godwarf.Type
+	Kind     reflect.Kind
+	Mem      memory.MemoryReader
+	bi       *binary_info.BinaryInfo
 
 	Value        constant.Value
 	FloatSpecial floatSpecial
@@ -112,9 +126,17 @@ type Variable struct {
 	ObjectDumpConfig config.ObjectDumpConfig
 	dictAddr         uint64
 	reg              *op.DwarfRegister 
+
+	VariablesCache map[VariablesCacheKey]VariablesCacheValue
 }
 
-func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader, bi *binary_info.BinaryInfo, objectDumpConfig config.ObjectDumpConfig, dictAddr uint64) *Variable {
+type VariablesCacheKey struct {
+	addr uint64
+	typ  string
+}
+type VariablesCacheValue = *internalVariable
+
+func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader, bi *binary_info.BinaryInfo, objectDumpConfig config.ObjectDumpConfig, dictAddr uint64, variablesCache map[VariablesCacheKey]VariablesCacheValue) *Variable {
 	var err error
 	dwarfType, err = resolveParametricType(bi, mem, dwarfType, dictAddr)
 	if err != nil {
@@ -147,13 +169,24 @@ func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.Me
 		}
 	}
 
-	var v *Variable
-	select {
-	case v = <-variablesPool:
-	default:
-		v = &Variable{}
+	if v, ok := variablesCache[VariablesCacheKey{addr, dwarfType.String()}]; ok {
+		if _, ok := mem.(*memory.ProcMemory); ok {
+			return &Variable{Name: name, DwarfType: dwarfType, internalVariable: v}
+		}
 	}
 
+	var i *internalVariable
+	select {
+	case i = <-variablesPool:
+	default:
+		i = &internalVariable{}
+	}
+	v := &Variable{internalVariable: i}
+
+	if _, ok := mem.(*memory.ProcMemory); ok {
+		variablesCache[VariablesCacheKey{addr, dwarfType.String()}] = v.internalVariable
+	}
+	v.VariablesCache = variablesCache
 	v.Name = name
 	v.Addr = addr
 	v.DwarfType = dwarfType
@@ -161,7 +194,7 @@ func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.Me
 	v.Mem = mem
 	v.ObjectDumpConfig = objectDumpConfig
 	v.dictAddr = dictAddr
-	v.RealType = resolveTypedef(v.DwarfType)
+	v.RealType = resolveTypedef(dwarfType)
 
 	switch t := v.RealType.(type) {
 	case *godwarf.PtrType:
@@ -256,7 +289,7 @@ func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.Me
 }
 
 func (v *Variable) spawn(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader) *Variable {
-	return NewVariable(name, addr, dwarfType, mem, v.bi, v.ObjectDumpConfig, v.dictAddr)
+	return NewVariable(name, addr, dwarfType, mem, v.bi, v.ObjectDumpConfig, v.dictAddr, v.VariablesCache)
 }
 
 func resolveTypedef(typ godwarf.Type) godwarf.Type {
@@ -339,23 +372,18 @@ func (v *Variable) loadChanInfo() {
 	}
 	chanLen, _ := constant.Uint64Val(lenAddr.Value)
 
-	newStructType := &godwarf.StructType{}
-	*newStructType = *structType
-	newStructType.Field = make([]*godwarf.StructField, len(structType.Field))
-
 	for i := range structType.Field {
-		field := &godwarf.StructField{}
-		*field = *structType.Field[i]
+		field := structType.Field[i]
 		if field.Name == "buf" {
 			field.Type = pointerTo(fakeArrayType(chanLen, chanType.ElemType), v.bi)
 		}
-		newStructType.Field[i] = field
+		structType.Field[i] = field
 	}
 
 	v.RealType = &godwarf.ChanType{
 		TypedefType: godwarf.TypedefType{
 			CommonType: chanType.TypedefType.CommonType,
-			Type:       pointerTo(newStructType, v.bi),
+			Type:       pointerTo(structType, v.bi),
 		},
 		ElemType: chanType.ElemType,
 	}
@@ -363,6 +391,8 @@ func (v *Variable) loadChanInfo() {
 
 func (v *Variable) clone() *Variable {
 	r := *v
+	internalR := *v.internalVariable
+	r.internalVariable = &internalR
 	return &r
 }
 
@@ -449,7 +479,7 @@ func (v *Variable) MaybeDereference() *Variable {
 			return v.Children[0]
 		}
 		ptrval, err := readUintRaw(v.Mem, v.Addr, t.ByteSize)
-		r := v.spawn("", ptrval, t.Type, memory.DereferenceMemory(v.Mem))
+		r := v.spawn(v.Name, ptrval, t.Type, memory.DereferenceMemory(v.Mem))
 		if err != nil {
 			r.Unreadable = err
 		}
@@ -490,7 +520,7 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 		sv := v.clone()
 		sv.RealType = resolveTypedef(&(sv.RealType.(*godwarf.ChanType).TypedefType))
 		sv = sv.MaybeDereference()
-		err := sv.LoadValueInternal(0)
+		err := sv.LoadValueInternal(recurseLevel)
 		if err != nil {
 			return err
 		}
@@ -547,19 +577,17 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 		v.Mem = memory.CacheMemory(v.Mem, v.Addr, int(v.RealType.Size()))
 		t := v.RealType.(*godwarf.StructType)
 		v.Len = int64(len(t.Field))
-		
-		
-		if recurseLevel <= v.ObjectDumpConfig.MaxDepth {
-			v.Children = make([]*Variable, 0, len(t.Field))
-			for i := range t.Field {
-				f, _ := v.toField(t.Field[i])
-				v.Children = append(v.Children, f)
-				v.Children[i].Name = t.Field[i].Name
-				v.Children[i].LoadValueInternal(recurseLevel + 1)
-			}
+
+		if recurseLevel >= v.ObjectDumpConfig.MaxDepth {
+			return nil
 		}
-		if t.Name == "time.Time" {
-			v.formatTime()
+
+		v.Children = make([]*Variable, 0, len(t.Field))
+		for i := range t.Field {
+			f, _ := v.toField(t.Field[i])
+			v.Children = append(v.Children, f)
+			v.Children[i].Name = t.Field[i].Name
+			v.Children[i].LoadValueInternal(recurseLevel + 1)
 		}
 
 	case reflect.Interface:
@@ -668,7 +696,6 @@ func (v *Variable) readFunctionPtr() {
 		return
 	}
 
-	v.Value = constant.MakeString(fn.Name)
 	v.FunctionName = fn.Name
 	v.FileName = file
 	v.Line = line
@@ -1019,11 +1046,13 @@ func (v *Variable) TypeString() string {
 }
 
 var nilVariable = &Variable{
-	Name:     "nil",
-	Addr:     0,
-	Base:     0,
-	Kind:     reflect.Ptr,
-	Children: []*Variable{{Addr: 0, OnlyAddr: true}},
+	Name: "nil",
+	internalVariable: &internalVariable{
+		Addr:     0,
+		Base:     0,
+		Kind:     reflect.Ptr,
+		Children: []*Variable{{internalVariable: &internalVariable{Addr: 0, OnlyAddr: true}}},
+	},
 }
 
 func (v *Variable) readComplex(size int64) {
@@ -1097,19 +1126,19 @@ func (v *Variable) ConstDescr() string {
 	return ""
 }
 
-var variableSize = func() int {
-	return int(unsafe.Sizeof(Variable{}))
+var internalVariableSize = func() int {
+	return int(unsafe.Sizeof(internalVariable{}))
 }()
 
-func (v *Variable) clear() {
+func (i *internalVariable) clear() {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Logger().Errorf("Failed to clear variable, error: %v", r)
 		}
 	}()
 
-	a := unsafe.Pointer(reflect.ValueOf(v).Pointer())
-	for i := 0; i < variableSize; i++ {
+	a := unsafe.Pointer(reflect.ValueOf(i).Pointer())
+	for i := 0; i < internalVariableSize; i++ {
 		b := (*byte)(a)
 		*b = 0
 		a = unsafe.Pointer(uintptr(a) + unsafe.Sizeof(*b))
@@ -1124,7 +1153,7 @@ func (v *Variable) Close() error {
 	v.clear()
 
 	select {
-	case variablesPool <- v:
+	case variablesPool <- v.internalVariable:
 	default:
 	}
 
@@ -1135,7 +1164,7 @@ func (v *Variable) Close() error {
 func (v *Variable) registerVariableTypeConv(newtyp string) (*Variable, error) {
 	var n = 0
 	for i := 0; i < len(v.reg.Bytes); i += n {
-		child := NewVariable("", 0, nil, v.Mem, v.bi, v.ObjectDumpConfig, v.dictAddr)
+		child := NewVariable("", 0, nil, v.Mem, v.bi, v.ObjectDumpConfig, v.dictAddr, v.VariablesCache)
 		switch newtyp {
 		case "int8":
 			child.Value = constant.MakeInt64(int64(int8(v.reg.Bytes[i])))

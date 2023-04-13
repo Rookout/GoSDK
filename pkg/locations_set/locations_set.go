@@ -14,13 +14,13 @@ import (
 
 type LocationsSet struct {
 	*BreakpointStorage
-	breakpoints     map[*augs.Breakpoint]map[types.AugId]locations.Location
+	breakpoints     map[*augs.Breakpoint]map[types.AugID]locations.Location
 	breakpointsLock sync.Mutex
 }
 
 func NewLocationsSet() *LocationsSet {
 	return &LocationsSet{
-		breakpoints:       make(map[*augs.Breakpoint]map[types.AugId]locations.Location),
+		breakpoints:       make(map[*augs.Breakpoint]map[types.AugID]locations.Location),
 		breakpointsLock:   sync.Mutex{},
 		BreakpointStorage: newBreakpointStorage(),
 	}
@@ -43,9 +43,9 @@ func (l *LocationsSet) AddLocation(location locations.Location, breakpoint *augs
 		return breakpoint.Instances[i].Addr < breakpoint.Instances[j].Addr
 	})
 	if _, ok := l.breakpoints[breakpoint]; ok {
-		l.breakpoints[breakpoint][location.GetAug().GetAugId()] = location
+		l.breakpoints[breakpoint][location.GetAug().GetAugID()] = location
 	} else {
-		l.breakpoints[breakpoint] = map[types.AugId]locations.Location{location.GetAug().GetAugId(): location}
+		l.breakpoints[breakpoint] = map[types.AugID]locations.Location{location.GetAug().GetAugID(): location}
 	}
 }
 
@@ -76,17 +76,17 @@ func (l *LocationsSet) FindBreakpointByAddrs(addrs []uint64) (breakpoint *augs.B
 }
 
 
-func (l *LocationsSet) FindBreakpointByAugId(augId types.AugId) (breakpoint *augs.Breakpoint, exists bool) {
+func (l *LocationsSet) FindBreakpointByAugID(augID types.AugID) (breakpoint *augs.Breakpoint, exists bool) {
 	l.Lock()
 	defer l.Unlock()
 
-	return l.findBreakpointByAugId(augId)
+	return l.findBreakpointByAugID(augID)
 }
 
 
-func (l *LocationsSet) findBreakpointByAugId(augId types.AugId) (breakpoint *augs.Breakpoint, exists bool) {
-	for bp, augIds := range l.breakpoints {
-		if _, exists := augIds[augId]; exists {
+func (l *LocationsSet) findBreakpointByAugID(augID types.AugID) (breakpoint *augs.Breakpoint, exists bool) {
+	for bp, augIDs := range l.breakpoints {
+		if _, exists := augIDs[augID]; exists {
 			return bp, true
 		}
 	}
@@ -99,9 +99,9 @@ func (l *LocationsSet) FindLocationsByBreakpointName(breakpointName string) (loc
 	l.Lock()
 	defer l.Unlock()
 
-	for bps, augIdsMap := range l.breakpoints {
+	for bps, augIDsMap := range l.breakpoints {
 		if bps.Name == breakpointName {
-			for _, location := range augIdsMap {
+			for _, location := range augIDsMap {
 				locations = append(locations, location)
 			}
 			return locations, true
@@ -116,8 +116,8 @@ func (l *LocationsSet) ShouldClearBreakpoint(breakpoint *augs.Breakpoint) (bool,
 	l.Lock()
 	defer l.Unlock()
 
-	if augIds, exists := l.breakpoints[breakpoint]; exists {
-		return len(augIds) == 0, nil
+	if augIDs, exists := l.breakpoints[breakpoint]; exists {
+		return len(augIDs) == 0, nil
 	}
 
 	return false, errors.New("no such breakpoint")
@@ -149,13 +149,13 @@ func (l *LocationsSet) Locations() (locations []locations.Location) {
 
 
 
-func (l *LocationsSet) RemoveLocation(augId types.AugId) {
+func (l *LocationsSet) RemoveLocation(augID types.AugID) {
 	l.Lock()
 	defer l.Unlock()
 
-	if bp, exists := l.findBreakpointByAugId(augId); exists {
-		_ = l.breakpoints[bp][augId].SetRemoved()
-		delete(l.breakpoints[bp], augId)
+	if bp, exists := l.findBreakpointByAugID(augID); exists {
+		_ = l.breakpoints[bp][augID].SetRemoved()
+		delete(l.breakpoints[bp], augID)
 	}
 }
 

@@ -3,9 +3,9 @@ package collection
 import (
 	"errors"
 	"fmt"
-	"go/constant"
 
 	"github.com/Rookout/GoSDK/pkg/config"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection/registers"
 	"github.com/Rookout/GoSDK/pkg/services/collection/variable"
 )
@@ -21,6 +21,7 @@ type CollectionService struct {
 	variables              []*variable.Variable
 	StackTraceElements     []Stackframe
 	variableLocators       []*variable.VariableLocator
+	variablesCache         map[variable.VariablesCacheKey]variable.VariablesCacheValue
 	dictVariableLocator    *variable.VariableLocator
 	shouldLoadDictVariable bool
 	dictAddr               uint64
@@ -31,13 +32,14 @@ type CollectionService struct {
 
 const goDictionaryName = ".dict"
 
-func NewCollectionService(regs registers.Registers, pointerSize int, stackTraceElements []Stackframe, variableLocators []*variable.VariableLocator, goid int) (*CollectionService, error) {
+func NewCollectionService(regs registers.Registers, pointerSize int, stackTraceElements []Stackframe, variableLocators []*variable.VariableLocator, goid int) (*CollectionService, rookoutErrors.RookoutError) {
 	c := &CollectionService{
 		StackTraceElements:     stackTraceElements,
 		regs:                   regs,
 		shouldLoadDictVariable: false,
 		pointerSize:            pointerSize,
 		goid:                   goid,
+		variablesCache:         make(map[variable.VariablesCacheKey]variable.VariablesCacheValue),
 	}
 
 	for _, variableLocator := range variableLocators {
@@ -58,9 +60,8 @@ func (c *CollectionService) GetFrame() *Stackframe {
 
 func (c *CollectionService) loadDictVariable(config config.ObjectDumpConfig) {
 	if c.shouldLoadDictVariable {
-		dictVar := c.dictVariableLocator.Locate(c.regs, 0, config)
-		dictVar.LoadValue()
-		dictAddr, _ := constant.Int64Val(dictVar.Value)
+		dictVar := c.dictVariableLocator.Locate(c.regs, 0, c.variablesCache, config)
+		dictAddr := dictVar.Addr
 
 		c.dictAddr = uint64(dictAddr)
 		c.shouldLoadDictVariable = false
@@ -90,7 +91,7 @@ func (c *CollectionService) GetVariable(name string, config config.ObjectDumpCon
 }
 
 func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableLocator, config config.ObjectDumpConfig) *variable.Variable {
-	v := varLocator.Locate(c.regs, c.dictAddr, config)
+	v := varLocator.Locate(c.regs, c.dictAddr, c.variablesCache, config)
 	if name := v.Name; len(name) > 1 && name[0] == '&' {
 		v = v.MaybeDereference()
 		if v.Addr == 0 && v.Unreadable == nil {
@@ -100,7 +101,7 @@ func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableL
 	}
 
 	if v.ObjectDumpConfig.ShouldTailor {
-		v.ObjectDumpConfig.Tailor(v.Kind)
+		v.ObjectDumpConfig.Tailor(v.Kind, int(v.Len))
 	}
 
 	v.LoadValue()

@@ -8,13 +8,9 @@ import (
 	"github.com/Rookout/GoSDK/pkg/types"
 )
 
-type HashInfo struct {
-}
-
 type LocationFileLine struct {
 	filename string
 	lineno   int
-	hashInfo *HashInfo
 	output   com_ws.Output
 	aug      augs.Aug
 
@@ -26,10 +22,10 @@ func (l *LocationFileLine) sendRuleStatus(status string, err rookoutErrors.Rooko
 		return nil
 	}
 
-	logger.Logger().WithError(err).Infof("Updating rule status for: %s to %s\n", l.GetAugId(), status)
+	logger.Logger().WithError(err).Infof("Updating rule status for: %s to %s\n", l.GetAugID(), status)
 
 	l.status = status
-	return l.output.SendRuleStatus(l.GetAugId(), status, err)
+	return l.output.SendRuleStatus(l.GetAugID(), status, err)
 }
 
 func (l *LocationFileLine) SetPending() error {
@@ -71,6 +67,6 @@ func (l *LocationFileLine) GetAug() augs.Aug {
 	return l.aug
 }
 
-func (l *LocationFileLine) GetAugId() types.AugId {
-	return l.aug.GetAugId()
+func (l *LocationFileLine) GetAugID() types.AugID {
+	return l.aug.GetAugID()
 }

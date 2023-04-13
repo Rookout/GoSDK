@@ -5,8 +5,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/util"
 	"io"
+
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/util"
 )
 
 type Location struct {
@@ -188,8 +189,7 @@ func (lineInfo *DebugLineInfo) AllPCsBetween(begin, end uint64, excludeFile stri
 
 
 func (sm *StateMachine) copy() *StateMachine {
-	var r StateMachine
-	r = *sm
+	r := *sm
 	r.buf = bytes.NewBuffer(sm.buf.Bytes())
 	return &r
 }

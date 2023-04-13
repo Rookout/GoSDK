@@ -3,18 +3,17 @@ package paths
 import (
 	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"github.com/Rookout/GoSDK/pkg/types"
 	"github.com/Rookout/GoSDK/pkg/utils"
 	"strings"
 )
 
 type pathOperation interface {
-	Read(namespace types.Namespace, create bool) (types.Namespace, rookoutErrors.RookoutError)
+	Read(namespace namespaces.Namespace, create bool) (namespaces.Namespace, rookoutErrors.RookoutError)
 }
 
 type writeOperation interface {
 	pathOperation
-	Write(namespace types.Namespace, value types.Namespace) rookoutErrors.RookoutError
+	Write(namespace namespaces.Namespace, value namespaces.Namespace) rookoutErrors.RookoutError
 }
 
 type lookupOperation struct {
@@ -49,7 +48,7 @@ func newLookupOperation(name string) (pathOperation, rookoutErrors.RookoutError)
 	return a, nil
 }
 
-func (l lookupOperation) Read(namespace types.Namespace, _ bool) (types.Namespace, rookoutErrors.RookoutError) {
+func (l lookupOperation) Read(namespace namespaces.Namespace, _ bool) (namespaces.Namespace, rookoutErrors.RookoutError) {
 	return namespace.ReadKey(l.name)
 }
 
@@ -62,7 +61,7 @@ func newMethodOperation(methodName string, methodArguments string) pathOperation
 	return f
 }
 
-func (f methodOperation) Read(namespace types.Namespace, _ bool) (types.Namespace, rookoutErrors.RookoutError) {
+func (f methodOperation) Read(namespace namespaces.Namespace, _ bool) (namespaces.Namespace, rookoutErrors.RookoutError) {
 	return namespace.CallMethod(f.methodName, f.methodArguments)
 }
 
@@ -74,7 +73,7 @@ func newAttributeOperation(name string) pathOperation {
 	return a
 }
 
-func (a attributeOperation) Read(namespace types.Namespace, create bool) (types.Namespace, rookoutErrors.RookoutError) {
+func (a attributeOperation) Read(namespace namespaces.Namespace, create bool) (namespaces.Namespace, rookoutErrors.RookoutError) {
 	if n, err := namespace.ReadAttribute(a.name); err == nil {
 		return n, nil
 	}
@@ -90,6 +89,6 @@ func (a attributeOperation) Read(namespace types.Namespace, create bool) (types.
 	return nil, rookoutErrors.NewRookAttributeNotFoundException(a.name)
 }
 
-func (a attributeOperation) Write(namespace types.Namespace, value types.Namespace) rookoutErrors.RookoutError {
+func (a attributeOperation) Write(namespace namespaces.Namespace, value namespaces.Namespace) rookoutErrors.RookoutError {
 	return namespace.WriteAttribute(a.name, value)
 }

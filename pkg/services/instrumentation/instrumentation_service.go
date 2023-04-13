@@ -59,23 +59,23 @@ func (i *InstrumentationService) addAug(location locations.Location) {
 	}
 
 	logger.Logger().Debugf("Attempting to add aug (id=%s) on file %s line %d",
-		location.GetAugId(), location.GetFileName(), location.GetLineno())
+		location.GetAugID(), location.GetFileName(), location.GetLineno())
 
 	if err := location.SetPending(); err != nil {
-		logger.Logger().WithError(err).Errorf("Unable to set status of location %s to pending", location.GetAugId())
+		logger.Logger().WithError(err).Errorf("Unable to set status of location %s to pending", location.GetAugID())
 	}
 
 	if rookErr := i.setBreakpoint(location); rookErr != nil {
-		logger.Logger().WithError(rookErr).Errorf("Failed to add aug: %s", location.GetAugId())
+		logger.Logger().WithError(rookErr).Errorf("Failed to add aug: %s", location.GetAugID())
 		err := location.SetError(rookErr)
 		if err != nil {
-			logger.Logger().WithError(err).Errorf("Unable to set status of location %s to error", location.GetAugId())
+			logger.Logger().WithError(err).Errorf("Unable to set status of location %s to error", location.GetAugID())
 		}
 		return
 	}
 
 	if err := location.SetActive(); err != nil {
-		logger.Logger().WithError(err).Errorf("Unable to set status of location %s to active", location.GetAugId())
+		logger.Logger().WithError(err).Errorf("Unable to set status of location %s to active", location.GetAugID())
 	}
 }
 
@@ -99,7 +99,7 @@ func (i *InstrumentationService) setBreakpoint(location locations.Location) rook
 	return nil
 }
 
-func (i *InstrumentationService) RemoveAug(augID types.AugId) error {
+func (i *InstrumentationService) RemoveAug(augID types.AugID) error {
 	i.instrumentationLock.Lock()
 	defer i.instrumentationLock.Unlock()
 
@@ -107,9 +107,9 @@ func (i *InstrumentationService) RemoveAug(augID types.AugId) error {
 }
 
 
-func (i *InstrumentationService) removeAug(augID types.AugId) error {
+func (i *InstrumentationService) removeAug(augID types.AugID) error {
 	logger.Logger().Debugf("Attempting to remove aug %s", augID)
-	bp, exists := i.locations.FindBreakpointByAugId(augID)
+	bp, exists := i.locations.FindBreakpointByAugID(augID)
 	if !exists {
 		return errors.Errorf("no aug found with id %s", augID)
 	}
@@ -131,17 +131,17 @@ func (i *InstrumentationService) removeAug(augID types.AugId) error {
 	return nil
 }
 
-func (i *InstrumentationService) ReplaceAllRules(newAugs map[types.AugId]locations.Location) error {
+func (i *InstrumentationService) ReplaceAllRules(newAugs map[types.AugID]locations.Location) error {
 	i.instrumentationLock.Lock()
 	defer i.instrumentationLock.Unlock()
 
-	var augIDsToRemove []types.AugId
+	var augIDsToRemove []types.AugID
 	for _, location := range i.locations.Locations() {
-		if _, exists := newAugs[location.GetAug().GetAugId()]; exists {
+		if _, exists := newAugs[location.GetAug().GetAugID()]; exists {
 			
-			delete(newAugs, location.GetAug().GetAugId())
+			delete(newAugs, location.GetAug().GetAugID())
 		} else {
-			augIDsToRemove = append(augIDsToRemove, location.GetAug().GetAugId())
+			augIDsToRemove = append(augIDsToRemove, location.GetAug().GetAugID())
 		}
 	}
 
@@ -165,8 +165,8 @@ func (i *InstrumentationService) ClearAugs() {
 	defer i.instrumentationLock.Unlock()
 
 	for _, loc := range i.locations.Locations() {
-		if err := i.removeAug(loc.GetAugId()); err != nil {
-			logger.Logger().WithError(err).Errorf("Unable to remove aug: %s\n", loc.GetAugId())
+		if err := i.removeAug(loc.GetAugID()); err != nil {
+			logger.Logger().WithError(err).Errorf("Unable to remove aug: %s\n", loc.GetAugID())
 		}
 	}
 }

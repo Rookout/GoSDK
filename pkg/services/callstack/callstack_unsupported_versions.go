@@ -1,5 +1,5 @@
-//go:build (!amd64 && !arm64) || !go1.15 || go1.20
-// +build !amd64,!arm64 !go1.15 go1.20
+//go:build (!amd64 && !arm64) || !go1.15 || go1.21
+// +build !amd64,!arm64 !go1.15 go1.21
 
 package callstack
 

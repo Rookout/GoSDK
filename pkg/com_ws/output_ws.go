@@ -1,6 +1,11 @@
 package com_ws
 
 import (
+	"io"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/common"
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
@@ -10,20 +15,16 @@ import (
 	"github.com/Rookout/GoSDK/pkg/types"
 	"github.com/Rookout/GoSDK/pkg/utils"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"io"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type Output interface {
-	SetAgentId(agentId string)
+	SetAgentID(agentID string)
 
-	SendUserMessage(augId types.AugId, messageId string, arguments types.Namespace)
-	SendRuleStatus(augId types.AugId, active string, errIn rookoutErrors.RookoutError) error
-	SendWarning(augId types.AugId, err rookoutErrors.RookoutError) error
-	SendError(augId types.AugId, err rookoutErrors.RookoutError) error
-	SendOutputQueueFullWarning(augId types.AugId)
+	SendUserMessage(augID types.AugID, messageID string, arguments namespaces.Namespace)
+	SendRuleStatus(augID types.AugID, active string, errIn rookoutErrors.RookoutError) error
+	SendWarning(augID types.AugID, err rookoutErrors.RookoutError) error
+	SendError(augID types.AugID, err rookoutErrors.RookoutError) error
+	SendOutputQueueFullWarning(augID types.AugID)
 
 	SetAgentCom(agentCom AgentCom)
 
@@ -31,18 +32,16 @@ type Output interface {
 }
 
 type outputWs struct {
-	config        config.OutputWsConfiguration
-	agentId       string
+	agentID       string
 	agentCom      AgentCom
 	closed        atomic.Value
-	skippedAugIds *SyncSet
+	skippedAugIDs *SyncSet
 }
 
-func NewOutputWs(config config.OutputWsConfiguration) *outputWs {
+func NewOutputWs() *outputWs {
 	o := &outputWs{
 		closed:        atomic.Value{},
-		config:        config,
-		skippedAugIds: newSyncSet(),
+		skippedAugIDs: newSyncSet(),
 	}
 	o.closed.Store(false)
 	return o
@@ -52,11 +51,11 @@ func (d *outputWs) SetAgentCom(agentCom AgentCom) {
 	d.agentCom = agentCom
 }
 
-func (d *outputWs) SetAgentId(agentId string) {
-	d.agentId = agentId
+func (d *outputWs) SetAgentID(agentID string) {
+	d.agentID = agentID
 }
 
-func (d *outputWs) SendUserMessage(augId types.AugId, messageId string, arguments types.Namespace) {
+func (d *outputWs) SendUserMessage(augID types.AugID, messageID string, arguments namespaces.Namespace) {
 	utils.CreateGoroutine(func() {
 		defer func() {
 			if closer, ok := arguments.(io.Closer); ok {
@@ -64,23 +63,30 @@ func (d *outputWs) SendUserMessage(augId types.AugId, messageId string, argument
 			}
 		}()
 
-		err := d.sendUserMessage(augId, messageId, arguments)
+		err := d.sendUserMessage(augID, messageID, arguments)
 		if err != nil {
-			logger.Logger().WithError(err).Warningf("Unable to send user message, aug id: %s", augId)
+			logger.Logger().WithError(err).Warningf("Unable to send user message, aug id: %s", augID)
 		}
 	})
 }
 
-func (d *outputWs) sendUserMessage(augId types.AugId, messageId string, arguments types.Namespace) error {
+func (d *outputWs) sendUserMessage(augID types.AugID, messageID string, arguments namespaces.Namespace) error {
 	if d.closed.Load().(bool) {
 		return nil
 	}
 
 	msg := &pb.AugReportMessage{
-		AgentId:   d.agentId,
-		AugId:     augId,
-		Arguments: arguments.ToProtobuf(true),
-		ReportId:  messageId,
+		AgentId:  d.agentID,
+		AugID:    augID,
+		ReportID: messageID,
+	}
+	if config.OutputWsConfig().ProtobufVersion2 {
+		serializer := namespaces.NewNamespaceSerializer2(arguments, true)
+		msg.Arguments2 = serializer.Variant2
+		msg.StringsCache = serializer.StringCache
+	} else {
+		serializer := namespaces.NewNamespaceSerializer(arguments, true)
+		msg.Arguments = serializer.Variant
 	}
 	buf, err := common.WrapMsgInEnvelope(msg)
 	if err != nil {
@@ -89,29 +95,33 @@ func (d *outputWs) sendUserMessage(augId types.AugId, messageId string, argument
 
 	rookoutErr := d.agentCom.Send(buf)
 	if rookoutErr != nil && rookoutErr.GetType() == "RookOutputQueueFull" {
-		d.SendOutputQueueFullWarning(augId)
+		d.SendOutputQueueFullWarning(augID)
 		return rookoutErr
 	}
 
-	d.skippedAugIds.Remove(augId)
+	d.skippedAugIDs.Remove(augID)
 	return nil
 }
 
-func (d *outputWs) SendRuleStatus(augId types.AugId, active string, errIn rookoutErrors.RookoutError) error {
+func (d *outputWs) SendRuleStatus(augID types.AugID, active string, errIn rookoutErrors.RookoutError) error {
 	if d.closed.Load().(bool) {
 		return nil
 	}
 
 	if active == "Deleted" {
-		d.skippedAugIds.Remove(augId)
+		d.skippedAugIDs.Remove(augID)
 	}
 
 	stat := &pb.RuleStatusMessage{
-		AgentId: d.agentId,
-		RuleId:  augId,
+		AgentId: d.agentID,
+		RuleId:  augID,
 		Active:  active,
-		Error:   namespaces.GetErrorAsProtobuf(errIn),
 	}
+	if errIn != nil {
+		serializer := namespaces.NewNamespaceSerializer(namespaces.NewGoObjectNamespace(errIn), true)
+		stat.Error = serializer.GetErrorValue()
+	}
+
 	buf, err := common.WrapMsgInEnvelope(stat)
 	if err != nil {
 		return err
@@ -119,12 +129,12 @@ func (d *outputWs) SendRuleStatus(augId types.AugId, active string, errIn rookou
 	return d.agentCom.Send(buf)
 }
 
-func (d *outputWs) SendWarning(augId types.AugId, err rookoutErrors.RookoutError) error {
-	return d.SendRuleStatus(augId, "Warning", err)
+func (d *outputWs) SendWarning(augID types.AugID, err rookoutErrors.RookoutError) error {
+	return d.SendRuleStatus(augID, "Warning", err)
 }
 
-func (d *outputWs) SendError(augId types.AugId, err rookoutErrors.RookoutError) error {
-	return d.SendRuleStatus(augId, "Error", err)
+func (d *outputWs) SendError(augID types.AugID, err rookoutErrors.RookoutError) error {
+	return d.SendRuleStatus(augID, "Error", err)
 }
 
 func (d *outputWs) SendLogMessage(level pb.LogMessage_LogLevel, time time.Time, filename string, lineno int, text string, arguments map[string]interface{}) error {
@@ -146,18 +156,19 @@ func (d *outputWs) SendLogMessage(level pb.LogMessage_LogLevel, time time.Time, 
 		}
 	}
 	_ = argumentsNamespace.WriteAttribute("args", parametersNamespace)
+	serializer := namespaces.NewNamespaceSerializer(argumentsNamespace, false)
 
 	timestamp := timestamppb.New(time)
 	msg := &pb.LogMessage{
 		Timestamp:        timestamp,
-		AgentId:          d.agentId,
+		AgentId:          d.agentID,
 		Level:            level,
 		Filename:         filename,
 		Line:             uint32(lineno),
 		Text:             text,
 		FormattedMessage: text,
-		Arguments:        []*pb.Variant{argumentsNamespace.ToProtobuf(false)},
-		LegacyArguments:  argumentsNamespace.ToProtobuf(false),
+		Arguments:        []*pb.Variant{serializer.Variant},
+		LegacyArguments:  serializer.Variant,
 	}
 	buf, err := common.WrapMsgInEnvelope(msg)
 	if err != nil {
@@ -170,33 +181,43 @@ func (d *outputWs) StopSendingMessages() {
 	d.closed.Store(true)
 }
 
-func (d *outputWs) SendOutputQueueFullWarning(augId types.AugId) {
-	if d.skippedAugIds.Contains(augId) {
+func (d *outputWs) SendOutputQueueFullWarning(augID types.AugID) {
+	if d.skippedAugIDs.Contains(augID) {
 		return
 	}
 
-	d.skippedAugIds.Add(augId)
-	_ = d.SendRuleStatus(augId, "Warning", rookoutErrors.NewRookOutputQueueFull())
-	logger.Logger().Warning("Skipping aug (" + augId + ") execution because the queue is full")
+	d.skippedAugIDs.Add(augID)
+	_ = d.SendRuleStatus(augID, "Warning", rookoutErrors.NewRookOutputQueueFull())
+	logger.Logger().Warning("Skipping aug (" + augID + ") execution because the queue is full")
 }
 
 type SyncSet struct {
-	internalMap sync.Map
+	internalMap map[types.AugID]struct{}
+	lock        sync.Mutex
 }
 
 func newSyncSet() *SyncSet {
-	return &SyncSet{}
+	return &SyncSet{internalMap: make(map[types.AugID]struct{})}
 }
 
 func (s *SyncSet) Add(value interface{}) {
-	s.internalMap.Store(value, struct{}{})
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.internalMap[value.(types.AugID)] = struct{}{}
 }
 
 func (s *SyncSet) Remove(value interface{}) {
-	s.internalMap.Delete(value)
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	delete(s.internalMap, value.(types.AugID))
 }
 
 func (s *SyncSet) Contains(value interface{}) bool {
-	_, ok := s.internalMap.Load(value)
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	_, ok := s.internalMap[value.(types.AugID)]
 	return ok
 }

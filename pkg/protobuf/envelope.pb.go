@@ -7,7 +7,7 @@
 package protobuf2
 
 import (
-	any "github.com/golang/protobuf/ptypes/any"
+	any1 "github.com/golang/protobuf/ptypes/any"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -28,7 +28,7 @@ type Envelope struct {
 	unknownFields protoimpl.UnknownFields
 
 	Timestamp *timestamp.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Msg       *any.Any             `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	Msg       *any1.Any            `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
 }
 
 func (x *Envelope) Reset() {
@@ -70,7 +70,7 @@ func (x *Envelope) GetTimestamp() *timestamp.Timestamp {
 	return nil
 }
 
-func (x *Envelope) GetMsg() *any.Any {
+func (x *Envelope) GetMsg() *any1.Any {
 	if x != nil {
 		return x.Msg
 	}
@@ -116,7 +116,7 @@ var file_envelope_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_envelope_proto_goTypes = []interface{}{
 	(*Envelope)(nil),            
 	(*timestamp.Timestamp)(nil), 
-	(*any.Any)(nil),             
+	(*any1.Any)(nil),            
 }
 var file_envelope_proto_depIdxs = []int32{
 	1, 

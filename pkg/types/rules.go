@@ -1,6 +1,6 @@
 package types
 
-type AugId = string
+type AugID = string
 
 type AugConfiguration map[string]interface{}
 

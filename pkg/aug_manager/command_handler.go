@@ -2,6 +2,7 @@ package aug_manager
 
 import (
 	"encoding/json"
+
 	"github.com/Rookout/GoSDK/pkg/com_ws"
 	"github.com/Rookout/GoSDK/pkg/common"
 	"github.com/Rookout/GoSDK/pkg/config"
@@ -27,9 +28,7 @@ func NewCommandHandler(agentCom com_ws.AgentCom, augManager AugManager) *Command
 			return
 		}
 
-		newConfig := config.ParseConfig(initAugs.SdkConfiguration)
-		config.UpdateGlobalRateLimitConfig(&newConfig)
-		handler.updateConfig(newConfig)
+		config.Update(initAugs.SdkConfiguration)
 
 		augs, err := handler.buildAugMap(initAugs.Augs)
 		if err != nil {
@@ -47,7 +46,7 @@ func NewCommandHandler(agentCom com_ws.AgentCom, augManager AugManager) *Command
 			logger.Logger().WithError(err).Error("Failed to unmarshal envelope to RemoveAugCommand")
 			return
 		}
-		err = handler.augManager.RemoveAug(removeAugCmd.AugId)
+		err = handler.augManager.RemoveAug(removeAugCmd.AugID)
 		if err != nil {
 			logger.Logger().WithError(err).Error("failed to remove rule")
 		}
@@ -72,14 +71,8 @@ func NewCommandHandler(agentCom com_ws.AgentCom, augManager AugManager) *Command
 	return &handler
 }
 
-func (c *CommandHandler) updateConfig(newConfig config.DynamicConfiguration) {
-	config.UpdateObjectDumpConfigDefaults(newConfig.ObjectDumpConfigDefaults)
-	c.agentCom.UpdateConfig(newConfig.AgentComWsConfiguration)
-	c.augManager.UpdateConfig(newConfig.LocationsConfiguration)
-}
-
-func (c *CommandHandler) buildAugMap(rules []string) (map[types.AugId]types.AugConfiguration, error) {
-	rulesMap := make(map[types.AugId]types.AugConfiguration)
+func (c *CommandHandler) buildAugMap(rules []string) (map[types.AugID]types.AugConfiguration, error) {
+	rulesMap := make(map[types.AugID]types.AugConfiguration)
 
 	for _, ruleStr := range rules {
 		augConfig := make(types.AugConfiguration)
@@ -89,8 +82,8 @@ func (c *CommandHandler) buildAugMap(rules []string) (map[types.AugId]types.AugC
 			return nil, err
 		}
 
-		if augId, ok := augConfig["id"].(types.AugId); ok {
-			rulesMap[augId] = augConfig
+		if augID, ok := augConfig["id"].(types.AugID); ok {
+			rulesMap[augID] = augConfig
 		}
 	}
 	return rulesMap, nil

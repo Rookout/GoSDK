@@ -7,9 +7,9 @@ import "unsafe"
 //go:linkname firstModuleData runtime.firstmoduledata
 var firstModuleData moduledata
 
-//go:linkname funcName runtime.funcname
+//go:linkname FuncName runtime.funcname
 //goland:noinspection GoUnusedParameter
-func funcName(f FuncInfo) string
+func FuncName(f FuncInfo) string
 
 //go:linkname FindFunc runtime.findfunc
 func FindFunc(_ uintptr) FuncInfo

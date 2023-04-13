@@ -1,16 +1,19 @@
 package namespaces
 
 import (
-	"github.com/Rookout/GoSDK/pkg/config"
-	pb "github.com/Rookout/GoSDK/pkg/protobuf"
-	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"github.com/Rookout/GoSDK/pkg/services/collection"
-	"github.com/Rookout/GoSDK/pkg/services/collection/variable"
-	"github.com/Rookout/GoSDK/pkg/types"
+	"fmt"
 	"go/constant"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
+	"unsafe"
+
+	"github.com/Rookout/GoSDK/pkg/config"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/collection"
+	"github.com/Rookout/GoSDK/pkg/services/collection/variable"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
 )
 
 
@@ -43,26 +46,26 @@ func NewVariableNamespace(fullName string, o *variable.Variable, collectionServi
 	return g
 }
 
-func (d *VariableNamespace) spawn(name string, obj *variable.Variable) *VariableNamespace {
-	return NewVariableNamespace(name, obj, d.CollectionService)
+func (v *VariableNamespace) spawn(name string, obj *variable.Variable) *VariableNamespace {
+	return NewVariableNamespace(name, obj, v.CollectionService)
 }
 
-func (d *VariableNamespace) GetSize(_ string, _ interface{}) types.Namespace {
-	switch d.Obj.Kind {
+func (v *VariableNamespace) GetSize(_ string, _ interface{}) Namespace {
+	switch v.Obj.Kind {
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		return NewGoObjectNamespace(d.Obj.Len)
+		return NewGoObjectNamespace(v.Obj.Len)
 	}
 	return nil
 }
 
-func (d *VariableNamespace) CallMethod(name string, args string) (types.Namespace, rookoutErrors.RookoutError) {
+func (v *VariableNamespace) CallMethod(name string, args string) (Namespace, rookoutErrors.RookoutError) {
 	switch name {
 	case "type":
-		return NewGoObjectNamespace(PrettyTypeName(d.Obj.DwarfType)), nil
+		return NewGoObjectNamespace(PrettyTypeName(v.Obj.DwarfType)), nil
 	case "size":
-		size := d.GetSize(name, args)
+		size := v.GetSize(name, args)
 		if size == nil {
-			return nil, rookoutErrors.NewObjectHasNoSizeException(d.GetObject())
+			return nil, rookoutErrors.NewObjectHasNoSizeException(v.GetObject())
 		}
 		return size, nil
 	case "depth":
@@ -70,33 +73,33 @@ func (d *VariableNamespace) CallMethod(name string, args string) (types.Namespac
 		if err != nil {
 			return nil, rookoutErrors.NewRookInvalidMethodArguments("depth()", args)
 		}
-		d.ObjectDumpConf.MaxDepth = maxDepth
-		return d, nil
+		v.ObjectDumpConf.MaxDepth = maxDepth
+		return v, nil
 	case "width":
 		maxWidth, err := strconv.Atoi(args)
 		if err != nil {
 			return nil, rookoutErrors.NewRookInvalidMethodArguments("width()", args)
 		}
-		d.ObjectDumpConf.MaxWidth = maxWidth
-		return d, nil
+		v.ObjectDumpConf.MaxWidth = maxWidth
+		return v, nil
 	case "collection_dump":
 		maxCollectionDepth, err := strconv.Atoi(args)
 		if err != nil {
 			return nil, rookoutErrors.NewRookInvalidMethodArguments("collection_dump()", args)
 		}
-		d.ObjectDumpConf.MaxCollectionDepth = maxCollectionDepth
-		return d, nil
+		v.ObjectDumpConf.MaxCollectionDepth = maxCollectionDepth
+		return v, nil
 	case "string":
 		maxString, err := strconv.Atoi(args)
 		if err != nil {
 			return nil, rookoutErrors.NewRookInvalidMethodArguments("string()", args)
 		}
-		d.ObjectDumpConf.MaxString = maxString
-		return d, nil
+		v.ObjectDumpConf.MaxString = maxString
+		return v, nil
 	case "limit":
 		if objectDumpConfig, ok := config.GetObjectDumpConfig(strings.ToLower(args)); ok {
-			d.ObjectDumpConf = objectDumpConfig
-			return d, nil
+			v.ObjectDumpConf = objectDumpConfig
+			return v, nil
 		}
 		return nil, rookoutErrors.NewRookInvalidMethodArguments("limit()", args)
 
@@ -105,148 +108,148 @@ func (d *VariableNamespace) CallMethod(name string, args string) (types.Namespac
 	}
 }
 
-func (d *VariableNamespace) ReadAttribute(name string) (types.Namespace, rookoutErrors.RookoutError) {
+func (v *VariableNamespace) ReadAttribute(name string) (Namespace, rookoutErrors.RookoutError) {
 	var children []*variable.Variable
 	
-	if d.Obj.Kind == reflect.Ptr {
-		if len(d.Obj.Children) == 1 && d.Obj.Children[0].Kind == reflect.Struct {
-			children = d.Obj.Children[0].Children
+	if v.Obj.Kind == reflect.Ptr {
+		if len(v.Obj.Children) == 1 && v.Obj.Children[0].Kind == reflect.Struct {
+			children = v.Obj.Children[0].Children
 		}
 	} else {
-		children = d.Obj.Children
+		children = v.Obj.Children
 	}
 
 	for _, child := range children {
 		if name == child.Name {
-			return d.spawn(d.name+"."+name, child), nil
+			return v.spawn(v.name+"."+name, child), nil
 		}
 	}
 
 	return nil, rookoutErrors.NewRookAttributeNotFoundException(name)
 }
 
-func (d *VariableNamespace) WriteAttribute(_ string, _ types.Namespace) rookoutErrors.RookoutError {
+func (v *VariableNamespace) WriteAttribute(_ string, _ Namespace) rookoutErrors.RookoutError {
 	return rookoutErrors.NewNotImplemented()
 }
 
-func (d *VariableNamespace) readKeyFromArray(key int) (types.Namespace, rookoutErrors.RookoutError) {
-	name := d.name + "[" + strconv.Itoa(key) + "]"
+func (v *VariableNamespace) readKeyFromArray(key int) (Namespace, rookoutErrors.RookoutError) {
+	name := v.name + "[" + strconv.Itoa(key) + "]"
 
-	if int(d.Obj.Len) > key {
-		if len(d.Obj.Children) > key {
-			return d.spawn(name, d.Obj.Children[key]), nil
+	if int(v.Obj.Len) > key {
+		if len(v.Obj.Children) > key {
+			return v.spawn(name, v.Obj.Children[key]), nil
 		}
 
 		
-		obj, err := d.tryLoadChild(name)
+		obj, err := v.tryLoadChild(name)
 		if err == nil {
-			return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, err)
+			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, err)
 		}
 		return obj, nil
 	}
 
-	return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, nil)
+	return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
 }
 
-func (d *VariableNamespace) readKeyFromMap(key string) (types.Namespace, rookoutErrors.RookoutError) {
-	name := d.name + "[\"" + key + "\"]"
+func (v *VariableNamespace) readKeyFromMap(key string) (Namespace, rookoutErrors.RookoutError) {
+	name := v.name + "[\"" + key + "\"]"
 
 	
-	for i := 0; i < len(d.Obj.Children); i += 2 {
-		childKey := d.Obj.Children[i]
+	for i := 0; i < len(v.Obj.Children); i += 2 {
+		childKey := v.Obj.Children[i]
 		keyName := constant.StringVal(childKey.Value)
 		if key == keyName {
-			return d.spawn(name, d.Obj.Children[i+1]), nil
+			return v.spawn(name, v.Obj.Children[i+1]), nil
 		}
 	}
 
-	if int(d.Obj.Len) > len(d.Obj.Children) {
+	if int(v.Obj.Len) > len(v.Obj.Children) {
 		
-		obj, err := d.tryLoadChild(name)
+		obj, err := v.tryLoadChild(name)
 		if err != nil {
-			return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, err)
+			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, err)
 		}
 		return obj, nil
 	}
 
-	return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, nil)
+	return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
 }
 
-func (d *VariableNamespace) readKeyFromStruct(key string) (types.Namespace, rookoutErrors.RookoutError) {
-	name := d.name + "." + key
-	for _, child := range d.Obj.Children {
+func (v *VariableNamespace) readKeyFromStruct(key string) (Namespace, rookoutErrors.RookoutError) {
+	name := v.name + "." + key
+	for _, child := range v.Obj.Children {
 		if key == child.Name {
-			return d.spawn(name, child), nil
+			return v.spawn(name, child), nil
 		}
 	}
 
-	if int(d.Obj.Len) > len(d.Obj.Children) {
+	if int(v.Obj.Len) > len(v.Obj.Children) {
 		
-		obj, err := d.tryLoadChild(name)
+		obj, err := v.tryLoadChild(name)
 		if err != nil {
-			return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, err)
+			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, err)
 		}
 		return obj, nil
 	}
 
-	return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, nil)
+	return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
 }
 
-func (d *VariableNamespace) tryLoadChild(name string) (types.Namespace, error) {
-	objectDumpConfig := config.GetTailoredLimits(d.GetObject())
-	v, err := d.CollectionService.GetVariable(name, objectDumpConfig)
+func (v *VariableNamespace) tryLoadChild(name string) (Namespace, error) {
+	objectDumpConfig := config.GetTailoredLimits(v.GetObject())
+	child, err := v.CollectionService.GetVariable(name, objectDumpConfig)
 	if err != nil {
 		return nil, err
 	}
-	return d.spawn(name, v), nil
+	return v.spawn(name, child), nil
 }
 
-func (d *VariableNamespace) ReadKey(key interface{}) (types.Namespace, rookoutErrors.RookoutError) {
-	switch d.Obj.Kind {
+func (v *VariableNamespace) ReadKey(key interface{}) (Namespace, rookoutErrors.RookoutError) {
+	switch v.Obj.Kind {
 	case reflect.Array, reflect.Slice:
 		keyAsInt, ok := key.(int)
 		if !ok {
-			return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, nil)
+			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
 		}
-		return d.readKeyFromArray(keyAsInt)
+		return v.readKeyFromArray(keyAsInt)
 
 	case reflect.Map:
 		keyAsString, ok := key.(string)
 		if !ok {
-			return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, nil)
+			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
 		}
-		return d.readKeyFromMap(keyAsString)
+		return v.readKeyFromMap(keyAsString)
 
 	case reflect.Struct:
 		keyAsString, ok := key.(string)
 		if !ok {
-			return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, nil)
+			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
 		}
-		return d.readKeyFromStruct(keyAsString)
+		return v.readKeyFromStruct(keyAsString)
 
 	case reflect.Interface:
-		obj := d.spawn(d.name, d.Obj.Children[0])
+		obj := v.spawn(v.name, v.Obj.Children[0])
 		if obj.Obj.Kind == reflect.Interface {
 			return nil, rookoutErrors.NewInvalidInterfaceVariable(key)
 		}
 		return obj.ReadKey(key)
 	}
-	return nil, rookoutErrors.NewAgentKeyNotFoundException(d.name, key, nil)
+	return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
 }
 
-func (d *VariableNamespace) GetObject() interface{} {
-	switch d.Obj.Kind {
+func (v *VariableNamespace) GetObject() interface{} {
+	switch v.Obj.Kind {
 	case reflect.Bool:
-		return constant.BoolVal(d.Obj.Value)
+		return constant.BoolVal(v.Obj.Value)
 	case reflect.Float32:
-		float, _ := constant.Float32Val(d.Obj.Value)
+		float, _ := constant.Float32Val(v.Obj.Value)
 		return float
 	case reflect.Float64:
-		float, _ := constant.Float64Val(d.Obj.Value)
+		float, _ := constant.Float64Val(v.Obj.Value)
 		return float
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		number, _ := constant.Int64Val(d.Obj.Value)
-		switch d.Obj.Kind {
+		number, _ := constant.Int64Val(v.Obj.Value)
+		switch v.Obj.Kind {
 		case reflect.Int:
 			return int(number)
 		case reflect.Int8:
@@ -259,8 +262,8 @@ func (d *VariableNamespace) GetObject() interface{} {
 			return int64(number)
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		number, _ := constant.Uint64Val(d.Obj.Value)
-		switch d.Obj.Kind {
+		number, _ := constant.Uint64Val(v.Obj.Value)
+		switch v.Obj.Kind {
 		case reflect.Uint:
 			return uint(number)
 		case reflect.Uint8:
@@ -275,96 +278,165 @@ func (d *VariableNamespace) GetObject() interface{} {
 			return uintptr(number)
 		}
 	case reflect.Complex64:
-		str := d.Obj.Value.ExactString()
+		str := v.Obj.Value.ExactString()
 		str = strings.ReplaceAll(str, " ", "")
 		number, _ := strconv.ParseComplex(str, 64)
 		return complex64(number)
 	case reflect.Complex128:
-		str := d.Obj.Value.ExactString()
+		str := v.Obj.Value.ExactString()
 		str = strings.ReplaceAll(str, " ", "")
 		number, _ := strconv.ParseComplex(str, 128)
 		return number
 	case reflect.String:
-		return constant.StringVal(d.Obj.Value)
+		return constant.StringVal(v.Obj.Value)
 	case reflect.Array, reflect.Slice:
-		if d.Obj.IsNil() {
+		if v.Obj.IsNil() {
 			return nil
 		}
-		values := make([]interface{}, 0, len(d.Obj.Children))
-		for i, child := range d.Obj.Children {
-			n := d.spawn(d.name+"["+strconv.Itoa(i)+"]", child)
+		values := make([]interface{}, 0, len(v.Obj.Children))
+		for i, child := range v.Obj.Children {
+			n := v.spawn(v.name+"["+strconv.Itoa(i)+"]", child)
 			values = append(values, n.GetObject())
 		}
 		return values
 	case reflect.Struct:
 		return StructTypeInstance
 	case reflect.Map, reflect.Chan, reflect.Ptr, reflect.Interface, reflect.Func:
-		if d.Obj.IsNil() {
+		if v.Obj.IsNil() {
 			return nil
 		}
 		return ReferenceTypeInstance
 	}
-	return constant.Val(d.Obj.Value)
+	return constant.Val(v.Obj.Value)
 }
 
-func (d *VariableNamespace) getGoCommonType() string {
-	switch d.Obj.Kind {
-	case reflect.Bool:
-		return "bool"
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return "int"
-	case reflect.String:
-		return "string"
-	case reflect.Float32, reflect.Float64:
-		return "float"
-	case reflect.Complex64, reflect.Complex128:
-		return "complex"
-	case reflect.Array, reflect.Slice:
-		return "list"
-	case reflect.Map:
-		return "dict"
-	case reflect.Chan:
-		return "list"
+func PrettyTypeName(typ godwarf.Type) string {
+	if typ == nil {
+		return ""
+	}
+	if typ.Common().Name != "" {
+		return typ.Common().Name
+	}
+	r := typ.String()
+	if r == "*void" {
+		return "unsafe.Pointer"
+	}
+	return r
+}
+
+func (v *VariableNamespace) Serialize(serializer Serializer) {
+	defer serializer.dumpOriginalType(PrettyTypeName(v.Obj.DwarfType))
+
+	if v.Obj.Value != nil {
+		if cd := v.Obj.ConstDescr(); cd != "" {
+			i, _ := constant.Int64Val(constant.ToInt(v.Obj.Value))
+			serializer.dumpEnum(cd, int(i), PrettyTypeName(v.Obj.DwarfType))
+			return
+		}
+
+		var val interface{}
+		
+		if v.Obj.Kind == reflect.Float32 || v.Obj.Kind == reflect.Float64 {
+			val, _ = constant.Float64Val(v.Obj.Value)
+		} else {
+			val = constant.Val(v.Obj.Value)
+		}
+		dumpInterface(serializer, val, v.ObjectDumpConf)
+
+		if v.Obj.Value.Kind() == constant.String {
+			serializer.dumpStringLen(int(v.Obj.Len))
+		}
+
+		return
 	}
 
-	switch d.prettyType() {
-	case "time.Time":
-		return "datetime"
-	case "list.List":
-		return "list"
+	
+	if v.Obj.DwarfType.Common().Name == "time.Time" {
+		timeValue := reflect.NewAt(reflect.TypeOf(time.Time{}), unsafe.Pointer(uintptr(v.Obj.Addr)))
+		dumpTimeValue(serializer, timeValue, v.ObjectDumpConf)
+		return
 	}
 
-	return "no common type"
+	if v.Obj.Unreadable != nil {
+		dumpError(serializer, v.Obj.Unreadable)
+	} else {
+		switch v.Obj.Kind {
+		case reflect.Map:
+			getKeyValue := func(i int) (Namespace, Namespace) {
+				keyIndex := i * 2
+				valueIndex := keyIndex + 1
+
+				key := v.Obj.Children[keyIndex]
+				keyNamespace := v.spawn(key.Name, key)
+
+				value := v.Obj.Children[valueIndex]
+				valueNamespace := v.spawn(value.Name, value)
+
+				return keyNamespace, valueNamespace
+			}
+
+			serializer.dumpMap(getKeyValue, len(v.Obj.Children)/2, v.ObjectDumpConf)
+		case reflect.Slice, reflect.Array, reflect.Chan:
+			
+			if v.Obj.Base == 0 && v.Obj.Len == 0 {
+				serializer.dumpNil()
+				return
+			}
+
+			getElem := func(i int) Namespace {
+				child := v.Obj.Children[i]
+				return v.spawn(child.Name, child)
+			}
+			serializer.dumpArray(getElem, int(v.Obj.Len), v.ObjectDumpConf)
+		case reflect.Ptr:
+			if len(v.Obj.Children) == 0 || v.Obj.Children[0].Addr == 0 {
+				serializer.dumpNil()
+			} else if v.Obj.Children[0].OnlyAddr {
+				dumpUint(serializer, v.Obj.Children[0].Addr, v.ObjectDumpConf)
+			} else {
+				child := v.spawn(v.Obj.Name, v.Obj.Children[0])
+				child.Serialize(serializer)
+			}
+		case reflect.UnsafePointer:
+			if len(v.Obj.Children) == 0 {
+				serializer.dumpNil()
+			}
+			dumpUint(serializer, v.Obj.Children[0].Addr, v.ObjectDumpConf)
+		case reflect.Func:
+			serializer.dumpFunc(v.Obj.FunctionName, v.Obj.FileName, v.Obj.Line)
+		case reflect.Interface:
+			if v.Obj.Addr == 0 || len(v.Obj.Children) == 0 {
+				
+				
+				serializer.dumpNil()
+				return
+			}
+
+			data := v.Obj.Children[0]
+			if data.OnlyAddr {
+				dumpUint(serializer, data.Addr, v.ObjectDumpConf)
+				return
+			}
+
+			
+			child := v.spawn(data.Name, data)
+			child.Serialize(serializer)
+			serializer.dumpOriginalType(fmt.Sprintf("%s (%s)", PrettyTypeName(v.Obj.DwarfType), PrettyTypeName(child.Obj.DwarfType)))
+		case reflect.Struct:
+			getField := func(i int) (string, Namespace) {
+				return v.Obj.Children[i].Name, v.spawn(v.Obj.Children[i].Name, v.Obj.Children[i])
+			}
+			serializer.dumpStruct(getField, len(v.Obj.Children), v.ObjectDumpConf)
+		default:
+			serializer.dumpUnsupported()
+		}
+	}
 }
 
-func (d *VariableNamespace) ToProtobuf(logErrors bool) *pb.Variant {
-	v := &pb.Variant{}
-	defer recoverFromPanic(recover(), v, logErrors)
-
-	return dumpVariable(d.Obj)
+func (v *VariableNamespace) GetObjectDumpConfig() config.ObjectDumpConfig {
+	return v.ObjectDumpConf
 }
 
-func (d *VariableNamespace) prettyType() string {
-	return PrettyTypeName(d.Obj.DwarfType)
-}
-
-func (d *VariableNamespace) ToDict() map[string]interface{} {
-	panic("not implemented")
-}
-
-func (d *VariableNamespace) ToSimpleDict() interface{} {
-	panic("not implemented")
-}
-
-func (d *VariableNamespace) Filter(_ []types.FieldFilter) rookoutErrors.RookoutError {
-	return nil
-}
-
-func (d *VariableNamespace) GetObjectDumpConfig() config.ObjectDumpConfig {
-	return d.ObjectDumpConf
-}
-
-func (d *VariableNamespace) SetObjectDumpConfig(config config.ObjectDumpConfig) {
-	d.ObjectDumpConf = config
+func (v *VariableNamespace) SetObjectDumpConfig(config config.ObjectDumpConfig) {
+	v.ObjectDumpConf = config
 }

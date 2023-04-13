@@ -10,7 +10,7 @@ type Location interface {
 	GetLineno() int
 	GetFileName() string
 	GetAug() augs.Aug
-	GetAugId() types.AugId
+	GetAugID() types.AugID
 	SetPending() error
 	SetActive() error
 	SetRemoved() error

@@ -2,17 +2,10 @@ package config
 
 import (
 	"reflect"
-	"sync/atomic"
-	"unsafe"
 )
 
-var defaults = &ObjectDumpConfigDefaults{}
-
-func UpdateObjectDumpConfigDefaults(config ObjectDumpConfigDefaults) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&defaults)), unsafe.Pointer(&config))
-}
-
 func GetObjectDumpConfig(key string) (ObjectDumpConfig, bool) {
+	defaults := config.Load().(DynamicConfiguration).ObjectDumpConfigDefaults
 	switch key {
 	case "strict":
 		return defaults.strictConfig, true
@@ -26,7 +19,8 @@ func GetObjectDumpConfig(key string) (ObjectDumpConfig, bool) {
 }
 
 func GetDefaultDumpConfig() ObjectDumpConfig {
-	return defaults.defaultConfig
+	c := config.Load().(DynamicConfiguration)
+	return c.ObjectDumpConfigDefaults.defaultConfig
 }
 
 type ObjectDumpConfig struct {
@@ -38,33 +32,45 @@ type ObjectDumpConfig struct {
 	IsTailored         bool
 }
 
-func (o *ObjectDumpConfig) Tailor(kind reflect.Kind) {
+func (o *ObjectDumpConfig) Tailor(kind reflect.Kind, objLen int) {
 	o.IsTailored = true
 	o.ShouldTailor = false
 
+	defaults := config.Load().(DynamicConfiguration).ObjectDumpConfigDefaults
 	switch kind {
 	case reflect.String:
 		o.MaxString = defaults.unlimitedConfig.MaxString
 		o.MaxDepth = 1
+		return
 	case reflect.Array, reflect.Slice, reflect.Map:
-		o.MaxDepth = defaults.defaultConfig.MaxDepth
-		o.MaxWidth = defaults.unlimitedConfig.MaxWidth
-		o.MaxCollectionDepth = defaults.defaultConfig.MaxCollectionDepth
-		o.MaxString = defaults.defaultConfig.MaxString
-	default:
-		*o = defaults.tolerantConfig
+		if objLen > defaults.tolerantConfig.MaxWidth {
+			o.MaxDepth = defaults.defaultConfig.MaxDepth
+			o.MaxWidth = defaults.unlimitedConfig.MaxWidth
+			o.MaxCollectionDepth = defaults.defaultConfig.MaxCollectionDepth
+			o.MaxString = defaults.defaultConfig.MaxString
+			return
+		}
 	}
+	*o = defaults.tolerantConfig
 }
 
-func GetTailoredLimits(obj interface{}) (config ObjectDumpConfig) {
-	config.IsTailored = true
-
-	if obj == nil {
-		config = defaults.tolerantConfig
-		return
+func GetTailoredLimits(obj interface{}) ObjectDumpConfig {
+	c := ObjectDumpConfig{
+		IsTailored: true,
 	}
 
-	kind := reflect.TypeOf(obj).Kind()
-	config.Tailor(kind)
-	return
+	defaults := config.Load().(DynamicConfiguration).ObjectDumpConfigDefaults
+	if obj == nil {
+		return defaults.tolerantConfig
+	}
+
+	value := reflect.ValueOf(obj)
+	objLen := 0
+	if value.Kind() == reflect.Array ||
+		value.Kind() == reflect.Slice ||
+		value.Kind() == reflect.Map {
+		objLen = value.Len()
+	}
+	c.Tailor(value.Kind(), objLen)
+	return c
 }

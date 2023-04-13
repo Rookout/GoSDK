@@ -1,10 +1,11 @@
 package augs
 
 import (
-	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
-	"github.com/Rookout/GoSDK/pkg/types"
 	"sync"
 	"time"
+
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/types"
 )
 
 type AugTimeLimiter struct {
@@ -46,7 +47,7 @@ func (t *AugTimeLimiter) AfterRun(executionId string) (types.AugStatus, rookoutE
 	t.executionStartTimesLock.Lock()
 	defer t.executionStartTimesLock.Unlock()
 
-	augTime := time.Now().Sub(t.executionStartTimes[executionId])
+	augTime := time.Since(t.executionStartTimes[executionId])
 	delete(t.executionStartTimes, executionId)
 
 	if t.maxAugTime > 0 && augTime > t.maxAugTime {

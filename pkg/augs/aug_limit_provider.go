@@ -1,22 +1,20 @@
 package augs
 
 import (
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/com_ws"
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/types"
 	"github.com/Rookout/GoSDK/pkg/utils"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
-	"unsafe"
 )
 
 type LimitProvider struct {
-	config            *config.LocationsConfiguration
 	GlobalRateLimiter *AugRateLimiter
 }
 
@@ -40,15 +38,15 @@ func InitLimitProvider() {
 }
 
 func createLimitProvider() *LimitProvider {
-	return &LimitProvider{
+	l := &LimitProvider{
 		GlobalRateLimiter: nil,
 	}
+	config.OnUpdate(l.updateConfig)
+	return l
 }
 
-func (l *LimitProvider) UpdateConfig(config config.LocationsConfiguration) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&l.config)), unsafe.Pointer(&config))
-
-	if l.config.RateLimiterConfiguration.GlobalRateLimit != "" {
+func (l *LimitProvider) updateConfig() {
+	if config.RateLimiterConfig().GlobalRateLimit != "" {
 		l.tryToCreateGlobalRateLimiter()
 	} else {
 		l.DeleteGlobalRateLimiter()
@@ -59,8 +57,8 @@ func (l *LimitProvider) DeleteGlobalRateLimiter() {
 	l.GlobalRateLimiter = nil
 }
 
-func (l *LimitProvider) GetLimitManager(configuration types.AugConfiguration, augId types.AugId, output com_ws.Output) (LimitsManager, rookoutErrors.RookoutError) {
-	limitsManager := NewLimitsManager(augId, output)
+func (l *LimitProvider) GetLimitManager(configuration types.AugConfiguration, augID types.AugID, output com_ws.Output) (LimitsManager, rookoutErrors.RookoutError) {
+	limitsManager := NewLimitsManager(augID, output)
 
 	rateLimiter, err := l.getRateLimiter(configuration)
 	if err != nil {
@@ -77,7 +75,7 @@ func (l *LimitProvider) GetLimitManager(configuration types.AugConfiguration, au
 }
 
 func (l *LimitProvider) getAugTimeLimiter(configuration types.AugConfiguration) *AugTimeLimiter {
-	maxAugTime := l.config.MaxAugTime
+	maxAugTime := config.LocationsConfig().MaxAugTime
 	maxAugTimeStr, ok := configuration["maxAugTime"].(string)
 	if ok {
 		maxAugTimeMS, err := strconv.ParseInt(maxAugTimeStr, 10, 64)
@@ -88,7 +86,7 @@ func (l *LimitProvider) getAugTimeLimiter(configuration types.AugConfiguration) 
 		}
 	}
 
-	maxAugTime = maxAugTime * time.Duration(l.config.MaxAugTimeMultiplier)
+	maxAugTime = maxAugTime * time.Duration(config.LocationsConfig().MaxAugTimeMultiplier)
 
 	return NewAugTimeLimiter(maxAugTime)
 }
@@ -122,10 +120,10 @@ func (l *LimitProvider) getRateLimiter(configuration types.AugConfiguration) (*A
 }
 
 func (l *LimitProvider) tryToCreateGlobalRateLimiter() {
-	globalRateLimiter, err := l.createRateLimiter(l.config.RateLimiterConfiguration.GlobalRateLimit,
-		0, 0, 0)
+	globalRateLimit := config.RateLimiterConfig().GlobalRateLimit
+	globalRateLimiter, err := l.createRateLimiter(globalRateLimit, 0, 0, 0)
 	if globalRateLimiter == nil {
-		err = rookoutErrors.NewRookInvalidRateLimitConfiguration(l.config.RateLimiterConfiguration.GlobalRateLimit)
+		err = rookoutErrors.NewRookInvalidRateLimitConfiguration(globalRateLimit)
 	}
 
 	if err != nil {
@@ -168,5 +166,5 @@ func (l *LimitProvider) createRateLimiter(limitsSpec string, defaultQuota time.D
 		return nil, rookoutErrors.NewRookInvalidRateLimitConfiguration(limitsSpec)
 	}
 
-	return NewAugRateLimiter(quota, windowSize, activeLimit, l.config.RateLimiterConfiguration), nil
+	return NewAugRateLimiter(quota, windowSize, activeLimit, config.RateLimiterConfig()), nil
 }

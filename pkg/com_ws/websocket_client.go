@@ -3,6 +3,12 @@ package com_ws
 import (
 	"context"
 	"crypto/tls"
+	"net"
+	"net/http"
+	"net/url"
+	"sync"
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/common"
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
@@ -11,33 +17,24 @@ import (
 	"github.com/Rookout/GoSDK/pkg/utils"
 	"github.com/go-errors/errors"
 	gorilla "github.com/gorilla/websocket"
-	"net"
-	"net/http"
-	"net/url"
-	"sync"
-	"sync/atomic"
-	"time"
-	"unsafe"
 )
 
 var dialer *gorilla.Dialer
 var dialerOnce sync.Once
 
-type WebSocketClientCreator func(context.Context, *url.URL, string, *url.URL, *pb.AgentInformation, bool, config.WebSocketClientConfig) WebSocketClient
+type WebSocketClientCreator func(context.Context, *url.URL, string, *url.URL, *pb.AgentInformation) WebSocketClient
 
 type WebSocketClient interface {
 	GetConnectionCtx() context.Context
 	Dial(context.Context) error
 	Handshake(context.Context) error
 	Receive(context.Context) ([]byte, error)
-	UpdateConfig(config config.WebSocketClientConfig)
 	Send(context.Context, []byte) error
 	Close()
 }
 
 type webSocketClient struct {
-	config              *config.WebSocketClientConfig
-	agentUrl            *url.URL
+	agentURL            *url.URL
 	agentInfo           *pb.AgentInformation
 	conn                *gorilla.Conn
 	token               string
@@ -45,25 +42,18 @@ type webSocketClient struct {
 	ConnectionCtx       context.Context
 	cancelConnectionCtx context.CancelFunc
 	writeMutex          sync.Mutex
-	skipSslVerify       bool
 }
 
-func NewWebSocketClient(ctx context.Context, agentUrl *url.URL, token string, proxy *url.URL, agentInfo *pb.AgentInformation, skipSslVerify bool, config config.WebSocketClientConfig) WebSocketClient {
+func NewWebSocketClient(ctx context.Context, agentURL *url.URL, token string, proxy *url.URL, agentInfo *pb.AgentInformation) WebSocketClient {
 	client := &webSocketClient{
-		config:        &config,
-		agentUrl:      agentUrl,
-		agentInfo:     agentInfo,
-		conn:          &gorilla.Conn{},
-		token:         token,
-		proxy:         proxy,
-		skipSslVerify: skipSslVerify,
+		agentURL:  agentURL,
+		agentInfo: agentInfo,
+		conn:      &gorilla.Conn{},
+		token:     token,
+		proxy:     proxy,
 	}
 	client.ConnectionCtx, client.cancelConnectionCtx = context.WithCancel(ctx)
 	return client
-}
-
-func (w *webSocketClient) UpdateConfig(config config.WebSocketClientConfig) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&w.config)), unsafe.Pointer(&config))
 }
 
 func (w *webSocketClient) GetConnectionCtx() context.Context {
@@ -71,7 +61,7 @@ func (w *webSocketClient) GetConnectionCtx() context.Context {
 }
 
 func (w *webSocketClient) Dial(ctx context.Context) error {
-	conn, httpRes, err := w.getWSDialer().DialContext(ctx, w.agentUrl.String(), http.Header{"X-Rookout-Token": []string{w.token}})
+	conn, httpRes, err := w.getWSDialer().DialContext(ctx, w.agentURL.String(), http.Header{"X-Rookout-Token": []string{w.token}})
 	if err != nil {
 		badToken := isHttpResponseBadToken(httpRes)
 		if badToken {
@@ -83,12 +73,14 @@ func (w *webSocketClient) Dial(ctx context.Context) error {
 			logger.Logger().Errorf("The Rookout token supplied (%s) is not valid; please check the token and try again", censoredToken)
 			return rookoutErrors.NewInvalidTokenError()
 		} else {
-			logger.Logger().Errorf("Failed to connect to controller (%s). err: %s", w.agentUrl, err.Error())
+			logger.Logger().Errorf("Failed to connect to controller (%s). err: %s", w.agentURL, err.Error())
 		}
 		return err
 	}
 	w.conn = conn
-	if err = w.conn.SetReadDeadline(time.Now().Add(w.config.PingTimeout)); err != nil {
+
+	pingTimeout := config.WebSocketClientConfig().PingTimeout
+	if err = w.conn.SetReadDeadline(time.Now().Add(pingTimeout)); err != nil {
 		logger.Logger().WithError(err).Error("failed to set read deadline, closing connection")
 		w.Close()
 		return err
@@ -97,7 +89,7 @@ func (w *webSocketClient) Dial(ctx context.Context) error {
 		w.sendPingLoop()
 	})
 	w.conn.SetPongHandler(func(string) error {
-		err := w.conn.SetReadDeadline(time.Now().Add(w.config.PingTimeout))
+		err := w.conn.SetReadDeadline(time.Now().Add(pingTimeout))
 		if err != nil {
 			logger.Logger().WithError(err).Error("Failed to set read deadline on pong, closing connection")
 			w.Close()
@@ -154,7 +146,7 @@ func (w *webSocketClient) sendPing(ctx context.Context) error {
 func (w *webSocketClient) sendPingLoop() {
 	defer w.cancelConnectionCtx()
 
-	pingTimer := time.NewTicker(w.config.PingInterval)
+	pingTimer := time.NewTicker(config.WebSocketClientConfig().PingInterval)
 	defer drainTimer(pingTimer)
 	defer pingTimer.Stop()
 
@@ -164,7 +156,7 @@ func (w *webSocketClient) sendPingLoop() {
 			return
 		case <-pingTimer.C:
 			err := func() error {
-				ctxTimeout, cancelFunc := context.WithTimeout(w.ConnectionCtx, w.config.WriteTimeout)
+				ctxTimeout, cancelFunc := context.WithTimeout(w.ConnectionCtx, config.WebSocketClientConfig().WriteTimeout)
 				defer cancelFunc()
 
 				return w.sendPing(ctxTimeout)
@@ -209,7 +201,7 @@ func (w *webSocketClient) Send(ctx context.Context, buf []byte) error {
 	}
 
 	err := func() error {
-		ctxTimeout, cancelFunc := context.WithTimeout(ctx, w.config.WriteTimeout)
+		ctxTimeout, cancelFunc := context.WithTimeout(ctx, config.WebSocketClientConfig().WriteTimeout)
 		defer cancelFunc()
 
 		return w.sendBinary(ctxTimeout, buf)
@@ -246,7 +238,7 @@ func (w *webSocketClient) getWSDialer() *gorilla.Dialer {
 		netDialer := net.Dialer{Resolver: &net.Resolver{PreferGo: true}}
 		dialerTemp.NetDial = netDialer.Dial
 		dialer = &dialerTemp
-		dialerTemp.TLSClientConfig = &tls.Config{InsecureSkipVerify: w.skipSslVerify}
+		dialerTemp.TLSClientConfig = &tls.Config{InsecureSkipVerify: config.WebSocketClientConfig().SkipSSLVerify}
 	})
 
 	if w.proxy != nil {

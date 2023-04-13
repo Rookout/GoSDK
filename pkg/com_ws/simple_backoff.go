@@ -2,35 +2,27 @@ package com_ws
 
 import (
 	"context"
+	"time"
+
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
-	"sync/atomic"
-	"time"
-	"unsafe"
 )
 
 type Backoff interface {
-	UpdateConfig(config.BackoffConfig)
 	AfterConnect()
 	AfterDisconnect(context.Context)
 }
 
 type backoff struct {
-	config      *config.BackoffConfig
 	connectTime time.Time
 	connected   bool
 	nextBackoff time.Duration
 }
 
-func NewBackoff(config config.BackoffConfig) *backoff {
+func NewBackoff() *backoff {
 	return &backoff{
-		nextBackoff: config.DefaultBackoff,
-		config:      &config,
+		nextBackoff: config.BackoffConfig().DefaultBackoff,
 	}
-}
-
-func (b *backoff) UpdateConfig(config config.BackoffConfig) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&b.config)), unsafe.Pointer(&config))
 }
 
 func (b *backoff) AfterConnect() {
@@ -39,7 +31,7 @@ func (b *backoff) AfterConnect() {
 }
 
 func (b *backoff) AfterDisconnect(ctx context.Context) {
-	if b.connected && time.Now().Sub(b.connectTime) > b.config.ResetBackoffTimeout {
+	if b.connected && time.Since(b.connectTime) > config.BackoffConfig().ResetBackoffTimeout {
 		b.reset()
 	}
 
@@ -54,11 +46,12 @@ func (b *backoff) AfterDisconnect(ctx context.Context) {
 	}
 
 	b.nextBackoff *= 2
-	if b.config.MaxBackoff != 0 && b.nextBackoff > b.config.MaxBackoff {
-		b.nextBackoff = b.config.MaxBackoff
+	maxBackoff := config.BackoffConfig().MaxBackoff
+	if maxBackoff != 0 && b.nextBackoff > maxBackoff {
+		b.nextBackoff = maxBackoff
 	}
 }
 
 func (b *backoff) reset() {
-	b.nextBackoff = b.config.DefaultBackoff
+	b.nextBackoff = config.BackoffConfig().DefaultBackoff
 }

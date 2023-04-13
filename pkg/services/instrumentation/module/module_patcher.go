@@ -1,5 +1,5 @@
-//go:build go1.15 && !go1.20
-// +build go1.15,!go1.20
+//go:build go1.15 && !go1.21
+// +build go1.15,!go1.21
 
 package module
 
@@ -337,7 +337,7 @@ func addModule(newModule *moduledata) {
 
 func PatchModuleData(addressMappings []AddressMapping, offsetMappings []AddressMapping, stateID int) error {
 	function := FindFunc(uintptr(addressMappings[1].OriginalAddress))
-	moduleName := fmt.Sprintf("Rookout-%s[%x]-%d", funcName(function), function.getEntry(), stateID)
+	moduleName := fmt.Sprintf("Rookout-%s[%x]-%d", FuncName(function), function.getEntry(), stateID)
 	if _, ok := modules[moduleName]; ok {
 		return nil
 	}
