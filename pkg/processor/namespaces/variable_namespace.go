@@ -109,17 +109,19 @@ func (v *VariableNamespace) CallMethod(name string, args string) (Namespace, roo
 }
 
 func (v *VariableNamespace) ReadAttribute(name string) (Namespace, rookoutErrors.RookoutError) {
-	var children []*variable.Variable
+	value := v.Obj
+
 	
-	if v.Obj.Kind == reflect.Ptr {
-		if len(v.Obj.Children) == 1 && v.Obj.Children[0].Kind == reflect.Struct {
-			children = v.Obj.Children[0].Children
-		}
-	} else {
-		children = v.Obj.Children
+	if value.Kind == reflect.Interface {
+		value = value.Children[0]
 	}
 
-	for _, child := range children {
+	
+	if value.Kind == reflect.Ptr && len(value.Children) == 1 && value.Children[0].Kind == reflect.Struct {
+		value = value.Children[0]
+	}
+
+	for _, child := range value.Children {
 		if name == child.Name {
 			return v.spawn(v.name+"."+name, child), nil
 		}
@@ -384,6 +386,10 @@ func (v *VariableNamespace) Serialize(serializer Serializer) {
 			}
 
 			getElem := func(i int) Namespace {
+				if i >= len(v.Obj.Children) {
+					return nil
+				}
+
 				child := v.Obj.Children[i]
 				return v.spawn(child.Name, child)
 			}

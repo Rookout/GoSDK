@@ -1,6 +1,9 @@
 package utils
 
-import "container/list"
+import (
+	"container/list"
+	"strings"
+)
 
 func GetElementInList(l *list.List, index int) interface{} {
 	i := 0
@@ -20,6 +23,10 @@ func Contains(slice []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func IsTrue(str string) bool {
+	return Contains(TrueValues, strings.ToLower(str))
 }
 
 func Cut(str string, l int) string {

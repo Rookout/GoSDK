@@ -98,7 +98,7 @@ func (v *VariableLocator) Locate(regs registers.Registers, dictAddr uint64, vari
 	} else {
 		addr, pieces, err = v.locator.Locate(dwarfRegs)
 		if err != nil {
-			logger.Logger().WithError(err).Warningf("Failed to locate")
+			logger.Logger().WithError(err).Warningf("Failed to locate %s", v.VariableName)
 		}
 		if pieces != nil {
 			addr = memory.FakeAddress

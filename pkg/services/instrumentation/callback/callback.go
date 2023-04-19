@@ -135,7 +135,7 @@ func goCollect(context uintptr, g go_runtime.GPtr) {
 				triggerChan <- false
 				if v := recover(); v != nil {
 					if utils.OnPanicFunc != nil {
-						utils.OnPanicFunc(rookoutErrors.NewRookPanicInGoroutine(v))
+						utils.OnPanicFunc(rookoutErrors.NewUnknownError(v))
 					}
 
 					return
@@ -189,6 +189,12 @@ func reportBreakpoint(bpInstance *augs.BreakpointInstance, bpInfo *BreakpointInf
 	for i := range locations {
 		utils.CreateGoroutine(func(i int) func() {
 			return func() { 
+				defer func() {
+					if r := recover(); r != nil {
+						locations[i].SetError(rookoutErrors.NewUnknownError(r))
+					}
+				}()
+
 				defer wg.Done()
 
 				collectionService, err := collection.NewCollectionService(bpInfo.regs, BinaryInfo.PointerSize, bpInfo.Stacktrace, bpInstance.VariableLocators, goid)

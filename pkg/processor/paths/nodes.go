@@ -2,8 +2,6 @@ package paths
 
 import (
 	"fmt"
-	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
-	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"go/constant"
 	"go/token"
 	"go/types"
@@ -11,6 +9,9 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/Rookout/GoSDK/pkg/processor/namespaces"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 )
 
 type Kind = reflect.Kind

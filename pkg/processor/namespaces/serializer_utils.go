@@ -66,7 +66,9 @@ type Serializer interface {
 
 func dumpValue(s Serializer, value reflect.Value, config config.ObjectDumpConfig) {
 	defer func() {
-		defer recover()
+		defer func() {
+			recover()
+		}()
 
 		
 		s.dumpOriginalType(value.Type().String())
@@ -172,7 +174,14 @@ func getTime(value reflect.Value) (t time.Time) {
 		}
 	}()
 
-	return value.Interface().(time.Time)
+	i := value.Interface()
+	if t, ok := i.(time.Time); ok {
+		return t
+	}
+	if t, ok := i.(*time.Time); ok {
+		return *t
+	}
+	return time.Time{}
 }
 
 func dumpTimeValue(s Serializer, value reflect.Value, config config.ObjectDumpConfig) {
@@ -180,8 +189,14 @@ func dumpTimeValue(s Serializer, value reflect.Value, config config.ObjectDumpCo
 }
 
 func dumpArrayValue(s Serializer, value reflect.Value, config config.ObjectDumpConfig) {
-	getElem := func(i int) Namespace {
-		return NewGoObjectNamespace(value.Index(i).Interface())
+	getElem := func(i int) (n Namespace) {
+		defer func() {
+			if recover() != nil {
+				n = NewValueNamespace(value.Index(i))
+			}
+		}()
+		v := reflect.NewAt(value.Type().Elem(), unsafe.Pointer(value.Index(i).Addr().Pointer()))
+		return NewGoObjectNamespace(v.Elem().Interface())
 	}
 	s.dumpArray(getElem, value.Len(), config)
 }
@@ -248,11 +263,9 @@ func dumpErrorValue(s Serializer, value reflect.Value) {
 
 	errorFunc := value.MethodByName("Error")
 	if !errorFunc.IsValid() {
-		fmt.Printf("Dumping nil error\n")
 		s.dumpNil()
 		return
 	}
 	msg := errorFunc.Call([]reflect.Value{})[0]
-	fmt.Printf("Dumping msg error: %v (%v)\n", msg, msg.Type())
 	s.dumpErrorMessage(msg.String())
 }

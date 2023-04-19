@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/config"
+	"github.com/Rookout/GoSDK/pkg/logger"
 	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/utils"
@@ -120,7 +121,7 @@ func (n *NamespaceSerializer2) dumpInt(i int64) {
 }
 
 func (n *NamespaceSerializer2) dumpBool(b bool) {
-	n.dumpType(pb.Variant_VARIANT_LONG)
+	n.dumpType(pb.Variant_VARIANT_INT)
 	if b {
 		n.LongValue = 1
 	} else {
@@ -147,7 +148,13 @@ func (n *NamespaceSerializer2) dumpArray(getElem func(i int) Namespace, arrayLen
 			return
 		}
 
-		n.CollectionValues = append(n.CollectionValues, n.spawn(getElem(i)).Variant2)
+		e := getElem(i)
+		if e == nil {
+			logger.Logger().Warningf("Element %d is nil, arrayLen: %d, max width: %d\n", i, arrayLen, config.MaxWidth)
+			break
+		}
+
+		n.CollectionValues = append(n.CollectionValues, n.spawn(e).Variant2)
 	}
 }
 

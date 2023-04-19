@@ -30,7 +30,7 @@ func createHandlePanicFunc(info *panicInfo) func() {
 
 		if v := recover(); v != nil {
 			if OnPanicFunc != nil {
-				OnPanicFunc(rookoutErrors.NewRookPanicInGoroutine(v))
+				OnPanicFunc(rookoutErrors.NewUnknownError(v))
 			}
 
 			if info != nil {

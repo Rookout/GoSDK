@@ -30,5 +30,5 @@ func sanitizeString(name, value string) string {
 		return value
 	}
 
-	return strings.Trim(value, " \r\n\t")
+	return strings.Trim(value, " \r\n\t/")
 }

@@ -9,6 +9,9 @@ import (
 
 
 
+
+type pcHeader struct{}
+
 //go:linkname functab runtime.functab
 type functab struct {
 	entry   uintptr
@@ -77,6 +80,9 @@ type moduledata struct {
 
 	next *moduledata
 }
+
+//go:linkname funcfile runtime.funcfile
+func funcfile(f FuncInfo, fileno int32) string
 
 func getPCTab(m *moduledata) []byte {
 	return m.pclntable

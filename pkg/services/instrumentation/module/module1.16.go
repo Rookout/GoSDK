@@ -35,10 +35,9 @@ type _func struct {
 	pcfile    uint32
 	pcln      uint32
 	npcdata   uint32
-	cuOffset  uint32 
-	funcID    funcID 
-	flag      funcFlag
-	_         [1]byte 
+	cuOffset  uint32  
+	funcID    funcID  
+	_         [2]byte 
 	nfuncdata uint8   
 }
 

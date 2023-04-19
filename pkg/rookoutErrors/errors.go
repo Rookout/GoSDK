@@ -493,7 +493,7 @@ func NewRookConnectToControllerTimeout() RookoutError {
 		map[string]interface{}{})
 }
 
-func NewRookPanicInGoroutine(recovered interface{}) RookoutError {
+func NewUnknownError(recovered interface{}) RookoutError {
 	err, _ := recovered.(error)
 
 	return newRookoutError(
@@ -721,6 +721,19 @@ func NewRookOutputQueueFull() RookoutError {
 		map[string]interface{}{})
 }
 
+func NewFailedToAlignFunc(funcAddress, pclntableAddress, funcOffset uintptr) RookoutError {
+	return newRookoutError(
+		"FailedToAlignFunc",
+		"Tried to align _func in moduledata pclntable but failed",
+		nil,
+		map[string]interface{}{
+			"funcAddress":      funcAddress,
+			"pclntableAddress": pclntableAddress,
+			"funcOffset":       funcOffset,
+		},
+	)
+}
+
 func NewRookMessageSizeExceeded(messageSize int, maxMessageSize int) RookoutError {
 	return newRookoutError("RookMessageSizeExceeded",
 		fmt.Sprintf("Message size of %d exceeds max size limit of %d. "+
@@ -806,5 +819,102 @@ func NewFailedToGetCurrentMemoryProtection(address uint64, size uint64) RookoutE
 		map[string]interface{}{
 			"address": address,
 			"size":    size,
+		})
+}
+
+func NewDifferentNPCData(origNPCData uint32, newNPCData uint32) RookoutError {
+	return newRookoutError(
+		"DifferenceNPCData",
+		"New module doesn't have the same number of PCData tables as original module",
+		nil,
+		map[string]interface{}{
+			"origNPCData": origNPCData,
+			"newNPCData":  newNPCData,
+		})
+}
+
+func NewPCDataVerificationFailed(table uint32, origValue int32, origPC uintptr, newValue int32, newPC uintptr) RookoutError {
+	return newRookoutError(
+		"PCDataVerificationFailed",
+		"New module has a different value in pcdata table than the original module",
+		nil,
+		map[string]interface{}{
+			"table":     table,
+			"origValue": origValue,
+			"origPC":    origPC,
+			"newValue":  newValue,
+			"newPC":     newPC,
+		})
+}
+
+func NewPCSPVerificationFailed(origValue int32, origPC uintptr, newValue int32, newPC uintptr) RookoutError {
+	return newRookoutError(
+		"PCSPVerificationFailed",
+		"New module has a different value in pcsp table than the original module",
+		nil,
+		map[string]interface{}{
+			"origValue": origValue,
+			"origPC":    origPC,
+			"newValue":  newValue,
+			"newPC":     newPC,
+		})
+}
+
+func NewPCFileVerificationFailed(origFile string, origPC uintptr, newFile string, newPC uintptr) RookoutError {
+	return newRookoutError(
+		"PCFileVerificationFailed",
+		"New module has a different value in pcfile table than the original module",
+		nil,
+		map[string]interface{}{
+			"origFile": origFile,
+			"origPC":   origPC,
+			"newFile":  newFile,
+			"newPC":    newPC,
+		})
+}
+
+func NewPCLineVerificationFailed(origLine int32, origPC uintptr, newLine int32, newPC uintptr) RookoutError {
+	return newRookoutError(
+		"PCLineVerificationFailed",
+		"New module has a different value in pcline table than the original module",
+		nil,
+		map[string]interface{}{
+			"origLine": origLine,
+			"origPC":   origPC,
+			"newLine":  newLine,
+			"newPC":    newPC,
+		})
+}
+
+func NewDifferentNFuncData(origNFuncData uint8, newNFuncData uint8) RookoutError {
+	return newRookoutError(
+		"DifferenceNFuncData",
+		"New module doesn't have the same number of funcdata tables as original module",
+		nil,
+		map[string]interface{}{
+			"origNFuncData": origNFuncData,
+			"newNFuncData":  newNFuncData,
+		})
+}
+
+func NewFuncDataVerificationFailed(table int, origValue uintptr, newValue uintptr) RookoutError {
+	return newRookoutError(
+		"FuncDataVerificationFailed",
+		"New module has a different pointer to funcdata than the original module",
+		nil,
+		map[string]interface{}{
+			"table":     table,
+			"origValue": origValue,
+			"newValue":  newValue,
+		})
+}
+
+func NewModuleVerificationFailed(recovered interface{}) RookoutError {
+	return newRookoutError(
+		"ModuleVerificationFailed",
+		"Panic occured while trying to verify new moduledata",
+		nil,
+		map[string]interface{}{
+			"recovered": recovered,
 		})
 }

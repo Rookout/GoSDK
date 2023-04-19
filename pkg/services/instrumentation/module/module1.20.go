@@ -24,8 +24,10 @@ type textsect struct {
 }
 
 type _func struct {
-	entryOff uint32 
-	nameOff  int32  
+	
+	entryoff uint32 
+	
+	nameoff int32 
 
 	args        int32  
 	deferreturn uint32 
@@ -129,7 +131,7 @@ func getPCTab(m *moduledata) []byte {
 }
 
 func (f *FuncInfo) getEntry() uintptr {
-	entry, _ := f.datap.textAddr(f.entryOff)
+	entry, _ := f.datap.textAddr(f.entryoff)
 	return entry
 }
 

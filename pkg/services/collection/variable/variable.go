@@ -838,8 +838,6 @@ func (v *Variable) loadArrayValues(recurseLevel int) {
 		v.Mem = memory.CacheMemory(v.Mem, v.Base, int(v.stride*count))
 	}
 
-	errcount := 0
-
 	mem := v.Mem
 	if v.Kind != reflect.Array {
 		mem = memory.DereferenceMemory(mem)
@@ -848,15 +846,7 @@ func (v *Variable) loadArrayValues(recurseLevel int) {
 	for i := int64(0); i < count; i++ {
 		fieldvar := v.spawn("", uint64(int64(v.Base)+(i*v.stride)), v.fieldType, mem)
 		fieldvar.LoadValueInternal(recurseLevel + 1)
-
-		if fieldvar.Unreadable != nil {
-			errcount++
-		}
-
 		v.Children = append(v.Children, fieldvar)
-		if errcount > maxErrCount {
-			break
-		}
 	}
 }
 

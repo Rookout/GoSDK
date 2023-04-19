@@ -4,95 +4,64 @@
 package module
 
 import (
-	"errors"
 	"fmt"
+	"os"
 	"unsafe"
+
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 )
 
-
-
-type moduleDataPatcherState struct {
-	funcAddressPatched    bool
-	pcspPatched           bool
-	pcFilePatched         bool
-	pcLinePatched         bool
-	pcDataPatched         bool
-	findFuncBucketCreated bool
-	funcTableCreated      bool
-	pcHeaderCreated       bool
-}
-
-
-type moduleDataPatcher struct {
-	state                moduleDataPatcherState
-	addressMappings      []AddressMapping
-	offsetMappings       []AddressMapping
-	function             *FuncInfo
-	origFuncEntryAddress uintptr
-	newFuncEntryAddress  uintptr
-	newFuncEndAddress    uintptr
-	origModule           *moduledata
-	newPclntable         []byte
-	
-	funcOffset          uintptr
-	ftab                []functab
-	findFuncBucketTable *findfuncbucket
-	name                string
-	pcHeader            *pcHeader
+type pclntableInfo struct {
+	pcDataTables    [][]byte
+	funcDataOffsets []unsafe.Pointer
+	pcLine          []byte
+	pcFile          []byte
+	pcsp            []byte
 }
 
 func (m *moduleDataPatcher) getPCDataTable(offset uintptr) []byte {
 	return m.origModule.pctab[offset:]
 }
 
-
-func (m *moduleDataPatcher) createPCHeader() error {
-	if m.state.pcHeaderCreated {
-		return errors.New("Attempted to create the PCHeader twice.")
-	}
-
-	m.pcHeader = (*pcHeader)(unsafe.Pointer(&(m.newPclntable[0])))
+func (m *moduleDataPatcher) createPCHeader() {
 	m.pcHeader.nfunc = len(m.origModule.ftab)
-	m.pcHeader.nfiles = (uint)(len(m.origModule.filetab))
+	m.pcHeader.nfiles = uint(len(m.origModule.filetab))
+}
 
-	m.state.pcHeaderCreated = true
-	return nil
+func (m *moduleDataPatcher) funcDataOffset(tableIndex uint8) unsafe.Pointer {
+	return funcdata(*m.origFunction, tableIndex)
 }
 
 
 func (m *moduleDataPatcher) getModuleData() (moduledata, error) {
-	if !(m.state.pcDataPatched && m.state.pcLinePatched && m.state.funcAddressPatched && m.state.pcspPatched &&
-		m.state.funcTableCreated && m.state.pcHeaderCreated && m.state.findFuncBucketCreated && m.state.pcFilePatched) {
-		return moduledata{}, errors.New("must fully patch module before creating module data")
-	}
 	return moduledata{
-		pcHeader:    m.pcHeader,
+		pcHeader:    &m.pcHeader,
 		funcnametab: m.origModule.funcnametab, 
 		filetab:     m.origModule.filetab,     
-		cutab:       m.origModule.cutab,       
+		cutab:       m.origModule.cutab,
 		ftab:        m.ftab,
-		pctab:       m.newPclntable,                                 
-		pclntable:   m.newPclntable,                                 
-		findfunctab: uintptr(unsafe.Pointer(m.findFuncBucketTable)), 
-		minpc:       m.newFuncEntryAddress,                          
+		pctab:       m.newPclntable,
+		pclntable:   m.newPclntable,
+		findfunctab: uintptr(unsafe.Pointer(m.findFuncBucketTable)),
+		minpc:       m.newFuncEntryAddress,
 		maxpc:       m.newFuncEndAddress,
-		text:        m.newFuncEntryAddress,   
-		etext:       m.newFuncEndAddress,     
-		noptrdata:   m.origModule.noptrdata,  
-		enoptrdata:  m.origModule.enoptrdata, 
-		data:        m.origModule.data,       
-		edata:       m.origModule.edata,      
-		bss:         m.origModule.bss,        
-		ebss:        m.origModule.ebss,       
-		noptrbss:    m.origModule.noptrbss,   
-		enoptrbss:   m.origModule.enoptrbss,  
+		text:        m.newFuncEntryAddress,
+		etext:       m.newFuncEndAddress,
+		noptrdata:   m.origModule.noptrdata,
+		enoptrdata:  m.origModule.enoptrdata,
+		data:        m.origModule.data,
+		edata:       m.origModule.edata,
+		bss:         m.origModule.bss,
+		ebss:        m.origModule.ebss,
+		noptrbss:    m.origModule.noptrbss,
+		enoptrbss:   m.origModule.enoptrbss,
 		end:         m.origModule.end,
 		gcdata:      m.origModule.gcdata,
 		gcbss:       m.origModule.gcbss,
-		types:       m.origModule.types,  
-		etypes:      m.origModule.etypes, 
+		types:       m.origModule.types,
+		etypes:      m.origModule.etypes,
 
-		modulename: m.name, 
+		modulename: m.name,
 
 		hasmain: 0, 
 
@@ -103,7 +72,7 @@ func (m *moduleDataPatcher) getModuleData() (moduledata, error) {
 
 		bad: false, 
 
-		next: nil, 
+		next: nil,
 	}, nil
 }
 
@@ -115,39 +84,107 @@ func (m *moduleDataPatcher) newFuncTab(funcOff uintptr, entry uintptr) functab {
 	return functab{funcoff: funcOff, entry: entry}
 }
 
+func (m *moduleDataPatcher) buildFunc(pcspOffset uint32, pcfileOffset uint32, pclnOffset uint32) _func {
+	return _func{
+		entry:   m.newFuncEntryAddress,
+		nameoff: m.origFunction.nameoff,
 
-func (m *moduleDataPatcher) patchFuncAddress() error {
-	if m.state.funcAddressPatched {
-		return errors.New("attempted to patch the func address twice")
+		args:        m.origFunction.args,
+		deferreturn: m.getDeferreturn(),
+
+		pcsp:      pcspOffset,
+		pcfile:    pcfileOffset,
+		pcln:      pclnOffset,
+		npcdata:   uint32(len(m.info.pcDataTables)),
+		cuOffset:  m.origFunction.cuOffset,
+		funcID:    m.origFunction.funcID,
+		nfuncdata: m.origFunction.nfuncdata,
+	}
+}
+
+func (m *moduleDataPatcher) buildPCFile() error {
+	newPCFile, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.origFunction.pcfile)), m.offsetMappings, nil)
+	if err != nil {
+		return err
 	}
 
-	
-	funcOffsetEntryPointer := unsafe.Pointer(&m.newPclntable[m.funcOffset])
-	patchUInt64WithPointer(funcOffsetEntryPointer, uint64(m.newFuncEntryAddress))
+	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
+		dumpPCData(m.getPCDataTable(uintptr(m.origFunction.pcfile)), "Old pcfile")
+		dumpPCData(newPCFile, "New pcfile")
+	}
 
-	m.state.funcAddressPatched = true
+	m.info.pcFile = newPCFile
 	return nil
 }
 
-func validateModuleFtab(module *moduledata, newFuncEntry uintptr) error {
-	moduleName := module.modulename
-	if len(module.ftab) != expectedFtabSize {
-		return fmt.Errorf("expected exactly %d functions in the module %s ftab. The first and last are dummy values. Got %d instead", expectedFtabSize, moduleName, len(module.ftab))
-	}
-	if module.ftab[0].entry != module.minpc {
-		return fmt.Errorf("the first dummy function should have the same pc as the module %s minpc. Got %d expected %d", moduleName, module.ftab[0].entry, module.minpc)
-	}
-	if module.ftab[len(module.ftab)-1].entry != module.maxpc {
-		return fmt.Errorf("the last dummy function should have the same pc as the module %s max. Got %d expected %d", moduleName, module.ftab[len(module.ftab)-1].entry, module.maxpc)
-	}
-	patchedFuncTab := module.ftab[patchedIdx]
-	if patchedFuncTab.entry != newFuncEntry {
-		return fmt.Errorf("bad patched function entry address in module %s. Expected %d, got %d", moduleName, newFuncEntry, patchedFuncTab.entry)
-	}
-	patchedOffset := int(patchedFuncTab.funcoff)
-	if patchedOffset >= len(module.pclntable) {
-		return fmt.Errorf("patched function offset (%d) outside of module %s pclntable (len=%d)", patchedOffset, moduleName, len(module.pclntable))
-	}
+const ptrSize = 8
+
+func (m *moduleDataPatcher) createPclnTable() rookoutErrors.RookoutError {
 	
+	if len(m.newPclntable) == 0 {
+		m.newPclntable = append(m.newPclntable, 0)
+	}
+
+	pcDataOffsets := make([]uint32, len(m.info.pcDataTables))
+	for i, table := range m.info.pcDataTables {
+		if table == nil {
+			continue
+		}
+		pcDataOffsets[i] = uint32(len(m.newPclntable))
+		m.writeBytesToPclnTable(table)
+		dumpPCData(table, fmt.Sprintf("table %d\n", i))
+	}
+
+	pcspOffset := uint32(len(m.newPclntable))
+	m.writeBytesToPclnTable(m.info.pcsp)
+	pclnOffset := uint32(len(m.newPclntable))
+	m.writeBytesToPclnTable(m.info.pcLine)
+	pcfileOffset := uint32(len(m.newPclntable))
+	m.writeBytesToPclnTable(m.info.pcFile)
+
+	f := m.buildFunc(pcspOffset, pcfileOffset, pclnOffset)
+	m.funcOffset = uintptr(len(m.newPclntable))
+	
+	m.writeObjectToPclnTable(unsafe.Pointer(&f), int(unsafe.Offsetof(f.nfuncdata)+unsafe.Sizeof(f.nfuncdata)))
+
+	if len(pcDataOffsets) > 0 {
+		m.writeObjectToPclnTable(unsafe.Pointer(&pcDataOffsets[0]), len(pcDataOffsets)*4)
+	}
+
+	if len(m.info.funcDataOffsets) > 0 {
+		
+		if len(pcDataOffsets)%2 == 0 {
+			m.writeBytesToPclnTable(make([]byte, 4))
+		}
+		m.writeObjectToPclnTable(unsafe.Pointer(&m.info.funcDataOffsets[0]), len(m.info.funcDataOffsets)*ptrSize)
+	}
+
+	return m.alignPclntable()
+}
+
+
+func (m *moduleDataPatcher) alignPclntable() rookoutErrors.RookoutError {
+	if uintptr(unsafe.Pointer(&m.newPclntable[m.funcOffset]))&4 == 0 {
+		return nil
+	}
+
+	pclntable := m.newPclntable
+	m.newPclntable = make([]byte, uintptr(len(pclntable))+4)
+	alignment := uintptr(unsafe.Pointer(&m.newPclntable[m.funcOffset])) & 4
+	for i := uintptr(0); i < m.funcOffset; i++ {
+		m.newPclntable[i] = pclntable[i]
+	}
+	for i := m.funcOffset; i < uintptr(len(pclntable)); i++ {
+		m.newPclntable[i+alignment] = pclntable[i]
+	}
+	m.funcOffset += alignment
+
+	if uintptr(unsafe.Pointer(&m.newPclntable[m.funcOffset]))&4 != 0 {
+		return rookoutErrors.NewFailedToAlignFunc(
+			uintptr(unsafe.Pointer(&m.newPclntable[m.funcOffset])),
+			uintptr(unsafe.Pointer(&m.newPclntable[0])),
+			m.funcOffset)
+	}
+
 	return nil
 }

@@ -10,14 +10,34 @@ import (
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/logger"
-
-	"github.com/go-errors/errors"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 )
 
 var (
 	modules     = make(map[string]*moduledata)
 	modulesLock sync.Mutex
 )
+
+
+type moduleDataPatcher struct {
+	info                 pclntableInfo
+	funcName             string
+	addressMappings      []AddressMapping
+	offsetMappings       []AddressMapping
+	origFunction         *FuncInfo
+	origFuncEntryAddress uintptr
+	newFuncEntryAddress  uintptr
+	newFuncEndAddress    uintptr
+	origModule           *moduledata
+	newPclntable         []byte
+	
+	funcOffset          uintptr
+	ftab                []functab
+	findFuncBucketTable *findfuncbucket
+	name                string
+	pcHeader            pcHeader
+	filetab             []uint32
+}
 
 type AddressMapping struct {
 	NewAddress      uintptr
@@ -37,27 +57,15 @@ func FindFuncMaxSPDelta(addr uint64) int32 {
 	return 0
 }
 
-func patchUInt32WithPointer(ptr unsafe.Pointer, value uint32) {
-	*(*uint32)(ptr) = value
+func (m *moduleDataPatcher) writeObjectToPclnTable(value unsafe.Pointer, size int) {
+	for i := 0; i < size; i++ {
+		p := (*byte)(unsafe.Pointer(uintptr(value) + uintptr(i)))
+		m.newPclntable = append(m.newPclntable, *p)
+	}
 }
 
-func patchUInt64WithPointer(ptr unsafe.Pointer, value uint64) {
-	*(*uint64)(ptr) = value
-}
-
-
-func (m *moduleDataPatcher) addBufferToPclntable(buffer *[]byte) uint32 {
-	newOffset := uint32(len(m.newPclntable))
-	m.newPclntable = append(m.newPclntable, *buffer...)
-	return newOffset
-}
-
-
-
-func (m *moduleDataPatcher) patchPClntableEntryUInt32(newEntry *[]byte, offsetEntry uintptr) uint32 {
-	newOffset := m.addBufferToPclntable(newEntry)
-	patchUInt32WithPointer(unsafe.Pointer(&m.newPclntable[offsetEntry]), newOffset)
-	return newOffset
+func (m *moduleDataPatcher) writeBytesToPclnTable(value []byte) {
+	m.newPclntable = append(m.newPclntable, value...)
 }
 
 
@@ -103,10 +111,6 @@ var findFuncBuckets [100]findfuncbucket
 
 
 func (m *moduleDataPatcher) createFindFuncBucket() error {
-	if m.state.findFuncBucketCreated {
-		return errors.New("Attempted to create findfuncbucket twice.")
-	}
-
 	
 	bucketsCount := ((m.newFuncEndAddress - m.newFuncEntryAddress) / pcbucketsize) + 1
 	if bucketsCount > maxBuckets {
@@ -114,13 +118,12 @@ func (m *moduleDataPatcher) createFindFuncBucket() error {
 	}
 
 	m.findFuncBucketTable = &(findFuncBuckets[0])
-	m.state.findFuncBucketCreated = true
 	return nil
 }
 
 
 func (m *moduleDataPatcher) pcDataOffset(table int) (uint32, bool) {
-	offset := pcdatastart(*m.function, uint32(table))
+	offset := pcdatastart(*m.origFunction, uint32(table))
 	
 	
 	if offset == 0 {
@@ -129,34 +132,16 @@ func (m *moduleDataPatcher) pcDataOffset(table int) (uint32, bool) {
 	return offset, m.isPCDataStartValid(offset)
 }
 
-
-func (m *moduleDataPatcher) pcDataOffsetOffset(table int) uintptr {
-	f := _func{}
-	offset := m.funcOffset + unsafe.Offsetof(f.nfuncdata) + unsafe.Sizeof(f.nfuncdata) + uintptr(table)*4
-	return offset
-}
-
-type pcDataTableInfo struct {
-	offset       uint32
-	data         []byte
-	lastPCDataPC uintptr
-}
-
-type allPCDataPatchInfo struct {
-	pcdataInfo []*pcDataTableInfo
-	pcFileInfo *pcDataTableInfo
-	pcLineInfo *pcDataTableInfo
-	pcSPInfo   *pcDataTableInfo
-}
-
-
-func (m *moduleDataPatcher) patchPCData() (*allPCDataPatchInfo, error) {
-	if m.state.pcDataPatched {
-		return nil, errors.New("attempted to patch the pcData twice")
+func (m *moduleDataPatcher) buildFuncData() {
+	for tableIndex := uint8(0); tableIndex < m.origFunction.nfuncdata; tableIndex++ {
+		m.info.funcDataOffsets = append(m.info.funcDataOffsets, m.funcDataOffset(tableIndex))
 	}
-	info := &allPCDataPatchInfo{pcdataInfo: make([]*pcDataTableInfo, m.function.npcdata)}
-	for tableIndex := 0; tableIndex < int(m.function.npcdata); tableIndex++ {
-		info.pcdataInfo[tableIndex] = nil
+}
+
+
+func (m *moduleDataPatcher) buildPCData() error {
+	m.info.pcDataTables = make([][]byte, m.origFunction.npcdata)
+	for tableIndex := 0; tableIndex < int(m.origFunction.npcdata); tableIndex++ {
 		
 		pcDataOffset, ok := m.pcDataOffset(tableIndex)
 		if !ok {
@@ -164,157 +149,81 @@ func (m *moduleDataPatcher) patchPCData() (*allPCDataPatchInfo, error) {
 			continue
 		}
 		
-		pcDataOffsetOffset := m.pcDataOffsetOffset(tableIndex)
-		
-		newPCData, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(pcDataOffset)), m.offsetMappings, nil)
+		newPCData, err := updatePCDataOffsets(m.getPCDataTable(uintptr(pcDataOffset)), m.offsetMappings, nil)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		lastNewValidPC := lastNewValidPCOffset + m.newFuncEntryAddress
-		
-		newPCDataOffset := m.addBufferToPclntable(&newPCData)
-		//goland:noinspection GoVetUnsafePointer
-		info.pcdataInfo[tableIndex] = &pcDataTableInfo{
-			offset:       newPCDataOffset,
-			data:         newPCData,
-			lastPCDataPC: lastNewValidPC,
-		}
-		
-		patchUInt32WithPointer(unsafe.Pointer(&m.newPclntable[pcDataOffsetOffset]), newPCDataOffset)
+		m.info.pcDataTables[tableIndex] = newPCData
 
 		if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
 			dumpPCData(m.getPCDataTable(uintptr(pcDataOffset)), fmt.Sprintf("Old pcdata %d", tableIndex))
-			dumpPCData(m.newPclntable[newPCDataOffset:], fmt.Sprintf("New pcdata %d", tableIndex))
+			dumpPCData(newPCData, fmt.Sprintf("New pcdata %d", tableIndex))
 		}
 	}
-	var err error
-	info.pcFileInfo, err = m.patchPCFile()
+	err := m.buildPCFile()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	info.pcLineInfo, err = m.patchPCLine()
+	err = m.buildPCLine()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	info.pcSPInfo, err = m.patchPCSP()
+	err = m.buildPCSP()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	m.state.pcDataPatched = true
-	return info, nil
+	return nil
 }
 
 
-func (m *moduleDataPatcher) patchPCSP() (*pcDataTableInfo, error) {
-	if m.state.pcspPatched {
-		return nil, errors.New("attempted to patch the pcsp twice")
-	}
-
-	newPCSP, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.function.pcsp)), m.offsetMappings, func(start uintptr, end uintptr) ([]PCDataEntry, error) {
+func (m *moduleDataPatcher) buildPCSP() error {
+	newPCSP, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.origFunction.pcsp)), m.offsetMappings, func(start uintptr, end uintptr) ([]PCDataEntry, error) {
 		return generatePCSP(start+m.newFuncEntryAddress, end+m.newFuncEntryAddress)
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	lastNewValidPC := lastNewValidPCOffset + m.newFuncEntryAddress
-	f := m.function._func
-	pcspEntryOffset := m.funcOffset + unsafe.Offsetof(f.pcsp)
-	pcspOffset := m.patchPClntableEntryUInt32(&newPCSP, pcspEntryOffset)
-
-	m.state.pcspPatched = true
+	m.info.pcsp = newPCSP
 
 	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
-		dumpPCData(m.getPCDataTable(uintptr(m.function.pcsp)), "Old PCSP")
+		dumpPCData(m.getPCDataTable(uintptr(m.origFunction.pcsp)), "Old PCSP")
 		dumpPCData(newPCSP, "New PCSP")
 	}
 
-	return &pcDataTableInfo{
-		offset:       pcspOffset,
-		data:         newPCSP,
-		lastPCDataPC: lastNewValidPC,
-	}, nil
+	return nil
 }
 
 
-func (m *moduleDataPatcher) patchPCFile() (*pcDataTableInfo, error) {
-	if m.state.pcFilePatched {
-		return nil, errors.New("attempted to patch the pcFile twice")
-	}
-
-	newPCFile, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.function.pcfile)), m.offsetMappings, nil)
+func (m *moduleDataPatcher) buildPCLine() error {
+	newPCLine, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.origFunction.pcln)), m.offsetMappings, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	lastNewValidPC := lastNewValidPCOffset + m.newFuncEntryAddress
+	m.info.pcLine = newPCLine
 
 	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
-		dumpPCData(m.getPCDataTable(uintptr(m.function.pcfile)), "Old pcfile")
-		dumpPCData(newPCFile, "New pcfile")
-	}
-
-	f := m.function._func
-	pcFileEntryOffset := m.funcOffset + unsafe.Offsetof(f.pcfile)
-	pcFileOffset := m.patchPClntableEntryUInt32(&newPCFile, pcFileEntryOffset)
-
-	m.state.pcFilePatched = true
-	return &pcDataTableInfo{
-		offset:       pcFileOffset,
-		data:         newPCFile,
-		lastPCDataPC: lastNewValidPC,
-	}, nil
-}
-
-
-func (m *moduleDataPatcher) patchPCLine() (*pcDataTableInfo, error) {
-	if m.state.pcLinePatched {
-		return nil, errors.New("Attempted to patch the pcLine twice.")
-	}
-
-	newPCLine, lastNewValidPCOffset, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.function.pcln)), m.offsetMappings, nil)
-	if err != nil {
-		return nil, err
-	}
-	lastNewValidPC := lastNewValidPCOffset + m.newFuncEntryAddress
-
-	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
-		dumpPCData(m.getPCDataTable(uintptr(m.function.pcln)), "Old pcln")
+		dumpPCData(m.getPCDataTable(uintptr(m.origFunction.pcln)), "Old pcln")
 		dumpPCData(newPCLine, "New pcln")
 	}
 
-	f := m.function._func
-	pcLineEntryOffset := m.funcOffset + unsafe.Offsetof(f.pcln)
-	pcLineOffset := m.patchPClntableEntryUInt32(&newPCLine, pcLineEntryOffset)
-
-	m.state.pcLinePatched = true
-	return &pcDataTableInfo{
-		offset:       pcLineOffset,
-		data:         newPCLine,
-		lastPCDataPC: lastNewValidPC,
-	}, nil
+	return nil
 }
 
 
 func (m *moduleDataPatcher) createFuncTable() error {
-	if m.state.funcTableCreated {
-		return errors.New("Attempted to create ftab twice.")
-	}
-
 	
 	m.ftab = append(m.ftab, m.newFuncTab(uintptr(len(m.newPclntable)), m.newFuncEntryAddress))
 	m.ftab = append(m.ftab, m.newFuncTab(m.funcOffset, m.newFuncEntryAddress))
 	
-	m.ftab = append(m.ftab, m.newFuncTab(uintptr(len(m.newPclntable)), m.newFuncEndAddress)) 
-
-	m.state.funcTableCreated = true
+	m.ftab = append(m.ftab, m.newFuncTab(uintptr(len(m.newPclntable)), m.newFuncEndAddress))
 	return nil
 }
 
-func (m *moduleDataPatcher) patchDeferReturn() error {
-	f := (*_func)(unsafe.Pointer(&m.newPclntable[m.funcOffset]))
-	if newDeferReturn, ok := findNewAddressByOriginalAddress(uintptr(f.deferreturn), m.offsetMappings); ok {
-		f.deferreturn = uint32(newDeferReturn)
+func (m *moduleDataPatcher) getDeferreturn() uint32 {
+	if newDeferReturn, ok := findNewAddressByOriginalAddress(uintptr(m.origFunction.deferreturn), m.offsetMappings); ok {
+		return uint32(newDeferReturn)
 	}
-	return nil
+	return 0
 }
 
 func addModule(newModule *moduledata) {
@@ -332,12 +241,99 @@ func addModule(newModule *moduledata) {
 	modulesLock.Unlock()
 }
 
+func verifyPCDatas(f1, f2 FuncInfo, addressMappings []AddressMapping) rookoutErrors.RookoutError {
+	if f1.npcdata != f2.npcdata {
+		return rookoutErrors.NewDifferentNPCData(uint32(f1.npcdata), uint32(f2.npcdata))
+	}
+
+	prevMapping := addressMappings[0]
+	for _, mapping := range addressMappings {
+		
+		_, ok := CallbacksMarkers[prevMapping.OriginalAddress]
+		prevMapping = mapping
+		if ok {
+			continue
+		}
+		if _, ok := CallbacksMarkers[mapping.OriginalAddress]; ok {
+			continue
+		}
+
+		pc1 := mapping.OriginalAddress - 1
+		pc2 := mapping.NewAddress - 1
+
+		for i := uint32(0); i < uint32(f1.npcdata); i++ {
+			value1 := pcdatavalue1(f1, uint32(i), pc1, nil, false)
+			value2 := pcdatavalue1(f2, uint32(i), pc2, nil, false)
+			if value1 != value2 {
+				return rookoutErrors.NewPCDataVerificationFailed(i, value1, pc1, value2, pc2)
+			}
+		}
+
+		sp1, _ := pcvalue(f1, uint32(f1.pcsp), pc1, nil, false)
+		sp2, _ := pcvalue(f2, uint32(f2.pcsp), pc2, nil, false)
+		if sp1 != sp2 {
+			return rookoutErrors.NewPCSPVerificationFailed(sp1, pc1, sp2, pc2)
+		}
+
+		file1, line1 := funcline1(f1, pc1, false)
+		file2, line2 := funcline1(f2, pc2, false)
+		if file1 != file2 {
+			return rookoutErrors.NewPCFileVerificationFailed(file1, pc1, file2, pc2)
+		}
+		if line1 != line2 {
+			return rookoutErrors.NewPCLineVerificationFailed(line1, pc1, line2, pc2)
+		}
+	}
+
+	return nil
+}
+
+func verifyFuncDatas(f1, f2 FuncInfo) rookoutErrors.RookoutError {
+	if f1.nfuncdata != f2.nfuncdata {
+		return rookoutErrors.NewDifferentNFuncData(f1.nfuncdata, f2.nfuncdata)
+	}
+
+	for i := 0; i < int(f1.nfuncdata); i++ {
+		value1 := funcdata(f1, uint8(i))
+		value2 := funcdata(f2, uint8(i))
+		if value1 != value2 {
+			return rookoutErrors.NewFuncDataVerificationFailed(i, uintptr(value1), uintptr(value2))
+		}
+	}
+
+	return nil
+}
+
+func (m *moduleDataPatcher) verifyModule(module *moduledata) (err rookoutErrors.RookoutError) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = rookoutErrors.NewModuleVerificationFailed(r)
+		}
+	}()
+
+	newFuncInfo := FuncInfo{
+		_func: (*_func)(unsafe.Pointer(&m.newPclntable[m.funcOffset])),
+		datap: module,
+	}
+	err = verifyPCDatas(*m.origFunction, newFuncInfo, m.addressMappings)
+	if err != nil {
+		return err
+	}
+	err = verifyFuncDatas(*m.origFunction, newFuncInfo)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 
 
 
 func PatchModuleData(addressMappings []AddressMapping, offsetMappings []AddressMapping, stateID int) error {
 	function := FindFunc(uintptr(addressMappings[1].OriginalAddress))
-	moduleName := fmt.Sprintf("Rookout-%s[%x]-%d", FuncName(function), function.getEntry(), stateID)
+	funcName := FuncName(function)
+	moduleName := fmt.Sprintf("Rookout-%s[%x]-%d", funcName, function.getEntry(), stateID)
 	if _, ok := modules[moduleName]; ok {
 		return nil
 	}
@@ -353,18 +349,12 @@ func PatchModuleData(addressMappings []AddressMapping, offsetMappings []AddressM
 		}
 	}
 
-	data := &moduleDataPatcher{function: &function, name: moduleName}
+	data := &moduleDataPatcher{origFunction: &function, name: moduleName, funcName: funcName}
 	data.addressMappings, data.offsetMappings = addressMappings, offsetMappings
 	data.origFuncEntryAddress = function.getEntry()
 	data.newFuncEntryAddress = data.addressMappings[0].NewAddress
 	data.newFuncEndAddress = data.addressMappings[len(data.addressMappings)-1].NewAddress
 	data.origModule = function.datap
-	data.newPclntable = append(data.newPclntable, data.origModule.pclntable...)
-	funcOffset, exists := findFuncOffsetInModule(data.origFuncEntryAddress, data.origModule)
-	if !exists {
-		return errors.New("couldn't find func offset in module data")
-	}
-	data.funcOffset = funcOffset
 
 	
 	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
@@ -373,23 +363,19 @@ func PatchModuleData(addressMappings []AddressMapping, offsetMappings []AddressM
 		dumpBuffer(data.origFuncEntryAddress, oldFuncEnd, "Original function")
 	}
 
-	if err := data.patchFuncAddress(); err != nil {
-		return err
-	}
-	allPCDataInfo, err := data.patchPCData()
+	err := data.buildPCData()
 	if err != nil {
 		return err
 	}
-	if err = data.patchDeferReturn(); err != nil {
+	data.buildFuncData()
+	if err = data.createPclnTable(); err != nil {
+		return err
+	}
+	data.createPCHeader()
+	if err = data.createFindFuncBucket(); err != nil {
 		return err
 	}
 	if err = data.createFuncTable(); err != nil {
-		return err
-	}
-	if err = data.createPCHeader(); err != nil {
-		return err
-	}
-	if err = data.createFindFuncBucket(); err != nil {
 		return err
 	}
 
@@ -397,114 +383,12 @@ func PatchModuleData(addressMappings []AddressMapping, offsetMappings []AddressM
 	if err != nil {
 		return err
 	}
-	if err = validateModuleFuncAndPCDataTables(&module, data.newFuncEntryAddress, data.newFuncEndAddress, allPCDataInfo); err != nil {
+
+	err = data.verifyModule(&module)
+	if err != nil {
 		return err
 	}
+
 	addModule(&module)
-	return nil
-}
-
-func validateModuleFuncAndPCDataTables(module *moduledata, newFuncEntry, newFuncEnd uintptr, pcdataInfo *allPCDataPatchInfo) error {
-	if err := validateModuleBoundaries(module, newFuncEntry, newFuncEnd); err != nil {
-		return err
-	}
-	if err := validateModuleFtab(module, newFuncEntry); err != nil {
-		return err
-	}
-	if err := validatePatchedFunctionInfo(module, newFuncEntry, pcdataInfo); err != nil {
-		return err
-	}
-	return nil
-}
-
-func validateModuleBoundaries(module *moduledata, newFuncEntry, newFuncEnd uintptr) error {
-	if module.minpc != newFuncEntry || module.maxpc != newFuncEnd {
-		return fmt.Errorf("bad boundaries of module %s. Expected [%d, %d), Got [%d, %d)", module.modulename, newFuncEntry, newFuncEnd, module.minpc, module.maxpc)
-	}
-	
-	return nil
-}
-
-const patchedIdx = 1
-const expectedFtabSize = 3 
-
-func validatePatchedFunctionInfo(module *moduledata, newFuncEntry uintptr, info *allPCDataPatchInfo) error {
-	funcOffset := module.ftab[patchedIdx].funcoff
-	moduleName := module.modulename
-	fInfo := FuncInfo{
-		_func: (*_func)(unsafe.Pointer(&module.pclntable[funcOffset])),
-		datap: module,
-	}
-	if fInfo.getEntry() != newFuncEntry {
-		return fmt.Errorf("got bad function entry for patched function in module %s. Expected %d, got %d", moduleName, newFuncEntry, fInfo.getEntry())
-	}
-	if int(fInfo.npcdata) != len(info.pcdataInfo) {
-		return fmt.Errorf("got different npcdata for patched function in module %s. Expected %d, got %d", moduleName, len(info.pcdataInfo), int(fInfo.npcdata))
-	}
-	for table := 0; table < len(info.pcdataInfo); table++ {
-		tableOff := pcdatastart(fInfo, uint32(table))
-		if info.pcdataInfo[table] == nil && tableOff > 0 {
-			return fmt.Errorf("got unexpected pcdata table %d for patched function in module %s. The table should not exist", table, moduleName)
-		}
-		if info.pcdataInfo[table] != nil && tableOff == 0 {
-			return fmt.Errorf("got missing pcdata table %d for patched function in module %s", table, moduleName)
-		}
-		if info.pcdataInfo[table] == nil {
-			continue 
-		}
-		if err := validatePCDataTable(module, info.pcdataInfo[table], fInfo, tableOff, fmt.Sprintf("pc data table %d", table)); err != nil {
-			return err
-		}
-	}
-	if err := validatePCDataTable(module, info.pcFileInfo, fInfo, uint32(fInfo.pcfile), "pc file"); err != nil {
-		return err
-	}
-	if err := validatePCDataTable(module, info.pcLineInfo, fInfo, uint32(fInfo.pcln), "pc line"); err != nil {
-		return err
-	}
-	if err := validatePCDataTable(module, info.pcSPInfo, fInfo, uint32(fInfo.pcsp), "pc sp"); err != nil {
-		return err
-	}
-	return nil
-}
-
-
-
-
-func validatePCDataTableOffsetAndData(module *moduledata, expectedInfo *pcDataTableInfo, tableName string, tableOffset uint32) error {
-	moduleName := module.modulename
-	if expectedInfo.offset != tableOffset {
-		return fmt.Errorf("got bad offset for %s for patched function in module %s. Expected %d, got %d", tableName, moduleName, expectedInfo.offset, tableOffset)
-	}
-	pcTab := getPCTab(module)[tableOffset:]
-	if len(pcTab) < len(expectedInfo.data) {
-		return fmt.Errorf("%s for patched function in module %s is to short. Need at least %d bytes, got %d", tableName, moduleName, len(expectedInfo.data), len(pcTab))
-	}
-	for i := 0; i < len(expectedInfo.data); i++ {
-		if expectedInfo.data[i] != pcTab[i] {
-			return fmt.Errorf("got bad byte #%d in %s for patched function in module %s. Expected %d, got %d", i, tableName, moduleName, expectedInfo.data[i], pcTab[i])
-		}
-	}
-	return nil
-}
-
-
-
-func validatePCDataTableFormat(fInfo FuncInfo, expectedInfo *pcDataTableInfo, moduleName, tableName string) error {
-	val, pc := pcvalue(fInfo, expectedInfo.offset, expectedInfo.lastPCDataPC, nil, false)
-	if val == -1 && pc == 0 {
-		return fmt.Errorf("got bad format for table %s in module %s", tableName, moduleName)
-	}
-	return nil
-}
-
-func validatePCDataTable(module *moduledata, expectedInfo *pcDataTableInfo, fInfo FuncInfo, tableOffset uint32, tableName string) error {
-	if err := validatePCDataTableOffsetAndData(module, expectedInfo, tableName, tableOffset); err != nil {
-		return err
-	}
-	
-	if err := validatePCDataTableFormat(fInfo, expectedInfo, module.modulename, tableName); err != nil {
-		return err
-	}
 	return nil
 }

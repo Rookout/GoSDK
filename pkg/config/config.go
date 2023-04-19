@@ -167,7 +167,7 @@ func GetDefaultConfiguration() DynamicConfiguration {
 			PingTimeout:   30 * time.Second,
 			PingInterval:  10 * time.Second,
 			WriteTimeout:  5 * time.Second,
-			SkipSSLVerify: utils.Contains(utils.TrueValues, os.Getenv("ROOKOUT_SKIP_SSL_VERIFY")),
+			SkipSSLVerify: utils.IsTrue(os.Getenv("ROOKOUT_SKIP_SSL_VERIFY")),
 		},
 		ObjectDumpConfigDefaults: ObjectDumpConfigDefaults{
 			unlimitedConfig: ObjectDumpConfig{
@@ -200,7 +200,7 @@ func GetDefaultConfiguration() DynamicConfiguration {
 			BucketRefreshRate: 10,
 			MaxAugMessages:    250,
 			MaxLogItems:       200,
-			ProtobufVersion2:  utils.Contains(utils.TrueValues, os.Getenv("ROOKOUT_Protobuf_Version2")),
+			ProtobufVersion2:  utils.IsTrue(os.Getenv("ROOKOUT_Protobuf_Version2")),
 		},
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/config"
+	"github.com/Rookout/GoSDK/pkg/logger"
 	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/utils"
@@ -84,7 +85,12 @@ func (n *NamespaceSerializer) dumpString(s string, config config.ObjectDumpConfi
 }
 
 func (n *NamespaceSerializer) dumpStringLen(stringLen int) {
-	n.Value.(*pb.Variant_StringValue).StringValue.OriginalSize = int32(stringLen)
+	if _, ok := n.Value.(*pb.Variant_StringValue); ok {
+		n.Value.(*pb.Variant_StringValue).StringValue.OriginalSize = int32(stringLen)
+	}
+	if _, ok := n.Value.(*pb.Variant_BinaryValue); ok {
+		n.Value.(*pb.Variant_BinaryValue).BinaryValue.OriginalSize = int32(stringLen)
+	}
 }
 
 func (n *NamespaceSerializer) dumpEnum(desc string, ordinal int, typeName string) {
@@ -151,7 +157,13 @@ func (n *NamespaceSerializer) dumpArray(getElem func(i int) Namespace, arrayLen 
 			break
 		}
 
-		listVariant.Values = append(listVariant.Values, n.spawn(getElem(i)).Variant)
+		e := getElem(i)
+		if e == nil {
+			logger.Logger().Warningf("Element %d is nil, arrayLen: %d, max width: %d\n", i, arrayLen, config.MaxWidth)
+			break
+		}
+
+		listVariant.Values = append(listVariant.Values, n.spawn(e).Variant)
 	}
 	n.Value = &pb.Variant_ListValue{ListValue: listVariant}
 }

@@ -251,24 +251,22 @@ func addCallbacksEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMa
 
 
 
-func updatePCDataOffsets(p []byte, offsetMappings []AddressMapping, pcDataGenerator func(uintptr, uintptr) ([]PCDataEntry, error)) ([]byte, uintptr, error) {
+func updatePCDataOffsets(p []byte, offsetMappings []AddressMapping, pcDataGenerator func(uintptr, uintptr) ([]PCDataEntry, error)) ([]byte, error) {
 	pcDataEntries := decodePCDataEntries(p)
 	if err := updatePCDataEntries(pcDataEntries, offsetMappings, false); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	if pcDataGenerator != nil {
 		newPCDataEntries, err := addCallbacksEntries(pcDataEntries, offsetMappings, pcDataGenerator)
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 		pcDataEntries = newPCDataEntries
 	}
 	encoded, err := encodePCDataEntries(pcDataEntries)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	lastNewPCDataOffset := pcDataEntries[len(pcDataEntries)-1].Offset
-	lastNewValidPCOffset := lastNewPCDataOffset - 1 
-	return encoded, lastNewValidPCOffset, nil
+	return encoded, nil
 }

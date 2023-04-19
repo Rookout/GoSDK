@@ -115,6 +115,18 @@ const pcbucketsize = 256 * minfunc
 //go:linkname pcdatastart runtime.pcdatastart
 func pcdatastart(_ FuncInfo, _ uint32) uint32
 
+//go:linkname funcdata runtime.funcdata
+func funcdata(f FuncInfo, i uint8) unsafe.Pointer
+
+//go:linkname pcdatavalue1 runtime.pcdatavalue1
+func pcdatavalue1(f FuncInfo, table uint32, targetpc uintptr, cache *pcvalueCache, strict bool) int32
+
+//go:linkname funcspdelta runtime.funcspdelta
+func funcspdelta(f FuncInfo, targetpc uintptr, cache *pcvalueCache) int32
+
+//go:linkname funcline1 runtime.funcline1
+func funcline1(f FuncInfo, targetpc uintptr, strict bool) (file string, line int32)
+
 
 
 type pcvalueCacheEnt struct {
