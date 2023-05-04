@@ -12,6 +12,7 @@ type RookOptions struct {
 	LogFile     string
 	GitCommit   string
 	GitOrigin   string
+	GitSources  map[string]string
 	LiveTail    bool
 	Labels      map[string]string
 	Quiet       bool

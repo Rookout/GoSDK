@@ -4,7 +4,6 @@
 package module
 
 import (
-	"fmt"
 	"os"
 	"unsafe"
 
@@ -132,7 +131,6 @@ func (m *moduleDataPatcher) createPclnTable() rookoutErrors.RookoutError {
 		}
 		pcDataOffsets[i] = uint32(len(m.newPclntable))
 		m.writeBytesToPclnTable(table)
-		dumpPCData(table, fmt.Sprintf("table %d\n", i))
 	}
 
 	pcspOffset := uint32(len(m.newPclntable))

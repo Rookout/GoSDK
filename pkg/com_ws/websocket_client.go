@@ -72,6 +72,8 @@ func (w *webSocketClient) Dial(ctx context.Context) error {
 
 			logger.Logger().Errorf("The Rookout token supplied (%s) is not valid; please check the token and try again", censoredToken)
 			return rookoutErrors.NewInvalidTokenError()
+		} else if isHttpResponseBadRequest(httpRes) {
+			return rookoutErrors.NewWebSocketError()
 		} else {
 			logger.Logger().Errorf("Failed to connect to controller (%s). err: %s", w.agentURL, err.Error())
 		}
@@ -223,6 +225,13 @@ func isHttpResponseBadToken(httpRes *http.Response) bool {
 		return false
 	}
 	return httpRes.StatusCode == http.StatusForbidden || httpRes.StatusCode == http.StatusUnauthorized
+}
+
+func isHttpResponseBadRequest(httpRes *http.Response) bool {
+	if httpRes == nil {
+		return false
+	}
+	return httpRes.StatusCode == http.StatusBadRequest
 }
 
 func drainTimer(timer *time.Ticker) {

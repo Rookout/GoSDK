@@ -16,6 +16,7 @@ import (
 
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/collection/memory"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/binary_info"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
@@ -128,15 +129,29 @@ type internalVariable struct {
 	reg              *op.DwarfRegister 
 
 	VariablesCache map[VariablesCacheKey]VariablesCacheValue
+	closed         bool
 }
 
 type VariablesCacheKey struct {
 	addr uint64
-	typ  string
+	typ  godwarf.Type
 }
 type VariablesCacheValue = *internalVariable
 
-func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader, bi *binary_info.BinaryInfo, objectDumpConfig config.ObjectDumpConfig, dictAddr uint64, variablesCache map[VariablesCacheKey]VariablesCacheValue) *Variable {
+func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader, bi *binary_info.BinaryInfo, objectDumpConfig config.ObjectDumpConfig, dictAddr uint64, variablesCache map[VariablesCacheKey]VariablesCacheValue) (v *Variable) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Logger().Fatalf("Caught panic while creating variable. Variable: %s, recovered: %v\n", name, r)
+			var err error
+			if e, ok := r.(error); ok {
+				err = e
+			} else {
+				err = rookoutErrors.NewVariableCreationFailed(r)
+			}
+			v = &Variable{Name: name, internalVariable: &internalVariable{Unreadable: err}}
+		}
+	}()
+
 	var err error
 	dwarfType, err = resolveParametricType(bi, mem, dwarfType, dictAddr)
 	if err != nil {
@@ -169,11 +184,12 @@ func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.Me
 		}
 	}
 
-	if v, ok := variablesCache[VariablesCacheKey{addr, dwarfType.String()}]; ok {
-		if _, ok := mem.(*memory.ProcMemory); ok {
-			return &Variable{Name: name, DwarfType: dwarfType, internalVariable: v}
-		}
-	}
+	
+	
+	
+	
+	
+	
 
 	var i *internalVariable
 	select {
@@ -181,11 +197,12 @@ func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.Me
 	default:
 		i = &internalVariable{}
 	}
-	v := &Variable{internalVariable: i}
+	v = &Variable{internalVariable: i}
 
-	if _, ok := mem.(*memory.ProcMemory); ok {
-		variablesCache[VariablesCacheKey{addr, dwarfType.String()}] = v.internalVariable
-	}
+	
+	
+	
+	
 	v.VariablesCache = variablesCache
 	v.Name = name
 	v.Addr = addr
@@ -496,6 +513,18 @@ func (v *Variable) LoadValue() {
 }
 
 func (v *Variable) LoadValueInternal(recurseLevel int) error {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Logger().Fatalf("Caught panic while loading variable. Variable: %s, recovered: %v\n", v.Name, r)
+			var err error
+			if e, ok := r.(error); ok {
+				err = e
+			} else {
+				err = rookoutErrors.NewVariableLoadFailed(r)
+			}
+			v.Unreadable = err
+		}
+	}()
 	if v.Unreadable != nil || v.loaded || (v.Addr == 0 && v.Base == 0) {
 		return v.Unreadable
 	}
@@ -854,6 +883,10 @@ func (v *Variable) loadInterface(recurseLevel int, loadData bool) {
 	_type, data, isnil := v.readInterface()
 
 	if isnil {
+		if data == nil {
+			return
+		}
+
 		
 		data = data.MaybeDereference()
 		v.Children = []*Variable{data}
@@ -940,7 +973,7 @@ func (v *Variable) readInterface() (_type, data *Variable, isnil bool) {
 			data, _ = v.toField(f)
 		}
 	}
-	return
+	return _type, data, isnil
 }
 
 func (v *Variable) structMember(memberName string) (*Variable, error) {
@@ -1136,6 +1169,11 @@ func (i *internalVariable) clear() {
 }
 
 func (v *Variable) Close() error {
+	if v.closed {
+		return nil
+	}
+	v.closed = true
+
 	for i := range v.Children {
 		_ = v.Children[i].Close()
 	}

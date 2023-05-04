@@ -7,7 +7,6 @@ import (
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/config"
-	"github.com/Rookout/GoSDK/pkg/logger"
 	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/utils"
@@ -140,7 +139,7 @@ func (n *NamespaceSerializer) dumpTime(t time.Time, config config.ObjectDumpConf
 	}
 }
 
-func (n *NamespaceSerializer) dumpArray(getElem func(i int) Namespace, arrayLen int, config config.ObjectDumpConfig) {
+func (n *NamespaceSerializer) dumpArray(getElem func(i int) (Namespace, bool), arrayLen int, config config.ObjectDumpConfig) {
 	n.dumpType(pb.Variant_VARIANT_LIST)
 	if n.getCurrentDepth() >= config.MaxCollectionDepth {
 		n.dumpMaxDepth(true)
@@ -157,9 +156,8 @@ func (n *NamespaceSerializer) dumpArray(getElem func(i int) Namespace, arrayLen 
 			break
 		}
 
-		e := getElem(i)
-		if e == nil {
-			logger.Logger().Warningf("Element %d is nil, arrayLen: %d, max width: %d\n", i, arrayLen, config.MaxWidth)
+		e, ok := getElem(i)
+		if !ok {
 			break
 		}
 
@@ -172,7 +170,7 @@ func (n *NamespaceSerializer) dumpUnsupported() {
 	n.dumpType(pb.Variant_VARIANT_UKNOWN_OBJECT)
 }
 
-func (n *NamespaceSerializer) dumpStruct(getField func(i int) (string, Namespace), numOfFields int, config config.ObjectDumpConfig) {
+func (n *NamespaceSerializer) dumpStruct(getField func(i int) (string, Namespace, bool), numOfFields int, config config.ObjectDumpConfig) {
 	n.dumpType(pb.Variant_VARIANT_OBJECT)
 
 	if n.getCurrentDepth()+1 >= config.MaxDepth {
@@ -182,12 +180,15 @@ func (n *NamespaceSerializer) dumpStruct(getField func(i int) (string, Namespace
 
 	n.Attributes = make([]*pb.Variant_NamedValue, 0, numOfFields)
 	for i := 0; i < numOfFields; i++ {
-		fieldName, fieldValue := getField(i)
+		fieldName, fieldValue, ok := getField(i)
+		if !ok {
+			continue
+		}
 		n.Attributes = append(n.Attributes, &pb.Variant_NamedValue{Name: fieldName, Value: n.spawn(fieldValue).Variant})
 	}
 }
 
-func (n *NamespaceSerializer) dumpMap(getKeyValue func(i int) (Namespace, Namespace), mapLen int, config config.ObjectDumpConfig) {
+func (n *NamespaceSerializer) dumpMap(getKeyValue func(i int) (Namespace, Namespace, bool), mapLen int, config config.ObjectDumpConfig) {
 	n.dumpType(pb.Variant_VARIANT_MAP)
 	if n.getCurrentDepth() >= config.MaxCollectionDepth {
 		n.dumpMaxDepth(true)
@@ -196,11 +197,14 @@ func (n *NamespaceSerializer) dumpMap(getKeyValue func(i int) (Namespace, Namesp
 
 	pairs := make([]*pb.Variant_Pair, 0)
 	for i := 0; i < mapLen; i++ {
-		if i >= config.MaxWidth {
+		if len(pairs) >= config.MaxWidth {
 			break
 		}
 
-		key, value := getKeyValue(i)
+		key, value, ok := getKeyValue(i)
+		if !ok {
+			continue
+		}
 		pairs = append(pairs, &pb.Variant_Pair{
 			First:  n.spawn(key).Variant,
 			Second: n.spawn(value).Variant,
@@ -265,12 +269,15 @@ func (n *NamespaceSerializer) dumpChan(value reflect.Value, config config.Object
 func (n *NamespaceSerializer) dumpRookoutError(r rookoutErrors.RookoutError) {
 	n.dumpType(pb.Variant_VARIANT_ERROR)
 
+	stackFramesObj := NewGoObjectNamespace(string(r.Stack()))
+	stackFramesObj.ObjectDumpConf.Tailor(reflect.String, len(r.Stack()))
+
 	n.Value = &pb.Variant_ErrorValue{
 		ErrorValue: &pb.Error{
 			Message:    r.Error(),
 			Type:       r.GetType(),
 			Parameters: n.spawn(NewGoObjectNamespace(r.GetArguments())).Variant,
-			Traceback:  n.spawn(NewGoObjectNamespace(r.StackFrames())).Variant,
+			Traceback:  n.spawn(stackFramesObj).Variant,
 		},
 	}
 }

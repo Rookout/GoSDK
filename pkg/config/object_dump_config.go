@@ -33,8 +33,10 @@ type ObjectDumpConfig struct {
 }
 
 func (o *ObjectDumpConfig) Tailor(kind reflect.Kind, objLen int) {
-	o.IsTailored = true
-	o.ShouldTailor = false
+	defer func() {
+		o.IsTailored = true
+		o.ShouldTailor = false
+	}()
 
 	defaults := config.Load().(DynamicConfiguration).ObjectDumpConfigDefaults
 	switch kind {

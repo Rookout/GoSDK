@@ -59,7 +59,6 @@ func (r RookoutErrorImpl) StackFrames() []errors.StackFrame {
 	default:
 		return errors.New(e).StackFrames()
 	}
-
 }
 
 func (r RookoutErrorImpl) Stack() []byte {
@@ -71,7 +70,6 @@ func (r RookoutErrorImpl) Stack() []byte {
 	default:
 		return errors.New(e).Stack()
 	}
-
 }
 
 func newRookoutError(errorType string, description string, externalError error, arguments map[string]interface{}) *RookoutErrorImpl {
@@ -428,6 +426,14 @@ func NewInvalidTokenError() RookoutError {
 		map[string]interface{}{})
 }
 
+func NewWebSocketError() RookoutError {
+	return newRookoutError(
+		"WebSocketError",
+		"Received HTTP status 400 from the controller, please make sure WebSocket is enabled on the load balancer.",
+		nil,
+		map[string]interface{}{})
+}
+
 func NewInvalidLabelError(label string) RookoutError {
 	return newRookoutError(
 		"InvalidLabelError",
@@ -497,7 +503,7 @@ func NewUnknownError(recovered interface{}) RookoutError {
 	err, _ := recovered.(error)
 
 	return newRookoutError(
-		"RookPanicInGoroutine",
+		"Unknown",
 		"Caught panic in goroutine",
 		err,
 		map[string]interface{}{
@@ -913,6 +919,26 @@ func NewModuleVerificationFailed(recovered interface{}) RookoutError {
 	return newRookoutError(
 		"ModuleVerificationFailed",
 		"Panic occured while trying to verify new moduledata",
+		nil,
+		map[string]interface{}{
+			"recovered": recovered,
+		})
+}
+
+func NewVariableCreationFailed(recovered interface{}) RookoutError {
+	return newRookoutError(
+		"VariableCreationFailed",
+		"Panic occured while trying to create new variable",
+		nil,
+		map[string]interface{}{
+			"recovered": recovered,
+		})
+}
+
+func NewVariableLoadFailed(recovered interface{}) RookoutError {
+	return newRookoutError(
+		"VariableLoadFailed",
+		"Panic occured while trying to load variable",
 		nil,
 		map[string]interface{}{
 			"recovered": recovered,

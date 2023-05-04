@@ -33,21 +33,27 @@ type VariableNamespace struct {
 	ObjectDumpConf    config.ObjectDumpConfig
 	name              string
 	CollectionService *collection.CollectionService
+	currentDepth      int
 }
 
 func NewVariableNamespace(fullName string, o *variable.Variable, collectionService *collection.CollectionService) *VariableNamespace {
 	g := &VariableNamespace{
 		Obj:               o,
-		ObjectDumpConf:    config.GetDefaultDumpConfig(),
+		ObjectDumpConf:    o.ObjectDumpConfig,
 		CollectionService: collectionService,
 		name:              fullName,
+		currentDepth:      0,
 	}
 
 	return g
 }
 
-func (v *VariableNamespace) spawn(name string, obj *variable.Variable) *VariableNamespace {
-	return NewVariableNamespace(name, obj, v.CollectionService)
+func (v *VariableNamespace) spawn(name string, obj *variable.Variable, checkMaxDepth bool) (*VariableNamespace, bool) {
+	if checkMaxDepth && v.currentDepth >= v.ObjectDumpConf.MaxDepth {
+		return nil, true
+	}
+
+	return &VariableNamespace{name: name, Obj: obj, ObjectDumpConf: obj.ObjectDumpConfig, CollectionService: v.CollectionService, currentDepth: v.currentDepth + 1}, false
 }
 
 func (v *VariableNamespace) GetSize(_ string, _ interface{}) Namespace {
@@ -123,7 +129,8 @@ func (v *VariableNamespace) ReadAttribute(name string) (Namespace, rookoutErrors
 
 	for _, child := range value.Children {
 		if name == child.Name {
-			return v.spawn(v.name+"."+name, child), nil
+			attr, _ := v.spawn(v.name+"."+name, child, false)
+			return attr, nil
 		}
 	}
 
@@ -139,7 +146,8 @@ func (v *VariableNamespace) readKeyFromArray(key int) (Namespace, rookoutErrors.
 
 	if int(v.Obj.Len) > key {
 		if len(v.Obj.Children) > key {
-			return v.spawn(name, v.Obj.Children[key]), nil
+			item, _ := v.spawn(name, v.Obj.Children[key], false)
+			return item, nil
 		}
 
 		
@@ -161,7 +169,8 @@ func (v *VariableNamespace) readKeyFromMap(key string) (Namespace, rookoutErrors
 		childKey := v.Obj.Children[i]
 		keyName := constant.StringVal(childKey.Value)
 		if key == keyName {
-			return v.spawn(name, v.Obj.Children[i+1]), nil
+			item, _ := v.spawn(name, v.Obj.Children[i+1], false)
+			return item, nil
 		}
 	}
 
@@ -181,7 +190,8 @@ func (v *VariableNamespace) readKeyFromStruct(key string) (Namespace, rookoutErr
 	name := v.name + "." + key
 	for _, child := range v.Obj.Children {
 		if key == child.Name {
-			return v.spawn(name, child), nil
+			item, _ := v.spawn(name, child, false)
+			return item, nil
 		}
 	}
 
@@ -203,7 +213,8 @@ func (v *VariableNamespace) tryLoadChild(name string) (Namespace, error) {
 	if err != nil {
 		return nil, err
 	}
-	return v.spawn(name, child), nil
+	spawned, _ := v.spawn(name, child, false)
+	return spawned, nil
 }
 
 func (v *VariableNamespace) ReadKey(key interface{}) (Namespace, rookoutErrors.RookoutError) {
@@ -230,7 +241,7 @@ func (v *VariableNamespace) ReadKey(key interface{}) (Namespace, rookoutErrors.R
 		return v.readKeyFromStruct(keyAsString)
 
 	case reflect.Interface:
-		obj := v.spawn(v.name, v.Obj.Children[0])
+		obj, _ := v.spawn(v.name, v.Obj.Children[0], false)
 		if obj.Obj.Kind == reflect.Interface {
 			return nil, rookoutErrors.NewInvalidInterfaceVariable(key)
 		}
@@ -297,7 +308,10 @@ func (v *VariableNamespace) GetObject() interface{} {
 		}
 		values := make([]interface{}, 0, len(v.Obj.Children))
 		for i, child := range v.Obj.Children {
-			n := v.spawn(v.name+"["+strconv.Itoa(i)+"]", child)
+			n, maxDepth := v.spawn(v.name+"["+strconv.Itoa(i)+"]", child, true)
+			if maxDepth {
+				return values
+			}
 			values = append(values, n.GetObject())
 		}
 		return values
@@ -364,17 +378,23 @@ func (v *VariableNamespace) Serialize(serializer Serializer) {
 	} else {
 		switch v.Obj.Kind {
 		case reflect.Map:
-			getKeyValue := func(i int) (Namespace, Namespace) {
+			getKeyValue := func(i int) (Namespace, Namespace, bool) {
 				keyIndex := i * 2
 				valueIndex := keyIndex + 1
 
 				key := v.Obj.Children[keyIndex]
-				keyNamespace := v.spawn(key.Name, key)
+				keyNamespace, maxDepth := v.spawn(key.Name, key, true)
+				if maxDepth {
+					return nil, nil, false
+				}
 
 				value := v.Obj.Children[valueIndex]
-				valueNamespace := v.spawn(value.Name, value)
+				valueNamespace, maxDepth := v.spawn(value.Name, value, true)
+				if maxDepth {
+					return nil, nil, false
+				}
 
-				return keyNamespace, valueNamespace
+				return keyNamespace, valueNamespace, true
 			}
 
 			serializer.dumpMap(getKeyValue, len(v.Obj.Children)/2, v.ObjectDumpConf)
@@ -385,13 +405,17 @@ func (v *VariableNamespace) Serialize(serializer Serializer) {
 				return
 			}
 
-			getElem := func(i int) Namespace {
+			getElem := func(i int) (Namespace, bool) {
 				if i >= len(v.Obj.Children) {
-					return nil
+					return nil, false
 				}
 
 				child := v.Obj.Children[i]
-				return v.spawn(child.Name, child)
+				spawned, maxDepth := v.spawn(child.Name, child, true)
+				if maxDepth {
+					return nil, false
+				}
+				return spawned, true
 			}
 			serializer.dumpArray(getElem, int(v.Obj.Len), v.ObjectDumpConf)
 		case reflect.Ptr:
@@ -400,7 +424,10 @@ func (v *VariableNamespace) Serialize(serializer Serializer) {
 			} else if v.Obj.Children[0].OnlyAddr {
 				dumpUint(serializer, v.Obj.Children[0].Addr, v.ObjectDumpConf)
 			} else {
-				child := v.spawn(v.Obj.Name, v.Obj.Children[0])
+				child, maxDepth := v.spawn(v.Obj.Name, v.Obj.Children[0], true)
+				if maxDepth {
+					return
+				}
 				child.Serialize(serializer)
 			}
 		case reflect.UnsafePointer:
@@ -424,13 +451,29 @@ func (v *VariableNamespace) Serialize(serializer Serializer) {
 				return
 			}
 
-			
-			child := v.spawn(data.Name, data)
+			var child *VariableNamespace
+			if data.Addr == v.Obj.Addr {
+				
+				var maxDepth bool
+				child, maxDepth = v.spawn(data.Name, data, true)
+				if maxDepth {
+					return
+				}
+			} else {
+				child, _ = v.spawn(data.Name, data, false)
+				child.currentDepth = v.currentDepth
+			}
+
 			child.Serialize(serializer)
 			serializer.dumpOriginalType(fmt.Sprintf("%s (%s)", PrettyTypeName(v.Obj.DwarfType), PrettyTypeName(child.Obj.DwarfType)))
 		case reflect.Struct:
-			getField := func(i int) (string, Namespace) {
-				return v.Obj.Children[i].Name, v.spawn(v.Obj.Children[i].Name, v.Obj.Children[i])
+			getField := func(i int) (string, Namespace, bool) {
+				child := v.Obj.Children[i]
+				field, maxDepth := v.spawn(child.Name, child, true)
+				if maxDepth {
+					return "", nil, false
+				}
+				return child.Name, field, true
 			}
 			serializer.dumpStruct(getField, len(v.Obj.Children), v.ObjectDumpConf)
 		default:

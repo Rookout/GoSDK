@@ -90,8 +90,8 @@ func (c *CollectionService) GetVariable(name string, config config.ObjectDumpCon
 	return nil, errors.New("variable not found")
 }
 
-func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableLocator, config config.ObjectDumpConfig) *variable.Variable {
-	v := varLocator.Locate(c.regs, c.dictAddr, c.variablesCache, config)
+func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableLocator, config config.ObjectDumpConfig) (v *variable.Variable) {
+	v = varLocator.Locate(c.regs, c.dictAddr, c.variablesCache, config)
 	if name := v.Name; len(name) > 1 && name[0] == '&' {
 		v = v.MaybeDereference()
 		if v.Addr == 0 && v.Unreadable == nil {

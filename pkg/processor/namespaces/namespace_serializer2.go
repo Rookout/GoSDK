@@ -7,7 +7,6 @@ import (
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/config"
-	"github.com/Rookout/GoSDK/pkg/logger"
 	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/utils"
@@ -134,7 +133,7 @@ func (n *NamespaceSerializer2) dumpTime(t time.Time, config config.ObjectDumpCon
 	n.TimeValue = timestamppb.New(t)
 }
 
-func (n *NamespaceSerializer2) dumpArray(getElem func(i int) Namespace, arrayLen int, config config.ObjectDumpConfig) {
+func (n *NamespaceSerializer2) dumpArray(getElem func(i int) (Namespace, bool), arrayLen int, config config.ObjectDumpConfig) {
 	n.dumpType(pb.Variant_VARIANT_LIST)
 	n.OriginalSize = uint32(arrayLen)
 
@@ -148,9 +147,8 @@ func (n *NamespaceSerializer2) dumpArray(getElem func(i int) Namespace, arrayLen
 			return
 		}
 
-		e := getElem(i)
-		if e == nil {
-			logger.Logger().Warningf("Element %d is nil, arrayLen: %d, max width: %d\n", i, arrayLen, config.MaxWidth)
+		e, ok := getElem(i)
+		if !ok {
 			break
 		}
 
@@ -182,7 +180,7 @@ func (n *NamespaceSerializer2) dumpTraceback(getFrame func(i int) (int, string, 
 	}
 }
 
-func (n *NamespaceSerializer2) dumpStruct(getField func(i int) (string, Namespace), numOfFields int, config config.ObjectDumpConfig) {
+func (n *NamespaceSerializer2) dumpStruct(getField func(i int) (string, Namespace, bool), numOfFields int, config config.ObjectDumpConfig) {
 	n.dumpType(pb.Variant_VARIANT_OBJECT)
 
 	if n.getCurrentDepth()+1 >= config.MaxDepth {
@@ -191,13 +189,16 @@ func (n *NamespaceSerializer2) dumpStruct(getField func(i int) (string, Namespac
 	}
 
 	for i := 0; i < numOfFields; i++ {
-		fieldName, fieldValue := getField(i)
+		fieldName, fieldValue, ok := getField(i)
+		if !ok {
+			continue
+		}
 		n.AttributeNamesInCache = append(n.AttributeNamesInCache, n.getStringIndexInCache(fieldName))
 		n.AttributeValues = append(n.AttributeValues, n.spawn(fieldValue).Variant2)
 	}
 }
 
-func (n *NamespaceSerializer2) dumpMap(getKeyValue func(i int) (Namespace, Namespace), mapLen int, config config.ObjectDumpConfig) {
+func (n *NamespaceSerializer2) dumpMap(getKeyValue func(i int) (Namespace, Namespace, bool), mapLen int, config config.ObjectDumpConfig) {
 	n.dumpType(pb.Variant_VARIANT_MAP)
 	n.OriginalSize = uint32(mapLen)
 
@@ -211,7 +212,10 @@ func (n *NamespaceSerializer2) dumpMap(getKeyValue func(i int) (Namespace, Names
 			return
 		}
 
-		key, value := getKeyValue(i)
+		key, value, ok := getKeyValue(i)
+		if !ok {
+			continue
+		}
 		n.CollectionKeys = append(n.CollectionKeys, n.spawn(key).Variant2)
 		n.CollectionValues = append(n.CollectionValues, n.spawn(value).Variant2)
 	}

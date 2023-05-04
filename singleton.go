@@ -38,6 +38,7 @@ func printOptions(opts *RookOptions) {
 		memberToString("log_file", opts.LogFile) +
 		memberToString("git_commit", opts.GitCommit) +
 		memberToString("git_origin", opts.GitOrigin) +
+		memberToString("git_sources", opts.GitSources) +
 		memberToString("live_tail", opts.LiveTail) +
 		memberToString("labels", opts.Labels)
 
@@ -60,7 +61,8 @@ func start(opts RookOptions) {
 			case isErrorType(rookErr, rookoutErrors.NewRookInvalidOptions("")),
 				isErrorType(rookErr, rookoutErrors.NewInvalidTokenError()),
 				isErrorType(rookErr, rookoutErrors.NewRookMissingToken()),
-				isErrorType(rookErr, rookoutErrors.NewInvalidLabelError("")):
+				isErrorType(rookErr, rookoutErrors.NewInvalidLabelError("")),
+				isErrorType(rookErr, rookoutErrors.NewWebSocketError()):
 				_, _ = fmt.Fprintf(os.Stderr, "[Rookout] Failed to start rookout: %v\n", err)
 			default:
 				_, _ = fmt.Fprintf(os.Stderr, "[Rookout] Failed to connect to the controller - will continue attempting in the background: %v\n", err)

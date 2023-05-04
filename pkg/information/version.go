@@ -2,7 +2,7 @@ package information
 
 import pb "github.com/Rookout/GoSDK/pkg/protobuf"
 
-const VERSION = "0.1.41"
+const VERSION = "0.1.42"
 
 func collectVersion(info *AgentInformation) error {
 	info.Version = &pb.VersionInformation{

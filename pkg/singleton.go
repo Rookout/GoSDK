@@ -98,6 +98,26 @@ func initOptsFromEnv(opts *config.RookOptions) error {
 	}
 	information.GitConfig.Commit = opts.GitCommit
 
+	if opts.GitSources == nil {
+		rawGitSources, exists := os.LookupEnv("ROOKOUT_SOURCES")
+		if exists {
+			opts.GitSources = make(map[string]string)
+			gitSourceList := strings.Split(rawGitSources, ";")
+			for _, s := range gitSourceList {
+				if strings.Contains(s, "#") {
+					source := strings.Split(s, "#")
+					if len(source) != 2 {
+						continue
+					}
+
+					opts.GitSources[source[0]] = source[1]
+				}
+			}
+		}
+	}
+
+	information.GitConfig.Sources = opts.GitSources
+
 	if !opts.LiveTail {
 		liveTail, _ := os.LookupEnv("ROOKOUT_LIVE_LOGGER")
 		opts.LiveTail = utils.Contains(utils.TrueValues, liveTail)

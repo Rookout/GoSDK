@@ -13,7 +13,6 @@ import (
 	pb "github.com/Rookout/GoSDK/pkg/protobuf"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/module"
-	"github.com/go-errors/errors"
 )
 
 
@@ -46,15 +45,15 @@ type Serializer interface {
 	dumpNamespace(getNamedValue func(i int) (string, Namespace), numOfValues int)
 	dumpTraceback(getFrame func(i int) (int, string, string), tracebackLen int)
 	dumpFunc(functionName string, filename string, lineno int)
-	dumpArray(getElem func(i int) Namespace, arrayLen int, config config.ObjectDumpConfig)
+	dumpArray(getElem func(i int) (Namespace, bool), arrayLen int, config config.ObjectDumpConfig)
 	dumpBinary(b []byte, config config.ObjectDumpConfig)
 	dumpNil()
 	dumpUnsupported()
 	dumpRookoutError(err rookoutErrors.RookoutError)
 	dumpErrorMessage(msg string)
 	dumpEnum(desc string, ordinal int, typeName string)
-	dumpMap(getKeyValue func(i int) (Namespace, Namespace), mapLen int, config config.ObjectDumpConfig)
-	dumpStruct(getField func(i int) (string, Namespace), numOfFields int, config config.ObjectDumpConfig)
+	dumpMap(getKeyValue func(i int) (Namespace, Namespace, bool), mapLen int, config config.ObjectDumpConfig)
+	dumpStruct(getField func(i int) (string, Namespace, bool), numOfFields int, config config.ObjectDumpConfig)
 	dumpInt(i int64)
 	dumpFloat(f float64)
 	dumpComplex(c complex128)
@@ -189,14 +188,14 @@ func dumpTimeValue(s Serializer, value reflect.Value, config config.ObjectDumpCo
 }
 
 func dumpArrayValue(s Serializer, value reflect.Value, config config.ObjectDumpConfig) {
-	getElem := func(i int) (n Namespace) {
+	getElem := func(i int) (n Namespace, ok bool) {
 		defer func() {
 			if recover() != nil {
 				n = NewValueNamespace(value.Index(i))
 			}
 		}()
 		v := reflect.NewAt(value.Type().Elem(), unsafe.Pointer(value.Index(i).Addr().Pointer()))
-		return NewGoObjectNamespace(v.Elem().Interface())
+		return NewGoObjectNamespace(v.Elem().Interface()), true
 	}
 	s.dumpArray(getElem, value.Len(), config)
 }
@@ -215,20 +214,20 @@ func dumpBinaryValue(s Serializer, value reflect.Value, config config.ObjectDump
 
 func dumpStructValue(s Serializer, value reflect.Value, config config.ObjectDumpConfig) {
 	numOfFields := value.NumField()
-	getField := func(i int) (string, Namespace) {
+	getField := func(i int) (string, Namespace, bool) {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := NewValueNamespace(value.Field(i))
-		return fieldName, fieldValue
+		return fieldName, fieldValue, true
 	}
 	s.dumpStruct(getField, numOfFields, config)
 }
 
 func dumpMapValue(s Serializer, value reflect.Value, config config.ObjectDumpConfig) {
 	mapKeys := value.MapKeys()
-	getKeyValue := func(i int) (Namespace, Namespace) {
+	getKeyValue := func(i int) (Namespace, Namespace, bool) {
 		key := NewGoObjectNamespace(mapKeys[i].Interface())
 		value := NewGoObjectNamespace(value.MapIndex(mapKeys[i]).Interface())
-		return key, value
+		return key, value, true
 	}
 
 	s.dumpMap(getKeyValue, value.Len(), config)
@@ -252,13 +251,18 @@ func dumpError(s Serializer, err error) {
 }
 
 func dumpErrorValue(s Serializer, value reflect.Value) {
+	if value.Type() == reflect.TypeOf(&rookoutErrors.RookoutErrorImpl{}) {
+		value = value.Elem()
+	}
+
 	if value.Type() == reflect.TypeOf(rookoutErrors.RookoutErrorImpl{}) {
 		err := rookoutErrors.RookoutErrorImpl{
-			ExternalError: value.FieldByName("ExternalError").Interface().(*errors.Error),
+			ExternalError: value.FieldByName("ExternalError").Interface().(error),
 			Type:          value.FieldByName("Type").Interface().(string),
 			Arguments:     value.FieldByName("Arguments").Interface().(map[string]interface{}),
 		}
 		dumpError(s, err)
+		return
 	}
 
 	errorFunc := value.MethodByName("Error")

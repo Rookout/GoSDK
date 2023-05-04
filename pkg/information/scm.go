@@ -9,7 +9,22 @@ import (
 var GitConfig = struct {
 	Commit       string
 	RemoteOrigin string
+	Sources      map[string]string
 }{}
+
+func collectSources(info *AgentInformation) {
+	if len(GitConfig.Sources) == 0 {
+		return
+	}
+
+	info.Scm.Sources = make([]*pb.SCMInformation_SourceInfo, len(GitConfig.Sources))
+	i := 0
+	for remoteOriginUrl, commit := range GitConfig.Sources {
+		source := &pb.SCMInformation_SourceInfo{RemoteOriginUrl: remoteOriginUrl, Commit: commit}
+		info.Scm.Sources[i] = source
+		i += 1
+	}
+}
 
 func collectScm(info *AgentInformation) error {
 	info.Scm = &pb.SCMInformation{}
@@ -30,5 +45,6 @@ func collectScm(info *AgentInformation) error {
 
 	info.Scm.Commit = GitConfig.Commit
 	info.Scm.Origin = GitConfig.RemoteOrigin
+	collectSources(info)
 	return nil
 }
