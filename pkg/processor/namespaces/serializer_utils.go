@@ -164,16 +164,19 @@ var nsecTimeMethod = func() reflect.Value {
 }()
 
 func getTime(value reflect.Value) (t time.Time) {
-	defer func() {
-		
-		if recover() != nil {
-			unix := unixTimeMethod.Call([]reflect.Value{value})[0].Int()
-			nsec := nsecTimeMethod.Call([]reflect.Value{value})[0].Int()
-			t = time.Unix(unix, nsec)
-		}
+	i := func() (i interface{}) {
+		defer func() {
+			
+			if recover() != nil {
+				unix := unixTimeMethod.Call([]reflect.Value{value})[0].Int()
+				nsec := nsecTimeMethod.Call([]reflect.Value{value})[0].Int()
+				i = time.Unix(unix, nsec)
+			}
+		}()
+
+		return value.Interface()
 	}()
 
-	i := value.Interface()
 	if t, ok := i.(time.Time); ok {
 		return t
 	}
