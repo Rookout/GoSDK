@@ -9,6 +9,8 @@ import (
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/logger"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/disassembler"
 	"golang.org/x/arch/arm64/arm64asm"
 )
 
@@ -93,7 +95,7 @@ func tryGetReg(reg interface{}) (arm64asm.Reg, bool) {
 
 
 
-func (r *regState) updateAddrIndexInstruction(i *instruction) {
+func (r *regState) updateAddrIndexInstruction(i *disassembler.Instruction) {
 	var destArg arm64asm.Arg
 	if i.Op == arm64asm.STP || i.Op == arm64asm.LDP {
 		destArg = i.Args[2]
@@ -128,7 +130,7 @@ func (r *regState) updateAddrIndexInstruction(i *instruction) {
 
 
 
-func (r *regState) updateAddSubInstruction(i *instruction) {
+func (r *regState) updateAddSubInstruction(i *disassembler.Instruction) {
 	destReg, ok := tryGetReg(i.Args[0])
 	if !ok {
 		logger.Logger().Warningf("Got unexpected dest reg in add/sub: %v [%T], instruction = %v", i.Args[0], i.Args[0], i)
@@ -195,7 +197,7 @@ func (r *regState) updateAddSubInstruction(i *instruction) {
 
 
 
-func (r *regState) updateMovInstruction(i *instruction) {
+func (r *regState) updateMovInstruction(i *disassembler.Instruction) {
 	destReg, ok := tryGetReg(i.Args[0])
 	if !ok {
 		logger.Logger().Warningf("Got unexpected dest reg in mov: %v [%T], instruction = %v", i.Args[0], i.Args[0], i)
@@ -225,7 +227,7 @@ func (r *regState) updateMovInstruction(i *instruction) {
 	}
 }
 
-func (r *regState) update(i *instruction) {
+func (r *regState) update(i *disassembler.Instruction) {
 	
 	switch i.Op {
 	case arm64asm.STR, arm64asm.STP, arm64asm.LDR, arm64asm.LDP:
@@ -239,54 +241,34 @@ func (r *regState) update(i *instruction) {
 	}
 }
 
-func decode(bytes []byte) (*instruction, error) {
-	inst, err := arm64asm.Decode(bytes)
+func read(startPC uintptr, endPC uintptr) ([]*disassembler.Instruction, rookoutErrors.RookoutError) {
+	
+	instructions, err := disassembler.Decode(startPC, endPC, true)
 	if err != nil {
 		return nil, err
 	}
 
-	return &instruction{
-		baseInstruction: inst,
-	}, nil
-}
+	var skipUntil uintptr
+	var prevInst *disassembler.Instruction
+	var notSkipped []*disassembler.Instruction
+	for _, inst := range instructions {
+		if skipUntil > inst.Offset {
+			continue
+		}
 
-func read(startPC uintptr, endPC uintptr) ([]*instruction, error) {
-	var instructions []*instruction
-	funcLen := endPC - startPC
-	funcAsm := makeSliceFromPointer(startPC, int(funcLen))
-	offset := uintptr(0)
-	var prevInst *instruction
-
-	for offset < funcLen {
-		inst, err := decode(funcAsm[offset:])
-		if err != nil {
+		
+		if prevInst != nil && prevInst.Op == arm64asm.B && inst.Op == arm64asm.NOP {
 			
 			
 			
-			inst = &instruction{
-				baseInstruction: arm64asm.Inst{
-					Op: arm64asm.NOP,
-				},
-			}
-		} else {
-			
-			if prevInst != nil && prevInst.Op == arm64asm.B && inst.Op == arm64asm.NOP {
-				
-				
-				skip := uintptr(prevInst.Args[0].(arm64asm.PCRel))
-				offset = prevInst.Offset + skip
-				continue
+			if pcrel, ok := prevInst.Args[0].(arm64asm.PCRel); ok {
+				skipUntil = prevInst.Offset + uintptr(pcrel)
 			}
 		}
 
-		inst.Len = 4
-		inst.PC = startPC + uintptr(offset)
-		inst.Offset = offset
-
-		instructions = append(instructions, inst)
-		offset += uintptr(inst.Len)
+		notSkipped = append(notSkipped, inst)
 		prevInst = inst
 	}
 
-	return instructions, nil
+	return notSkipped, nil
 }

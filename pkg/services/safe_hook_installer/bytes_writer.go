@@ -9,20 +9,21 @@ import (
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/protector"
 )
 
 func (h *HookWriter) AddWritePermission() rookoutErrors.RookoutError {
-	currentMemoryProtection, err := getCurrentMemoryProtection(uint64(h.hookPageAlignedStart), uint64(h.hookPageAlignedEnd-h.hookPageAlignedStart))
+	currentMemoryProtection, err := protector.GetMemoryProtection(uint64(h.hookPageAlignedStart), uint64(h.hookPageAlignedEnd-h.hookPageAlignedStart))
 	if err != nil {
 		return err
 	}
 	h.originalMemoryProtection = currentMemoryProtection
 
-	return h.changeHookPermissions(currentMemoryProtection | syscall.PROT_WRITE)
+	return protector.ChangeMemoryProtection(h.hookPageAlignedStart, h.hookPageAlignedEnd, currentMemoryProtection|syscall.PROT_WRITE)
 }
 
 func (h *HookWriter) RestorePermissions() rookoutErrors.RookoutError {
-	return h.changeHookPermissions(h.originalMemoryProtection)
+	return protector.ChangeMemoryProtection(h.hookPageAlignedStart, h.hookPageAlignedEnd, h.originalMemoryProtection)
 }
 
 func (h *HookWriter) write() int {

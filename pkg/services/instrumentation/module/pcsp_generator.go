@@ -1,11 +1,10 @@
 package module
 
 import (
-	"reflect"
-	"unsafe"
+	"github.com/Rookout/GoSDK/pkg/services/disassembler"
 )
 
-func pcspFromInstructions(instructions []*instruction) []PCDataEntry {
+func pcspFromInstructions(instructions []*disassembler.Instruction, lastOffset uintptr) []PCDataEntry {
 	var pcDataEntries []PCDataEntry
 	stackValue := 0
 	state := newRegState()
@@ -25,10 +24,9 @@ func pcspFromInstructions(instructions []*instruction) []PCDataEntry {
 	}
 
 	
-	lastInstruction := instructions[len(instructions)-1]
 	pcDataEntries = append(pcDataEntries, PCDataEntry{
 		Value:  int32(state.getStackSize()),
-		Offset: lastInstruction.Offset + uintptr(lastInstruction.Len),
+		Offset: lastOffset,
 	})
 
 	return pcDataEntries
@@ -42,20 +40,5 @@ func generatePCSP(startPC uintptr, endPC uintptr) ([]PCDataEntry, error) {
 		return nil, err
 	}
 
-	return pcspFromInstructions(instructions), nil
-}
-
-func makeSliceFromPointer(p uintptr, length int) []byte {
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
-		Data: p,
-		Len:  length,
-		Cap:  length,
-	}))
-}
-
-type instruction struct {
-	baseInstruction
-	Len    int
-	PC     uintptr
-	Offset uintptr
+	return pcspFromInstructions(instructions, endPC-startPC), nil
 }

@@ -144,21 +144,24 @@ func (v *VariableNamespace) WriteAttribute(_ string, _ Namespace) rookoutErrors.
 func (v *VariableNamespace) readKeyFromArray(key int) (Namespace, rookoutErrors.RookoutError) {
 	name := v.name + "[" + strconv.Itoa(key) + "]"
 
-	if int(v.Obj.Len) > key {
-		if len(v.Obj.Children) > key {
-			item, _ := v.spawn(name, v.Obj.Children[key], false)
-			return item, nil
-		}
+	if int(v.Obj.Len) <= key {
+		return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
+	}
 
+	var child *variable.Variable
+	if len(v.Obj.Children) > key {
+		child = v.Obj.Children[key]
+	} else {
 		
-		obj, err := v.tryLoadChild(name)
+		var err error
+		child, err = v.Obj.LoadArrayValue(key)
 		if err == nil {
 			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, err)
 		}
-		return obj, nil
 	}
 
-	return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
+	item, _ := v.spawn(name, child, false)
+	return item, nil
 }
 
 func (v *VariableNamespace) readKeyFromMap(key string) (Namespace, rookoutErrors.RookoutError) {
@@ -166,8 +169,18 @@ func (v *VariableNamespace) readKeyFromMap(key string) (Namespace, rookoutErrors
 
 	
 	for i := 0; i < len(v.Obj.Children); i += 2 {
-		childKey := v.Obj.Children[i]
-		keyName := constant.StringVal(childKey.Value)
+		keyVar := v.Obj.Children[i]
+		if keyVar.Kind == reflect.Interface || keyVar.Kind == reflect.Ptr {
+			keyVar.ObjectDumpConfig.MaxCollectionDepth = 1
+			keyVar.LoadValue()
+			keyVar = keyVar.Children[0]
+		}
+		if keyVar.Kind != reflect.String {
+			continue
+		}
+
+		keyVar.LoadValue()
+		keyName := constant.StringVal(keyVar.Value)
 		if key == keyName {
 			item, _ := v.spawn(name, v.Obj.Children[i+1], false)
 			return item, nil
@@ -176,11 +189,12 @@ func (v *VariableNamespace) readKeyFromMap(key string) (Namespace, rookoutErrors
 
 	if int(v.Obj.Len) > len(v.Obj.Children) {
 		
-		obj, err := v.tryLoadChild(name)
+		value, err := v.Obj.LoadMapValue(key)
 		if err != nil {
 			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, err)
 		}
-		return obj, nil
+		item, _ := v.spawn(name, value, false)
+		return item, nil
 	}
 
 	return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
@@ -197,24 +211,15 @@ func (v *VariableNamespace) readKeyFromStruct(key string) (Namespace, rookoutErr
 
 	if int(v.Obj.Len) > len(v.Obj.Children) {
 		
-		obj, err := v.tryLoadChild(name)
+		obj, err := v.Obj.LoadStructValue(name)
 		if err != nil {
 			return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, err)
 		}
-		return obj, nil
+		item, _ := v.spawn(name, obj, false)
+		return item, nil
 	}
 
 	return nil, rookoutErrors.NewAgentKeyNotFoundException(v.name, key, nil)
-}
-
-func (v *VariableNamespace) tryLoadChild(name string) (Namespace, error) {
-	objectDumpConfig := config.GetTailoredLimits(v.GetObject())
-	child, err := v.CollectionService.GetVariable(name, objectDumpConfig)
-	if err != nil {
-		return nil, err
-	}
-	spawned, _ := v.spawn(name, child, false)
-	return spawned, nil
 }
 
 func (v *VariableNamespace) ReadKey(key interface{}) (Namespace, rookoutErrors.RookoutError) {
@@ -240,9 +245,10 @@ func (v *VariableNamespace) ReadKey(key interface{}) (Namespace, rookoutErrors.R
 		}
 		return v.readKeyFromStruct(keyAsString)
 
-	case reflect.Interface:
+	case reflect.Interface, reflect.Ptr:
 		obj, _ := v.spawn(v.name, v.Obj.Children[0], false)
-		if obj.Obj.Kind == reflect.Interface {
+		
+		if v.Obj.Kind == obj.Obj.Kind {
 			return nil, rookoutErrors.NewInvalidInterfaceVariable(key)
 		}
 		return obj.ReadKey(key)
@@ -317,7 +323,7 @@ func (v *VariableNamespace) GetObject() interface{} {
 		return values
 	case reflect.Struct:
 		return StructTypeInstance
-	case reflect.Map, reflect.Chan, reflect.Ptr, reflect.Interface, reflect.Func:
+	case reflect.Map, reflect.Chan, reflect.Interface, reflect.Ptr, reflect.Func:
 		if v.Obj.IsNil() {
 			return nil
 		}

@@ -1,10 +1,9 @@
 package safe_hook_installer
 
 import (
-	"syscall"
-
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/callstack"
+	"github.com/Rookout/GoSDK/pkg/services/protector"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 	"github.com/Rookout/GoSDK/pkg/services/suspender"
 )
@@ -40,8 +39,8 @@ type HookWriter struct {
 
 func NewHookWriter(hookAddr uintptr, hook []byte) *HookWriter {
 	
-	hookPageAlignedStart := hookAddr & (^uintptr(syscall.Getpagesize() - 1))
-	hookPageAlignedEnd := ((hookAddr + uintptr(len(hook)) - 1) & (^uintptr(syscall.Getpagesize() - 1))) + uintptr(syscall.Getpagesize())
+	hookPageAlignedStart := protector.GetPageStart(hookAddr)
+	hookPageAlignedEnd := protector.GetPageEnd(hookAddr + uintptr(len(hook)) - 1)
 
 	return &HookWriter{
 		hookPageAlignedStart: hookPageAlignedStart,

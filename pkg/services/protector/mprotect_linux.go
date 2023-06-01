@@ -1,7 +1,7 @@
 //go:build !darwin
 // +build !darwin
 
-package safe_hook_installer
+package protector
 
 import (
 	"bufio"
@@ -14,13 +14,13 @@ import (
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 )
 
-type MemoryRegion struct {
+type memoryRegion struct {
 	StartAddr   uint64
 	EndAddr     uint64
 	Permissions int
 }
 
-func parseMapsLine(line string) (*MemoryRegion, error) {
+func parseMapsLine(line string) (*memoryRegion, rookoutErrors.RookoutError) {
 	fields := strings.Fields(line)
 	if len(fields) < 5 {
 		return nil, rookoutErrors.NewInvalidProcMapsLine(line)
@@ -50,14 +50,14 @@ func parseMapsLine(line string) (*MemoryRegion, error) {
 		permissions |= syscall.PROT_EXEC
 	}
 
-	return &MemoryRegion{
+	return &memoryRegion{
 		StartAddr:   startAddr,
 		EndAddr:     endAddr,
 		Permissions: permissions,
 	}, nil
 }
 
-func getCurrentMemoryProtection(addr uint64, size uint64) (int, rookoutErrors.RookoutError) {
+func GetMemoryProtection(addr uint64, size uint64) (int, rookoutErrors.RookoutError) {
 	mapsFile, err := os.Open("/proc/self/maps")
 	if err != nil {
 		return 0, rookoutErrors.NewFailedToOpenProcMapsFile(err)
@@ -84,10 +84,10 @@ func getCurrentMemoryProtection(addr uint64, size uint64) (int, rookoutErrors.Ro
 	return permissions, nil
 }
 
-func (h *HookWriter) changeHookPermissions(prot int) rookoutErrors.RookoutError {
-	_, _, errno := syscall.Syscall(syscall.SYS_MPROTECT, uintptr(h.hookPageAlignedStart), uintptr(h.hookPageAlignedEnd-h.hookPageAlignedStart), uintptr(prot))
+func ChangeMemoryProtection(start uintptr, end uintptr, prot int) rookoutErrors.RookoutError {
+	_, _, errno := syscall.Syscall(syscall.SYS_MPROTECT, start, end-start, uintptr(prot))
 	if errno != 0 {
-		return rookoutErrors.NewMprotectFailed(h.hookPageAlignedStart, int(h.hookPageAlignedEnd-h.hookPageAlignedStart), prot, errno.Error())
+		return rookoutErrors.NewMprotectFailed(start, int(end-start), prot, errno.Error())
 	}
 	return nil
 }

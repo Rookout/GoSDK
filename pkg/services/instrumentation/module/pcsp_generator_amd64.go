@@ -5,6 +5,8 @@ package module
 
 import (
 	"github.com/Rookout/GoSDK/pkg/logger"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/disassembler"
 	"golang.org/x/arch/x86/x86asm"
 )
 
@@ -26,7 +28,7 @@ func (r *regState) setStackSize(stackSize int) {
 	r.stackSize = stackSize
 }
 
-func (r *regState) update(i *instruction) {
+func (r *regState) update(i *disassembler.Instruction) {
 	switch i.Op {
 	case x86asm.ADD, x86asm.SUB:
 		if i.Args[0] != x86asm.RSP {
@@ -56,36 +58,6 @@ func (r *regState) update(i *instruction) {
 	}
 }
 
-func decode(bytes []byte) (*instruction, error) {
-	inst, err := x86asm.Decode(bytes, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	return &instruction{
-		baseInstruction: inst,
-		Len:             inst.Len,
-	}, nil
-}
-
-func read(startPC uintptr, endPC uintptr) ([]*instruction, error) {
-	var instructions []*instruction
-	funcLen := endPC - startPC
-	funcAsm := makeSliceFromPointer(startPC, int(funcLen))
-	offset := uintptr(0)
-
-	for offset < funcLen {
-		inst, err := decode(funcAsm[offset:])
-		if err != nil {
-			return nil, err
-		}
-
-		inst.PC = startPC + uintptr(offset)
-		inst.Offset = offset
-
-		instructions = append(instructions, inst)
-		offset += uintptr(inst.Len)
-	}
-
-	return instructions, nil
+func read(startPC uintptr, endPC uintptr) ([]*disassembler.Instruction, rookoutErrors.RookoutError) {
+	return disassembler.Decode(startPC, endPC, true)
 }

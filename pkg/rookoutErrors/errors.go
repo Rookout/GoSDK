@@ -2,6 +2,7 @@ package rookoutErrors
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
 
 	"github.com/go-errors/errors"
@@ -504,7 +505,7 @@ func NewUnknownError(recovered interface{}) RookoutError {
 
 	return newRookoutError(
 		"Unknown",
-		"Caught panic in goroutine",
+		"Unexpected error",
 		err,
 		map[string]interface{}{
 			"recovered": recovered,
@@ -942,5 +943,90 @@ func NewVariableLoadFailed(recovered interface{}) RookoutError {
 		nil,
 		map[string]interface{}{
 			"recovered": recovered,
+		})
+}
+
+func NewArgIsNotRel(inst interface{}) RookoutError {
+	return newRookoutError(
+		"ArgIsNotRel",
+		"Unable to calculate absolute dest because first arg is not Rel",
+		nil,
+		map[string]interface{}{
+			"inst": inst,
+		})
+}
+
+func NewFailedToDecode(funcAsm []byte, err error) RookoutError {
+	return newRookoutError(
+		"FailedToDecode",
+		"Failed to decode one instruction",
+		err,
+		map[string]interface{}{
+			"funcAsm": funcAsm,
+		})
+}
+
+func NewUnexpectedInstructionOp(inst interface{}) RookoutError {
+	return newRookoutError(
+		"UnexpectedInstructionOp",
+		"Unable to calculate dest PC of instruction that isn't CALL or JMP",
+		nil,
+		map[string]interface{}{
+			"inst": inst,
+		})
+}
+
+func NewKeyNotInMap(mapName string, key string) RookoutError {
+	return newRookoutError(
+		"KeyNotInMap",
+		"Given key does not exist in map",
+		nil,
+		map[string]interface{}{
+			"mapName": mapName,
+			"key":     key,
+		})
+}
+
+func NewNoSuchMember(structName string, memberName string) RookoutError {
+	return newRookoutError(
+		"NoSuchChild",
+		"Struct doesn't have member with given name",
+		nil,
+		map[string]interface{}{
+			"structName": structName,
+			"memberName": memberName,
+		})
+}
+
+func NewVariableIsNotMap(name string, kind reflect.Kind) RookoutError {
+	return newRookoutError(
+		"VariableIsNotMap",
+		"Tried to get map value of variable that is not of kind map",
+		nil,
+		map[string]interface{}{
+			"name": name,
+			"kind": kind,
+		})
+}
+
+func NewVariableIsNotStruct(name string, kind reflect.Kind) RookoutError {
+	return newRookoutError(
+		"VariableIsNotStruct",
+		"Tried to get struct value of variable that is not of kind struct",
+		nil,
+		map[string]interface{}{
+			"name": name,
+			"kind": kind,
+		})
+}
+
+func NewVariableIsNotArray(name string, kind reflect.Kind) RookoutError {
+	return newRookoutError(
+		"VariableIsNotArray",
+		"Tried to get array item of variable that is not of kind array",
+		nil,
+		map[string]interface{}{
+			"name": name,
+			"kind": kind,
 		})
 }

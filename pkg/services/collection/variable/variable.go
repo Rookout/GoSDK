@@ -1,3 +1,24 @@
+// The MIT License (MIT)
+
+// Copyright (c) 2014 Derek Parker
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy of
+// this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to
+// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+// the Software, and to permit persons to whom the Software is furnished to do so,
+// subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 package variable
 
 import (
@@ -116,9 +137,6 @@ type internalVariable struct {
 
 	
 	closureAddr uint64
-
-	
-	mapSkip int
 
 	Children []*Variable
 
@@ -748,14 +766,8 @@ func (v *Variable) loadMap(recurseLevel int) error {
 		return err
 	}
 
-	if v.Len == 0 || int64(v.mapSkip) >= v.Len || v.ObjectDumpConfig.MaxWidth == 0 {
+	if v.Len == 0 || v.ObjectDumpConfig.MaxWidth == 0 {
 		return nil
-	}
-
-	for skip := 0; skip < v.mapSkip; skip++ {
-		if ok := it.next(); !ok {
-			return fmt.Errorf("map index out of bounds")
-		}
 	}
 
 	count := 0
@@ -783,6 +795,74 @@ func (v *Variable) loadMap(recurseLevel int) error {
 		}
 	}
 	return nil
+}
+
+func (v *Variable) LoadStructValue(name string) (*Variable, error) {
+	if v.Kind != reflect.Struct {
+		return nil, rookoutErrors.NewVariableIsNotStruct(v.Name, v.Kind)
+	}
+
+	t := v.RealType.(*godwarf.StructType)
+	for i := range t.Field {
+		if t.Field[i].Name != name {
+			continue
+		}
+
+		f, _ := v.toField(t.Field[i])
+		v.Children = append(v.Children, f)
+		v.Children[i].Name = t.Field[i].Name
+		v.Children[i].LoadValue()
+		return v.Children[i], nil
+	}
+
+	return nil, rookoutErrors.NewNoSuchMember(v.Name, name)
+}
+func (v *Variable) LoadMapValue(key string) (*Variable, error) {
+	if v.Kind != reflect.Map {
+		return nil, rookoutErrors.NewVariableIsNotMap(v.Name, v.Kind)
+	}
+
+	it, err := v.mapIterator()
+	if err != nil {
+		return nil, err
+	}
+
+	for it.next() {
+		keyVar := it.key()
+		
+		if keyVar.Unreadable != nil {
+			continue
+		}
+		if keyVar.Kind == reflect.Interface || keyVar.Kind == reflect.Ptr {
+			
+			keyVar.ObjectDumpConfig.MaxCollectionDepth = 1
+			keyVar.LoadValue()
+			keyVar = keyVar.Children[0]
+		}
+		if keyVar.Kind != reflect.String {
+			continue
+		}
+
+		keyVar.LoadValue()
+		
+		if keyVar.Unreadable != nil || constant.StringVal(keyVar.Value) != key {
+			continue
+		}
+
+		
+		var val *Variable
+		if it.values.fieldType.Size() > 0 {
+			val = it.value()
+		} else {
+			val = v.spawn("", it.values.Addr, it.values.fieldType, memory.DereferenceMemory(v.Mem))
+		}
+		val.ObjectDumpConfig.Tailor(val.Kind, int(val.Len))
+		val.LoadValue()
+		v.Children = append(v.Children, keyVar, val)
+		return val, nil
+	}
+
+	return nil, rookoutErrors.NewKeyNotInMap(v.Name, key)
 }
 
 func pointerTo(typ godwarf.Type, bi *binary_info.BinaryInfo) godwarf.Type {
@@ -1324,4 +1404,31 @@ func (v *Variable) IsNil() bool {
 	}
 
 	return false
+}
+
+func (v *Variable) LoadArrayValue(index int) (*Variable, error) {
+	if v.Kind != reflect.Array {
+		return nil, rookoutErrors.NewVariableIsNotMap(v.Name, v.Kind)
+	}
+
+	if v.Len < 0 {
+		v.Unreadable = errors.New("Negative array length")
+	}
+	if v.Unreadable != nil {
+		return nil, v.Unreadable
+	}
+
+	if v.stride < maxArrayStridePrefetch {
+		v.Mem = memory.CacheMemory(v.Mem, v.Base, int(v.stride*int64(index)))
+	}
+
+	mem := v.Mem
+	if v.Kind != reflect.Array {
+		mem = memory.DereferenceMemory(mem)
+	}
+
+	fieldvar := v.spawn("", uint64(int64(v.Base)+(int64(index)*v.stride)), v.fieldType, mem)
+	fieldvar.ObjectDumpConfig.Tailor(fieldvar.Kind, int(fieldvar.Len))
+	fieldvar.LoadValueInternal(1)
+	return fieldvar, nil
 }

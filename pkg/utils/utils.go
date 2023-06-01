@@ -20,6 +20,14 @@ const backendCompatibleIsoTimeFormat = "2006-01-02T15:04:05.000000Z"
 
 var TrueValues = []string{"y", "yes", "true", "1"}
 
+func MakeSliceFromPointer(p uintptr, length int) []byte {
+	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
+		Data: p,
+		Len:  length,
+		Cap:  length,
+	}))
+}
+
 func BoolAsInt(b bool) int {
 	if b {
 		return 1
