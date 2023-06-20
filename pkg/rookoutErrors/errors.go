@@ -17,6 +17,7 @@ type RookoutError interface {
 	GetType() string
 
 	GetArguments() map[interface{}]interface{}
+	AddArgument(key string, value interface{})
 }
 
 type RookoutErrorImpl struct {
@@ -25,7 +26,7 @@ type RookoutErrorImpl struct {
 	Arguments     map[string]interface{}
 }
 
-func (r RookoutErrorImpl) Error() string {
+func (r *RookoutErrorImpl) Error() string {
 	errorString := r.Type
 
 	if nil != r.ExternalError {
@@ -36,14 +37,18 @@ func (r RookoutErrorImpl) Error() string {
 		errorString = fmt.Sprintf(errorString+" | %v", r.Arguments)
 	}
 
+	if nil != r.ExternalError {
+		errorString += ": " + r.ExternalError.Error()
+	}
+
 	return errorString
 }
 
-func (r RookoutErrorImpl) GetType() string {
+func (r *RookoutErrorImpl) GetType() string {
 	return r.Type
 }
 
-func (r RookoutErrorImpl) GetArguments() map[interface{}]interface{} {
+func (r *RookoutErrorImpl) GetArguments() map[interface{}]interface{} {
 	outputMap := make(map[interface{}]interface{})
 	for key, value := range r.Arguments {
 		outputMap[key] = value
@@ -51,7 +56,11 @@ func (r RookoutErrorImpl) GetArguments() map[interface{}]interface{} {
 	return outputMap
 }
 
-func (r RookoutErrorImpl) StackFrames() []errors.StackFrame {
+func (r *RookoutErrorImpl) AddArgument(key string, value interface{}) {
+	r.Arguments[key] = value
+}
+
+func (r *RookoutErrorImpl) StackFrames() []errors.StackFrame {
 	switch e := r.ExternalError.(type) {
 	case *errors.Error:
 		return e.StackFrames()
@@ -62,7 +71,7 @@ func (r RookoutErrorImpl) StackFrames() []errors.StackFrame {
 	}
 }
 
-func (r RookoutErrorImpl) Stack() []byte {
+func (r *RookoutErrorImpl) Stack() []byte {
 	switch e := r.ExternalError.(type) {
 	case *errors.Error:
 		return e.Stack()
@@ -74,8 +83,12 @@ func (r RookoutErrorImpl) Stack() []byte {
 }
 
 func newRookoutError(errorType string, description string, externalError error, arguments map[string]interface{}) *RookoutErrorImpl {
-	if externalError == nil {
-		externalError = errors.Wrap(description, 2)
+	if _, ok := externalError.(*errors.Error); !ok {
+		if externalError != nil {
+			externalError = errors.Wrap(externalError.Error(), 2)
+		} else {
+			externalError = errors.Wrap(description, 2)
+		}
 	}
 
 	return &RookoutErrorImpl{
@@ -333,27 +346,25 @@ func NewFailedToGetStateEntryAddr(functionEntry uint64, functionEnd uint64, stat
 		})
 }
 
-func NewInvalidBranchDest(hookAddr uintptr, stateAddr uintptr, stateID int) RookoutError {
+func NewInvalidBranchDest(src uintptr, dst uintptr) RookoutError {
 	return newRookoutError(
 		"InvalidBranchDest",
 		"Tried to encode an invalid branch instruction - relative distance isn't dividable by 4",
 		nil,
 		map[string]interface{}{
-			"hookAddr":  hookAddr,
-			"stateAddr": stateAddr,
-			"stateID":   stateID,
+			"src": src,
+			"dst": dst,
 		})
 }
 
-func NewBranchDestTooFar(hookAddr uintptr, stateAddr uintptr, stateID int) RookoutError {
+func NewBranchDestTooFar(src uintptr, dst uintptr) RookoutError {
 	return newRookoutError(
 		"BranchDestTooFar",
 		"Tried to encode an invalid branch instruction - relative distance is too long to be encoded into 26 bit immediate",
 		nil,
 		map[string]interface{}{
-			"hookAddr":  hookAddr,
-			"stateAddr": stateAddr,
-			"stateID":   stateID,
+			"src": src,
+			"dst": dst,
 		})
 }
 
@@ -705,6 +716,14 @@ func NewFailedToGetAddressMapping(filename string, lineno int, err error) Rookou
 		})
 }
 
+func NewFailedToStartCopyingFunction(err error) RookoutError {
+	return newRookoutError(
+		"FailedToStartCopyingFunction",
+		"Unable to start copying original function",
+		err,
+		map[string]interface{}{})
+}
+
 func NewCompiledWithoutCGO() RookoutError {
 	return newRookoutError("CompiledWithoutCGO", "Your project was built with CGO_ENABLED disabled", nil, map[string]interface{}{})
 }
@@ -726,6 +745,24 @@ func NewRookOutputQueueFull() RookoutError {
 		"Breakpoint triggered but output queue is full. Data collection will be disabled until the queue has emptied.",
 		nil,
 		map[string]interface{}{})
+}
+
+func NewInvalidDwarfRegister(dwarfReg uint64) RookoutError {
+	return newRookoutError("InvalidDwarfRegister",
+		"Tracked invalid dwarf register while locating variable",
+		nil,
+		map[string]interface{}{
+			"dwarfReg": dwarfReg,
+		})
+}
+
+func NewFailedToLocate(variableName string, externalErr error) RookoutError {
+	return newRookoutError("FailedToLocate",
+		"Failed to locate variable",
+		externalErr,
+		map[string]interface{}{
+			"variableName": variableName,
+		})
 }
 
 func NewFailedToAlignFunc(funcAddress, pclntableAddress, funcOffset uintptr) RookoutError {
@@ -854,6 +891,31 @@ func NewPCDataVerificationFailed(table uint32, origValue int32, origPC uintptr, 
 		})
 }
 
+func NewPCDataAsyncUnsafePointVerificationFailed(newValue int32, newPC uintptr) RookoutError {
+	return newRookoutError(
+		"PCDataAsyncUnsafePointVerificationFailed",
+		"New module has a different value than the unsafe point for PCs within the patched code",
+		nil,
+		map[string]interface{}{
+			"newValue": newValue,
+			"newPC":    newPC,
+		})
+}
+
+func NewPCSPInPatchedVerificationFailed(origValue int32, origPC uintptr, expectedNewValue, newValue int32, newPC uintptr) RookoutError {
+	return newRookoutError(
+		"PCSPInPatchedVerificationFailed",
+		"New module has a different value in pcsp table than the expected generated values",
+		nil,
+		map[string]interface{}{
+			"origValue":        origValue,
+			"origPC":           origPC,
+			"expectedNewValue": expectedNewValue,
+			"newValue":         newValue,
+			"newPC":            newPC,
+		})
+}
+
 func NewPCSPVerificationFailed(origValue int32, origPC uintptr, newValue int32, newPC uintptr) RookoutError {
 	return newRookoutError(
 		"PCSPVerificationFailed",
@@ -863,6 +925,18 @@ func NewPCSPVerificationFailed(origValue int32, origPC uintptr, newValue int32, 
 			"origValue": origValue,
 			"origPC":    origPC,
 			"newValue":  newValue,
+			"newPC":     newPC,
+		})
+}
+
+func NewPCSPVerificationFailedMissingEntry(origValue int32, origPC uintptr, newPC uintptr) RookoutError {
+	return newRookoutError(
+		"PCSPVerificationFailedMissingEntry",
+		"New module has doesn't have a PCSP entry for a PC within the patched code",
+		nil,
+		map[string]interface{}{
+			"origValue": origValue,
+			"origPC":    origPC,
 			"newPC":     newPC,
 		})
 }
@@ -926,6 +1000,14 @@ func NewModuleVerificationFailed(recovered interface{}) RookoutError {
 		})
 }
 
+func NewIllegalAddressMappings() RookoutError {
+	return newRookoutError(
+		"BadAddressMapping",
+		"Function address mapping must not contain patched code in the last two mappings",
+		nil,
+		nil)
+}
+
 func NewVariableCreationFailed(recovered interface{}) RookoutError {
 	return newRookoutError(
 		"VariableCreationFailed",
@@ -956,13 +1038,33 @@ func NewArgIsNotRel(inst interface{}) RookoutError {
 		})
 }
 
+func NewInvalidJumpDest(jumpDest string) RookoutError {
+	return newRookoutError(
+		"InvalidJumpDest",
+		"Created a jump with a nonexistant dest",
+		nil,
+		map[string]interface{}{
+			"jumpDest": jumpDest,
+		})
+}
+
+func NewFailedToAssemble(recovered interface{}) RookoutError {
+	return newRookoutError(
+		"FailedToAssemble",
+		"Failed to assemble instructions",
+		nil,
+		map[string]interface{}{
+			"recovered": recovered,
+		})
+}
+
 func NewFailedToDecode(funcAsm []byte, err error) RookoutError {
 	return newRookoutError(
 		"FailedToDecode",
 		"Failed to decode one instruction",
 		err,
 		map[string]interface{}{
-			"funcAsm": funcAsm,
+			"inst": fmt.Sprintf("%x", funcAsm),
 		})
 }
 
@@ -1028,5 +1130,36 @@ func NewVariableIsNotArray(name string, kind reflect.Kind) RookoutError {
 		map[string]interface{}{
 			"name": name,
 			"kind": kind,
+		})
+}
+
+func NewLabelAlreadyExists(label string) RookoutError {
+	return newRookoutError(
+		"LabelAlreadyExists",
+		"Unable to add label to assembly: the label already exists",
+		nil,
+		map[string]interface{}{
+			"label": label,
+		})
+}
+
+func NewInvalidBytes(bytes []byte) RookoutError {
+	return newRookoutError(
+		"InvalidBytes",
+		"Cannot insert bytes: length of bytes is not a multiple of 4",
+		nil,
+		map[string]interface{}{
+			"bytes": bytes,
+		})
+}
+
+func NewUnexpectedInstruction(movGToR12 interface{}, ret interface{}) RookoutError {
+	return newRookoutError(
+		"UnexpectedInstruction",
+		"Unexpected instructions in assembled getg",
+		nil,
+		map[string]interface{}{
+			"movGToR12": movGToR12,
+			"ret":       ret,
 		})
 }

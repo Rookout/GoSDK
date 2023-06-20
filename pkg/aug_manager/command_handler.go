@@ -68,6 +68,16 @@ func NewCommandHandler(agentCom com_ws.AgentCom, augManager AugManager) *Command
 		handler.augManager.AddAug(augConfig)
 	})
 
+	handler.agentCom.RegisterCallback(common.MessageTypeErrorMessage, func(msg *anypb.Any) {
+		errMsg := &pb.ErrorMessage{}
+		err := anypb.UnmarshalTo(msg, errMsg, proto.UnmarshalOptions{})
+		if err != nil {
+			logger.Logger().WithError(err).Error("failed to unmarshal envelope to ErrorMessage")
+			return
+		}
+		logger.Logger().Warningf("Received Error Message: %s", errMsg.Message)
+	})
+
 	return &handler
 }
 

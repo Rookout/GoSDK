@@ -7,6 +7,7 @@ import (
 	"github.com/Rookout/GoSDK/pkg/augs"
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/assembler"
 	"github.com/Rookout/GoSDK/pkg/services/callstack"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/module"
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_installer"
@@ -30,10 +31,8 @@ type BreakpointFlowRunner interface {
 }
 
 type BreakpointFlowRunnerInitializationInfo struct {
-	Function                  *augs.Function
-	BPCallback                uintptr
-	PrologueCallback          uintptr
-	ShouldRunPrologueCallback uintptr
+	Function   *augs.Function
+	BPCallback uintptr
 }
 
 type breakpointFlowRunner struct {
@@ -132,7 +131,7 @@ func (c *breakpointFlowRunner) buildHook(hookAddr uintptr) ([]byte, rookoutError
 		return c.function.PatchedBytes, nil
 	}
 
-	hook, err := c.buildJMP(hookAddr)
+	hook, err := assembler.EncodeJmp(hookAddr, c.jumpDestination)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +158,7 @@ func (c *breakpointFlowRunner) DefaultID() int {
 }
 
 func NewFlowRunner(nativeAPI NativeHookerAPI, initInfo BreakpointFlowRunnerInitializationInfo, requiredBreakpoints []*augs.BreakpointInstance, installerFactory safe_hook_installer.SafeHookInstallerCreator) (*breakpointFlowRunner, error) {
-	stateID, err := nativeAPI.RegisterFunctionBreakpointsState(initInfo.Function.Entry, initInfo.Function.End, requiredBreakpoints, initInfo.BPCallback, initInfo.PrologueCallback, initInfo.ShouldRunPrologueCallback, initInfo.Function.StackFrameSize)
+	stateID, err := nativeAPI.RegisterFunctionBreakpointsState(initInfo.Function.Entry, initInfo.Function.End, requiredBreakpoints, initInfo.BPCallback, initInfo.Function.Prologue, initInfo.Function.StackFrameSize)
 	if err != nil {
 		return nil, err
 	}

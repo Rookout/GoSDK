@@ -19,6 +19,9 @@ type pclntableInfo struct {
 }
 
 func (m *moduleDataPatcher) getPCDataTable(offset uintptr) []byte {
+	if offset == 0 {
+		return nil
+	}
 	return m.origModule.pclntable[offset:]
 }
 
@@ -97,35 +100,19 @@ func (m *moduleDataPatcher) newFuncTab(funcOff uintptr, entry uintptr) functab {
 	return functab{funcoff: funcOff, entry: entry}
 }
 
-func (m *moduleDataPatcher) buildPCFile() error {
-	oldFilenosToNew := make(map[int32]int32)
-	pcDataEntries := decodePCDataEntries(m.getPCDataTable(uintptr(m.origFunction.pcfile)))
-	i := int32(0)
-	for _, entry := range pcDataEntries {
-		if _, ok := oldFilenosToNew[entry.Value]; !ok {
-			oldFilenosToNew[entry.Value] = i
-			i++
-		}
-	}
+func (m *moduleDataPatcher) buildPCFile(patcher *PCDataPatcher) error {
+	pcFile, oldFilenosToNew, err := patcher.CreatePCFile(decodePCDataEntries(m.getPCDataTable(uintptr(m.origFunction.pcfile))))
 
 	m.info.files = make(map[int32][]byte)
 	for oldFileno, newFileno := range oldFilenosToNew {
 		m.info.files[newFileno] = []byte(funcfile(*m.origFunction, oldFileno))
 	}
 
-	
-	if err := updatePCDataEntries(pcDataEntries, m.offsetMappings, false); err != nil {
-		return err
-	}
-	
-	for i := range pcDataEntries {
-		pcDataEntries[i].Value = oldFilenosToNew[pcDataEntries[i].Value]
-	}
-	pcFile, err := encodePCDataEntries(pcDataEntries)
+	pcFileBytes, err := encodePCDataEntries(pcFile)
 	if err != nil {
 		return err
 	}
-	m.info.pcFile = pcFile
+	m.info.pcFile = pcFileBytes
 	return nil
 }
 

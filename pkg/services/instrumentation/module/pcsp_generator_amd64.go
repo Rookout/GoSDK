@@ -61,3 +61,11 @@ func (r *regState) update(i *disassembler.Instruction) {
 func read(startPC uintptr, endPC uintptr) ([]*disassembler.Instruction, rookoutErrors.RookoutError) {
 	return disassembler.Decode(startPC, endPC, true)
 }
+
+func instructionSizeBytes(pc uintptr) (uintptr, rookoutErrors.RookoutError) {
+	inst, err := disassembler.DecodeOne(pc)
+	if err != nil {
+		return 0, err
+	}
+	return uintptr(inst.Len), nil
+}

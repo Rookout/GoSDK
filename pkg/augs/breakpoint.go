@@ -15,9 +15,6 @@ type Breakpoint struct {
 	File string `json:"file"`
 	
 	Line int `json:"line"`
-	
-	
-	FunctionName string `json:"functionName,omitempty"`
 
 	
 	Stacktrace int `json:"stacktrace"`
@@ -32,10 +29,11 @@ type BreakpointInstance struct {
 	FailedCounter    *uint64
 }
 
-func NewBreakpointInstance(addr uint64, breakpoint *Breakpoint) *BreakpointInstance {
+func NewBreakpointInstance(addr uint64, breakpoint *Breakpoint, function *Function) *BreakpointInstance {
 	b := &BreakpointInstance{
 		Addr:       addr,
 		Breakpoint: breakpoint,
+		Function:   function,
 	}
 	return b
 }
@@ -49,6 +47,7 @@ type Function struct {
 	FinalTrampolinePointer  *uint64
 	PatchedBytes            []byte
 	Hooked                  bool
+	Prologue                []byte
 }
 
 func NewFunction(entry uint64, end uint64, stackFrameSize int32, middleTrampolineAddress unsafe.Pointer, finalTrampolinePointer *uint64) *Function {

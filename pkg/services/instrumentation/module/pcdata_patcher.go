@@ -6,6 +6,8 @@ package module
 import (
 	_ "unsafe"
 
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+
 	"github.com/go-errors/errors"
 )
 
@@ -16,6 +18,9 @@ type PCDataEntry struct {
 
 
 func decodePCDataEntries(p []byte) (pcDataEntries []PCDataEntry) {
+	if p == nil {
+		return pcDataEntries
+	}
 	var pc uintptr
 	val := int32(-1)
 	p, ok := step(p, &pc, &val, true)
@@ -33,53 +38,29 @@ func decodePCDataEntries(p []byte) (pcDataEntries []PCDataEntry) {
 
 
 
-
 func findNewAddressByOriginalAddress(originalAddress uintptr, addressMappings []AddressMapping) (uintptr, bool) {
-	var nearestMapping AddressMapping
-	nearestDistance := -1
-
 	for _, mapping := range addressMappings {
 		if originalAddress == mapping.OriginalAddress {
 			return mapping.NewAddress, true
 		}
-
-		
-		if mapping.OriginalAddress == BPMarker || mapping.OriginalAddress == PrologueMarker {
-			continue
-		}
-
-		distance := int(originalAddress - mapping.OriginalAddress)
-		if distance < 0 {
-			distance = -distance
-		}
-		if nearestDistance == -1 || nearestDistance > distance {
-			nearestDistance = distance
-			nearestMapping = mapping
-		}
 	}
-
-	newAddress := nearestMapping.NewAddress
-	newAddress += originalAddress - nearestMapping.OriginalAddress
-	return newAddress, false
+	return 0, false
 }
 
 
 
-
-
-func updatePCDataEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMapping, onlyExact bool) error {
+func updatePCDataEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMapping) {
 	for i := 0; i < len(pcDataEntries); i++ {
-		newAddress, exact := findNewAddressByOriginalAddress(pcDataEntries[i].Offset, offsetMappings)
-		if !onlyExact || exact {
-			pcDataEntries[i].Offset = newAddress
+		newOffset, found := findNewAddressByOriginalAddress(pcDataEntries[i].Offset, offsetMappings)
+		if found {
+			pcDataEntries[i].Offset = newOffset
 		}
 	}
-
-	return nil
 }
 
 
-func getEntryAfterOffset(offset uintptr, pcDataEntries []PCDataEntry) (int, *PCDataEntry) {
+
+func getEntryForOffset(offset uintptr, pcDataEntries []PCDataEntry) (int, *PCDataEntry) {
 	prevPCOffset := uintptr(0)
 	for index, pcDataEntry := range pcDataEntries {
 		if prevPCOffset <= offset && pcDataEntry.Offset > offset {
@@ -127,6 +108,9 @@ func writePCDataEntry(p []byte, value int32, offset int32) ([]byte, error) {
 }
 
 func removeDuplicateValues(pcDataEntries []PCDataEntry) (noDups []PCDataEntry) {
+	if len(pcDataEntries) == 0 {
+		return nil
+	}
 	for i := range pcDataEntries {
 		if i == len(pcDataEntries)-1 {
 			noDups = append(noDups, pcDataEntries[i])
@@ -144,11 +128,12 @@ func removeDuplicateValues(pcDataEntries []PCDataEntry) (noDups []PCDataEntry) {
 
 
 func encodePCDataEntries(pcDataEntries []PCDataEntry) (encoded []byte, err error) {
+	if len(pcDataEntries) == 0 {
+		return nil, nil
+	}
 	encoded = make([]byte, 0, len(pcDataEntries)*20)
 	prevOffset := int32(0)
 	prevValue := int32(-1)
-
-	pcDataEntries = removeDuplicateValues(pcDataEntries)
 
 	for _, newPair := range pcDataEntries {
 		valueDelta := newPair.Value - prevValue
@@ -166,78 +151,46 @@ func encodePCDataEntries(pcDataEntries []PCDataEntry) (encoded []byte, err error
 }
 
 
-func insertPCDataEntry(index int, newEntry PCDataEntry, pcDataEntries []PCDataEntry) []PCDataEntry {
-	var newPCDataEntries []PCDataEntry
-	newPCDataEntries = append(newPCDataEntries, pcDataEntries[:index]...)
-	newPCDataEntries = append(newPCDataEntries, newEntry)
-	newPCDataEntries = append(newPCDataEntries, pcDataEntries[index:]...)
-	return newPCDataEntries
-}
-
-
-func getEntryAtOffset(offset uintptr, pcDataEntries []PCDataEntry) (*PCDataEntry, bool) {
-	for _, entry := range pcDataEntries {
-		if entry.Offset == offset {
-			return &entry, true
-		}
-	}
-
-	return nil, false
-}
 
 
 
 
-func addCallbackEntry(pcDataEntries []PCDataEntry, callbackOffset uintptr, newEntries []PCDataEntry) ([]PCDataEntry, error) {
-	callbackEntryIndex, entryAfterCallback := getEntryAfterOffset(callbackOffset, pcDataEntries)
+
+
+
+func addCallbackEntry(pcDataEntries []PCDataEntry, callbackOffsetStart, callbackOffsetEnd uintptr, pcDataGenerator func(uintptr, uintptr, int32) ([]PCDataEntry, error)) ([]PCDataEntry, error) {
+	callbackEntryIndex, entryForCallback := getEntryForOffset(callbackOffsetStart, pcDataEntries)
 	if callbackEntryIndex == -1 {
 		return nil, errors.New("No PCData entry in table after breakpoint")
 	}
 
 	newPCDataEntries := pcDataEntries
-	callbackPCDataEntries := generateCallbackPCDataEntries(callbackOffset, entryAfterCallback.Value, newEntries)
-
-	if _, exists := getEntryAtOffset(callbackOffset, pcDataEntries); !exists {
-		newPCDataEntries = insertPCDataEntry(callbackEntryIndex, callbackPCDataEntries[0], newPCDataEntries)
-		callbackEntryIndex++
+	callbackPCDataEntries, err := pcDataGenerator(callbackOffsetStart, callbackOffsetEnd, entryForCallback.Value)
+	if err != nil {
+		return nil, err
 	}
-
-	for _, callbackPCDataEntry := range callbackPCDataEntries[1:] {
-		newPCDataEntries = insertPCDataEntry(callbackEntryIndex, callbackPCDataEntry, newPCDataEntries)
-		callbackEntryIndex++
-	}
-
+	fromCallbackUntilEnd := append(callbackPCDataEntries, newPCDataEntries[callbackEntryIndex:]...)
+	newPCDataEntries = append(newPCDataEntries[:callbackEntryIndex], fromCallbackUntilEnd...)
 	return newPCDataEntries, nil
 }
 
-func generateCallbackPCDataEntries(callbackOffset uintptr, entryAfterCallbackValue int32, newEntries []PCDataEntry) []PCDataEntry {
+func addOffsetAndValueToEntries(offset uintptr, value int32, entries []PCDataEntry) []PCDataEntry {
 	var callbackPCDataEntries []PCDataEntry
 
-	for _, callbackPCInfo := range newEntries {
-		callbackPCDataEntries = append(callbackPCDataEntries, PCDataEntry{callbackOffset + callbackPCInfo.Offset, entryAfterCallbackValue + callbackPCInfo.Value})
+	for _, callbackPCInfo := range entries {
+		callbackPCDataEntries = append(callbackPCDataEntries, PCDataEntry{offset + callbackPCInfo.Offset, value + callbackPCInfo.Value})
 	}
 
 	return callbackPCDataEntries
 }
 
 
-func addCallbacksEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMapping, pcDataGenerator func(uintptr, uintptr) ([]PCDataEntry, error)) ([]PCDataEntry, error) {
+func addCallbacksEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMapping, pcDataGenerator func(uintptr, uintptr, int32) ([]PCDataEntry, error)) ([]PCDataEntry, error) {
 	for mapIndex, mapping := range offsetMappings {
 		if _, ok := CallbacksMarkers[mapping.OriginalAddress]; ok {
-			entries, err := pcDataGenerator(mapping.NewAddress, offsetMappings[mapIndex+1].NewAddress)
-			if err != nil {
-				return nil, err
-			}
-			callbackOffset := mapping.NewAddress
-			lineAfterCallbackMapping := offsetMappings[mapIndex+1]
-			lineAfterCallbackOffset := lineAfterCallbackMapping.NewAddress
-			callbackAddressMapping := AddressMapping{OriginalAddress: lineAfterCallbackOffset, NewAddress: callbackOffset}
-
-			if err := updatePCDataEntries(pcDataEntries, []AddressMapping{callbackAddressMapping}, true); err != nil {
-				return nil, err
-			}
-
-			newPCDataEntries, err := addCallbackEntry(pcDataEntries, callbackOffset, entries)
+			callbackOffsetStart := mapping.NewAddress
+			callbackOffsetEnd := offsetMappings[mapIndex+1].NewAddress
+			newPCDataEntries, err := addCallbackEntry(pcDataEntries, callbackOffsetStart, callbackOffsetEnd, pcDataGenerator)
 			if err != nil {
 				return nil, err
 			}
@@ -248,25 +201,185 @@ func addCallbacksEntries(pcDataEntries []PCDataEntry, offsetMappings []AddressMa
 	return pcDataEntries, nil
 }
 
+type PCDataPatcher struct {
+	newFuncEntry   uintptr
+	offsetMappings []AddressMapping
+	isPatched      bool
+	instSizeReader func(pc uintptr) (uintptr, rookoutErrors.RookoutError)
+}
 
 
 
-func updatePCDataOffsets(p []byte, offsetMappings []AddressMapping, pcDataGenerator func(uintptr, uintptr) ([]PCDataEntry, error)) ([]byte, error) {
-	pcDataEntries := decodePCDataEntries(p)
-	if err := updatePCDataEntries(pcDataEntries, offsetMappings, false); err != nil {
+
+
+
+
+
+func verifyOffsetMappings(offsetMappings []AddressMapping) rookoutErrors.RookoutError {
+	numLastMappingsToCheck := 2
+	if len(offsetMappings) < numLastMappingsToCheck {
+		return rookoutErrors.NewIllegalAddressMappings()
+	}
+	lastMappings := offsetMappings[len(offsetMappings)-numLastMappingsToCheck:]
+	for _, m := range lastMappings {
+		if _, ok := CallbacksMarkers[m.OriginalAddress]; ok {
+			return rookoutErrors.NewIllegalAddressMappings()
+		}
+	}
+
+	return nil
+}
+
+func NewPCDataPatcher(newFuncEntry uintptr, offsetMappings []AddressMapping, isPatched bool, instSizeReader func(uintptr) (uintptr, rookoutErrors.RookoutError)) (*PCDataPatcher, error) {
+	if err := verifyOffsetMappings(offsetMappings); err != nil {
 		return nil, err
 	}
+	return &PCDataPatcher{
+		newFuncEntry:   newFuncEntry,
+		offsetMappings: offsetMappings,
+		isPatched:      isPatched,
+		instSizeReader: instSizeReader,
+	}, nil
+}
 
-	if pcDataGenerator != nil {
-		newPCDataEntries, err := addCallbacksEntries(pcDataEntries, offsetMappings, pcDataGenerator)
-		if err != nil {
-			return nil, err
+func (p *PCDataPatcher) updateOffsets(table []PCDataEntry) error {
+	updatePCDataEntries(table, p.offsetMappings)
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	var newMappings []AddressMapping
+	for i := 0; i < len(p.offsetMappings); i++ {
+		currentMapping := p.offsetMappings[i]
+		if _, ok := CallbacksMarkers[currentMapping.OriginalAddress]; ok {
+			i++ 
+			
+			for ; i < len(p.offsetMappings); i++ {
+				if _, ok := CallbacksMarkers[p.offsetMappings[i].OriginalAddress]; !ok {
+					break
+				}
+			}
+			if i < len(p.offsetMappings) {
+				newMappings = append(newMappings, AddressMapping{OriginalAddress: p.offsetMappings[i].NewAddress, NewAddress: currentMapping.NewAddress})
+			} else {
+				
+				return rookoutErrors.NewIllegalAddressMappings()
+			}
 		}
-		pcDataEntries = newPCDataEntries
 	}
-	encoded, err := encodePCDataEntries(pcDataEntries)
+	updatePCDataEntries(table, newMappings)
+
+	return nil
+}
+
+func (p *PCDataPatcher) createSanitized(oldTable []PCDataEntry, builder func([]PCDataEntry) ([]PCDataEntry, error)) ([]PCDataEntry, error) {
+	var oldTableCopy []PCDataEntry = nil
+	if len(oldTable) > 0 {
+		oldTableCopy = make([]PCDataEntry, len(oldTable))
+		copy(oldTableCopy, oldTable)
+	}
+
+	newTable, err := builder(oldTableCopy)
 	if err != nil {
 		return nil, err
 	}
-	return encoded, nil
+	return removeDuplicateValues(newTable), nil
+}
+
+
+
+
+func (p *PCDataPatcher) CreatePCData(tableIndex int, oldTable []PCDataEntry) ([]PCDataEntry, error) {
+	return p.createSanitized(oldTable,
+		func(table []PCDataEntry) ([]PCDataEntry, error) {
+			err := p.updateOffsets(table)
+			if err != nil {
+				return nil, err
+			}
+
+			if p.isPatched && tableIndex == _PCDATA_UnsafePoint {
+				table, err = p.fixAsyncUnsafePointPCData(table)
+			}
+
+			return table, err
+		})
+}
+
+
+func (p *PCDataPatcher) CreatePCLine(oldTable []PCDataEntry) ([]PCDataEntry, error) {
+	return p.createSanitized(oldTable,
+		func(table []PCDataEntry) ([]PCDataEntry, error) {
+			err := p.updateOffsets(table)
+			return table, err
+		})
+}
+
+
+
+func (p *PCDataPatcher) CreatePCSP(oldTable []PCDataEntry) ([]PCDataEntry, error) {
+	return p.createSanitized(oldTable,
+		func(table []PCDataEntry) ([]PCDataEntry, error) {
+			err := p.updateOffsets(table)
+			if err != nil {
+				return nil, err
+			}
+			if p.isPatched {
+				pcspGenerator := func(callbackOffsetStart, callbackOffsetEnd uintptr, callbackOffsetValue int32) ([]PCDataEntry, error) {
+					
+					patchedPCSP, err := generatePCSP(callbackOffsetStart+p.newFuncEntry, callbackOffsetEnd+p.newFuncEntry)
+					if err != nil {
+						return nil, err
+					}
+					
+					return addOffsetAndValueToEntries(callbackOffsetStart, callbackOffsetValue, patchedPCSP), nil
+				}
+				table, err = addCallbacksEntries(table, p.offsetMappings, pcspGenerator)
+				if err != nil {
+					return nil, err
+				}
+			}
+			return table, nil
+		})
+}
+
+
+
+
+
+
+
+
+func (p *PCDataPatcher) fixAsyncUnsafePointPCData(entries []PCDataEntry) ([]PCDataEntry, error) {
+	if len(entries) == 0 {
+		entries = []PCDataEntry{{Offset: p.offsetMappings[len(p.offsetMappings)-1].NewAddress, Value: _PCDATA_UnsafePointSafe}}
+	}
+	
+	pcdataAsyncUnsafeGenerator := func(callbackOffsetStart, callbackOffsetEnd uintptr, callbackOffsetValue int32) ([]PCDataEntry, error) {
+		firstCallbackInstructionPC := callbackOffsetStart + p.newFuncEntry
+		firstCallbackInstructionSize, err := p.instSizeReader(firstCallbackInstructionPC)
+		if err != nil {
+			return nil, err
+		}
+		callbackEntries := []PCDataEntry{
+			{
+				
+				Offset: callbackOffsetStart + firstCallbackInstructionSize,
+				Value:  callbackOffsetValue,
+			},
+			{
+				
+				Offset: callbackOffsetEnd,
+				Value:  _PCDATA_UnsafePointUnsafe,
+			},
+		}
+		return callbackEntries, nil
+	}
+	return addCallbacksEntries(entries, p.offsetMappings, pcdataAsyncUnsafeGenerator)
 }

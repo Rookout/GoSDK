@@ -1,6 +1,8 @@
 package disassembler
 
 import (
+	"fmt"
+
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/utils"
 	"golang.org/x/arch/x86/x86asm"
@@ -11,22 +13,28 @@ var maxInstLen = 15
 type inst = x86asm.Inst
 
 func (i *Instruction) GetDestPC() (uintptr, rookoutErrors.RookoutError) {
-	if !IsCall(i) && !IsJump(i) {
+	if !IsDirectCall(i) && !IsDirectJump(i) {
 		return 0, rookoutErrors.NewUnexpectedInstructionOp(i)
 	}
 
-	relDest, ok := i.Args[0].(x86asm.Rel)
-	if !ok {
-		return 0, rookoutErrors.NewArgIsNotRel(i)
-	}
+	relDest := i.Args[0].(x86asm.Rel)
 	return uintptr(int64(relDest) + int64(i.PC) + int64(i.Len)), nil
 }
 
-func IsCall(i *Instruction) bool {
-	return i.Op == x86asm.CALL
+
+func isArgRel(i *Instruction) bool {
+	_, ok := i.Args[0].(x86asm.Rel)
+	return ok
 }
 
-func IsJump(i *Instruction) bool {
+func IsDirectCall(i *Instruction) bool {
+	if i.Op != x86asm.CALL {
+		return false
+	}
+	return isArgRel(i)
+}
+
+func IsDirectJump(i *Instruction) bool {
 	switch i.Op {
 	case x86asm.JA,
 		x86asm.JAE,
@@ -48,7 +56,7 @@ func IsJump(i *Instruction) bool {
 		x86asm.JP,
 		x86asm.JRCXZ,
 		x86asm.JS:
-		return true
+		return isArgRel(i)
 	}
 	return false
 }
@@ -87,6 +95,9 @@ func Decode(startPC uintptr, endPC uintptr, _ bool) ([]*Instruction, rookoutErro
 	for offset < funcLen {
 		inst, err := decodeOne(funcAsm[offset:])
 		if err != nil {
+			err.AddArgument("funcAsm", fmt.Sprintf("%x", funcAsm))
+			err.AddArgument("offset", offset)
+			err.AddArgument("startPC", startPC)
 			return nil, err
 		}
 

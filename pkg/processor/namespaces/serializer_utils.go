@@ -259,7 +259,7 @@ func dumpErrorValue(s Serializer, value reflect.Value) {
 	}
 
 	if value.Type() == reflect.TypeOf(rookoutErrors.RookoutErrorImpl{}) {
-		err := rookoutErrors.RookoutErrorImpl{
+		err := &rookoutErrors.RookoutErrorImpl{
 			ExternalError: value.FieldByName("ExternalError").Interface().(error),
 			Type:          value.FieldByName("Type").Interface().(string),
 			Arguments:     value.FieldByName("Arguments").Interface().(map[string]interface{}),

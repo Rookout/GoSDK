@@ -1,6 +1,7 @@
 package module
 
 import (
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/disassembler"
 )
 
@@ -34,7 +35,7 @@ func pcspFromInstructions(instructions []*disassembler.Instruction, lastOffset u
 
 
 
-func generatePCSP(startPC uintptr, endPC uintptr) ([]PCDataEntry, error) {
+func generatePCSP(startPC uintptr, endPC uintptr) ([]PCDataEntry, rookoutErrors.RookoutError) {
 	instructions, err := read(startPC, endPC)
 	if err != nil {
 		return nil, err

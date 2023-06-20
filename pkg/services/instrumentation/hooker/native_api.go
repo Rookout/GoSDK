@@ -91,21 +91,17 @@ func getUnsafePointer(value uint64) unsafe.Pointer {
 	return unsafe.Pointer(uintptr(value))
 }
 
-func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, functionEnd uint64, breakpoints []*augs.BreakpointInstance, bpCallback, prologueCallback, shouldRunPrologue uintptr, functionStackUsage int32) (int, error) {
+func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, functionEnd uint64, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, functionStackUsage int32) (int, error) {
 	
 	var breakpointAddrs []uint64
 	var bpAddr unsafe.Pointer
 	var failedCounters []*uint64
 	var failedCountersAddr unsafe.Pointer
 	bpCallbackPtr := unsafe.Pointer(bpCallback)
-	prologueCallbackPtr := unsafe.Pointer(prologueCallback)
-	shouldRunProloguePtr := unsafe.Pointer(shouldRunPrologue)
+	var prologueAddr unsafe.Pointer
+	prologueLen := 0
 
-	if len(breakpoints) == 0 {
-		prologueCallbackPtr = nil
-		functionStackUsage = -1
-		shouldRunProloguePtr = nil
-	} else {
+	if len(breakpoints) > 0 {
 		breakpointAddrs = make([]uint64, len(breakpoints))
 		for i, bp := range breakpoints {
 			breakpointAddrs[i] = bp.Addr
@@ -114,6 +110,11 @@ func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, function
 
 		failedCounters = make([]*uint64, len(breakpoints))
 		failedCountersAddr = unsafe.Pointer(&failedCounters[0])
+
+		if len(prologue) > 0 {
+			prologueAddr = unsafe.Pointer(&prologue[0])
+			prologueLen = len(prologue)
+		}
 	}
 
 	stateID := int(C.RookoutRegisterFunctionBreakpointsState(
@@ -123,8 +124,8 @@ func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, function
 		bpAddr,
 		failedCountersAddr,
 		bpCallbackPtr,
-		prologueCallbackPtr,
-		shouldRunProloguePtr,
+		prologueAddr,
+		C.int(prologueLen),
 		C.uint(functionStackUsage)))
 
 	if stateID < 0 {

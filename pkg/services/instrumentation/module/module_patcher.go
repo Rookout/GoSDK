@@ -9,8 +9,47 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+)
+
+
+
+
+
+const (
+	_PCDATA_UnsafePoint   = 0
+	_PCDATA_StackMapIndex = 1
+	_PCDATA_InlTreeIndex  = 2
+	_PCDATA_ArgLiveIndex  = 3
+
+	_FUNCDATA_ArgsPointerMaps    = 0
+	_FUNCDATA_LocalsPointerMaps  = 1
+	_FUNCDATA_StackObjects       = 2
+	_FUNCDATA_InlTree            = 3
+	_FUNCDATA_OpenCodedDeferInfo = 4
+	_FUNCDATA_ArgInfo            = 5
+	_FUNCDATA_ArgLiveInfo        = 6
+	_FUNCDATA_WrapInfo           = 7
+
+	_ArgsSizeUnknown = -0x80000000
+)
+
+const (
+	
+	_PCDATA_UnsafePointSafe   = -1 
+	_PCDATA_UnsafePointUnsafe = -2 
+
+	
+	
+	
+	
+	
+	_PCDATA_Restart1 = -3
+	_PCDATA_Restart2 = -4
+
+	
+	
+	_PCDATA_RestartAtEntry = -5
 )
 
 var (
@@ -70,6 +109,10 @@ func (m *moduleDataPatcher) writeBytesToPclnTable(value []byte) {
 
 
 func dumpPCData(b []byte, prefix string) {
+	if len(b) == 0 {
+		fmt.Println(prefix, "table missing")
+		return
+	}
 	var pc uintptr
 	val := int32(-1)
 	var ok bool
@@ -122,14 +165,15 @@ func (m *moduleDataPatcher) createFindFuncBucket() error {
 }
 
 
-func (m *moduleDataPatcher) pcDataOffset(table int) (uint32, bool) {
-	offset := pcdatastart(*m.origFunction, uint32(table))
-	
-	
-	if offset == 0 {
-		return 0, false
+func (m *moduleDataPatcher) pcDataOffset(table int) uint32 {
+	if table >= int(m.origFunction.npcdata) {
+		return 0
 	}
-	return offset, m.isPCDataStartValid(offset)
+	offset := pcdatastart(*m.origFunction, uint32(table))
+	if m.isPCDataStartValid(offset) {
+		return offset
+	}
+	return 0
 }
 
 func (m *moduleDataPatcher) buildFuncData() {
@@ -138,18 +182,38 @@ func (m *moduleDataPatcher) buildFuncData() {
 	}
 }
 
+func (m *moduleDataPatcher) hasPatchedCode() bool {
+	for _, mapping := range m.offsetMappings {
+		if mapping.OriginalAddress == BPMarker || mapping.OriginalAddress == PrologueMarker {
+			return true
+		}
+	}
+	return false
+}
+
 
 func (m *moduleDataPatcher) buildPCData() error {
-	m.info.pcDataTables = make([][]byte, m.origFunction.npcdata)
-	for tableIndex := 0; tableIndex < int(m.origFunction.npcdata); tableIndex++ {
+	
+	numTablesInPatched := int(m.origFunction.npcdata)
+	isPatched := m.hasPatchedCode()
+	if isPatched && numTablesInPatched <= _PCDATA_UnsafePoint {
+		numTablesInPatched = _PCDATA_UnsafePoint + 1 
+	}
+	m.info.pcDataTables = make([][]byte, numTablesInPatched)
+	pcDataPatcher, err := NewPCDataPatcher(m.newFuncEntryAddress, m.offsetMappings, isPatched, instructionSizeBytes)
+	if err != nil {
+		return err
+	}
+
+	for tableIndex := 0; tableIndex < numTablesInPatched; tableIndex++ {
 		
-		pcDataOffset, ok := m.pcDataOffset(tableIndex)
-		if !ok {
-			logger.Logger().Debugf("pcDataOffset of table %d is %d, skipping", tableIndex, pcDataOffset)
-			continue
+		pcDataOffset := m.pcDataOffset(tableIndex)
+		newPCDataTable, err := pcDataPatcher.CreatePCData(tableIndex, decodePCDataEntries(m.getPCDataTable(uintptr(pcDataOffset))))
+		if err != nil {
+			return err
 		}
 		
-		newPCData, err := updatePCDataOffsets(m.getPCDataTable(uintptr(pcDataOffset)), m.offsetMappings, nil)
+		newPCData, err := encodePCDataEntries(newPCDataTable)
 		if err != nil {
 			return err
 		}
@@ -160,15 +224,15 @@ func (m *moduleDataPatcher) buildPCData() error {
 			dumpPCData(newPCData, fmt.Sprintf("New pcdata %d", tableIndex))
 		}
 	}
-	err := m.buildPCFile()
+	err = m.buildPCFile(pcDataPatcher)
 	if err != nil {
 		return err
 	}
-	err = m.buildPCLine()
+	err = m.buildPCLine(pcDataPatcher)
 	if err != nil {
 		return err
 	}
-	err = m.buildPCSP()
+	err = m.buildPCSP(pcDataPatcher)
 	if err != nil {
 		return err
 	}
@@ -176,34 +240,38 @@ func (m *moduleDataPatcher) buildPCData() error {
 }
 
 
-func (m *moduleDataPatcher) buildPCSP() error {
-	newPCSP, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.origFunction.pcsp)), m.offsetMappings, func(start uintptr, end uintptr) ([]PCDataEntry, error) {
-		return generatePCSP(start+m.newFuncEntryAddress, end+m.newFuncEntryAddress)
-	})
+func (m *moduleDataPatcher) buildPCSP(patcher *PCDataPatcher) error {
+	newPCSP, err := patcher.CreatePCSP(decodePCDataEntries(m.getPCDataTable(uintptr(m.origFunction.pcsp))))
 	if err != nil {
 		return err
 	}
-	m.info.pcsp = newPCSP
+	pcspBytes, err := encodePCDataEntries(newPCSP)
+	if err != nil {
+		return err
+	}
+	m.info.pcsp = pcspBytes
 
 	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
 		dumpPCData(m.getPCDataTable(uintptr(m.origFunction.pcsp)), "Old PCSP")
-		dumpPCData(newPCSP, "New PCSP")
+		dumpPCData(pcspBytes, "New PCSP")
 	}
 
 	return nil
 }
 
 
-func (m *moduleDataPatcher) buildPCLine() error {
-	newPCLine, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.origFunction.pcln)), m.offsetMappings, nil)
+func (m *moduleDataPatcher) buildPCLine(patcher *PCDataPatcher) error {
+
+	newPCLine, err := patcher.CreatePCLine(decodePCDataEntries(m.getPCDataTable(uintptr(m.origFunction.pcln))))
 	if err != nil {
 		return err
 	}
-	m.info.pcLine = newPCLine
+	newPCLineBytes, err := encodePCDataEntries(newPCLine)
+	m.info.pcLine = newPCLineBytes
 
 	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
 		dumpPCData(m.getPCDataTable(uintptr(m.origFunction.pcln)), "Old pcln")
-		dumpPCData(newPCLine, "New pcln")
+		dumpPCData(newPCLineBytes, "New pcln")
 	}
 
 	return nil
@@ -241,29 +309,125 @@ func addModule(newModule *moduledata) {
 	modulesLock.Unlock()
 }
 
-func verifyPCDatas(f1, f2 FuncInfo, addressMappings []AddressMapping) rookoutErrors.RookoutError {
-	if f1.npcdata != f2.npcdata {
-		return rookoutErrors.NewDifferentNPCData(uint32(f1.npcdata), uint32(f2.npcdata))
+type callbackVerificationInfo struct {
+	startAddress    uintptr
+	endAddress      uintptr
+	origPCDataValue []int32
+	origPCSP        int32
+	origLine        int32
+	origFile        string
+	origPC          uintptr
+}
+
+
+
+
+
+
+
+
+
+func verifySingleCallbackPCDatas(newFunc FuncInfo, cbInfo callbackVerificationInfo) rookoutErrors.RookoutError {
+	expectedPCSP, _ := generatePCSP(cbInfo.startAddress, cbInfo.endAddress)
+	for i := 0; i < len(expectedPCSP); i++ {
+		expectedPCSP[i].Value += cbInfo.origPCSP
+		expectedPCSP[i].Offset += cbInfo.startAddress
 	}
 
-	prevMapping := addressMappings[0]
-	for _, mapping := range addressMappings {
+	for newPC := cbInfo.startAddress; newPC < cbInfo.endAddress; {
+		for pcdataIdx, origValue := range cbInfo.origPCDataValue {
+			newValue := pcdatavalue1(newFunc, uint32(pcdataIdx), newPC, nil, false)
+			if newPC == cbInfo.startAddress || pcdataIdx != _PCDATA_UnsafePoint {
+				if origValue != newValue {
+					return rookoutErrors.NewPCDataVerificationFailed(uint32(pcdataIdx), origValue, cbInfo.origPC, newValue, newPC)
+				}
+			} else {
+				
+				if newValue != _PCDATA_UnsafePointUnsafe {
+					return rookoutErrors.NewPCDataAsyncUnsafePointVerificationFailed(newValue, newPC)
+				}
+			}
+		}
+		newFile, newLine := funcline1(newFunc, newPC, false)
+		if cbInfo.origFile != newFile {
+			return rookoutErrors.NewPCFileVerificationFailed(cbInfo.origFile, cbInfo.origPC, newFile, newPC)
+		}
+		if cbInfo.origLine != newLine {
+			return rookoutErrors.NewPCLineVerificationFailed(cbInfo.origLine, cbInfo.origPC, newLine, newPC)
+		}
+
+		foundPCSP := false
+		for _, pcspEntry := range expectedPCSP {
+			if newPC < pcspEntry.Offset {
+				newSP, _ := pcvalue(newFunc, uint32(newFunc.pcsp), newPC, nil, false)
+				if pcspEntry.Value != newSP {
+					return rookoutErrors.NewPCSPInPatchedVerificationFailed(cbInfo.origPCSP, cbInfo.origPC, pcspEntry.Value, newSP, newPC)
+				}
+				foundPCSP = true
+				break
+			}
+		}
+		if !foundPCSP {
+			return rookoutErrors.NewPCSPVerificationFailedMissingEntry(cbInfo.origPCSP, cbInfo.origPC, newPC)
+		}
+		currInstSize, err := instructionSizeBytes(newPC)
+		if err != nil {
+			return err
+		}
+		newPC += currInstSize
+	}
+	return nil
+}
+
+func verifyCallbacksPCDatas(nPCData uint32, f1, f2 FuncInfo, addressMappings []AddressMapping) rookoutErrors.RookoutError {
+	for mapIdx, mapping := range addressMappings {
+		pc1 := mapping.OriginalAddress
+		pc2 := mapping.NewAddress
+		if _, ok := CallbacksMarkers[pc1]; !ok {
+			continue
+		}
+		cbInfo := callbackVerificationInfo{
+			startAddress:    pc2,
+			endAddress:      addressMappings[mapIdx+1].NewAddress,
+			origPCDataValue: make([]int32, nPCData),
+		}
 		
-		_, ok := CallbacksMarkers[prevMapping.OriginalAddress]
-		prevMapping = mapping
-		if ok {
-			continue
+		for _, nextMapping := range addressMappings[mapIdx+1:] {
+			if _, ok := CallbacksMarkers[nextMapping.OriginalAddress]; !ok {
+				pc1 = nextMapping.OriginalAddress
+				cbInfo.origPC = pc1
+				break
+			}
 		}
-		if _, ok := CallbacksMarkers[mapping.OriginalAddress]; ok {
+
+		for i := uint32(0); i < nPCData; i++ {
+			cbInfo.origPCDataValue[i] = pcdatavalue1(f1, i, pc1, nil, false)
+		}
+
+		sp1, _ := pcvalue(f1, uint32(f1.pcsp), pc1, nil, false)
+		file1, line1 := funcline1(f1, pc1, false)
+
+		cbInfo.origPCSP = sp1
+		cbInfo.origLine = line1
+		cbInfo.origFile = file1
+		if err := verifySingleCallbackPCDatas(f2, cbInfo); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func verifyNonCallbackPCDatas(nPCData uint32, f1, f2 FuncInfo, addressMappings []AddressMapping) rookoutErrors.RookoutError {
+	for _, mapping := range addressMappings {
+		pc1 := mapping.OriginalAddress
+		pc2 := mapping.NewAddress
+		if _, ok := CallbacksMarkers[pc1]; ok {
 			continue
 		}
 
-		pc1 := mapping.OriginalAddress - 1
-		pc2 := mapping.NewAddress - 1
-
-		for i := uint32(0); i < uint32(f1.npcdata); i++ {
-			value1 := pcdatavalue1(f1, uint32(i), pc1, nil, false)
-			value2 := pcdatavalue1(f2, uint32(i), pc2, nil, false)
+		for i := uint32(0); i < nPCData; i++ {
+			value1 := pcdatavalue1(f1, i, pc1, nil, false)
+			value2 := pcdatavalue1(f2, i, pc2, nil, false)
 			if value1 != value2 {
 				return rookoutErrors.NewPCDataVerificationFailed(i, value1, pc1, value2, pc2)
 			}
@@ -284,7 +448,28 @@ func verifyPCDatas(f1, f2 FuncInfo, addressMappings []AddressMapping) rookoutErr
 			return rookoutErrors.NewPCLineVerificationFailed(line1, pc1, line2, pc2)
 		}
 	}
+	return nil
+}
 
+func verifyPCDatas(f1, f2 FuncInfo, addressMappings []AddressMapping) rookoutErrors.RookoutError {
+	if f1.npcdata != f2.npcdata {
+		
+		if f1.npcdata > _PCDATA_UnsafePoint || f2.npcdata != _PCDATA_UnsafePoint+1 {
+			
+			return rookoutErrors.NewDifferentNPCData(uint32(f1.npcdata), uint32(f2.npcdata))
+		}
+
+	}
+	nPCData := f1.npcdata
+	if f2.npcdata > nPCData {
+		nPCData = f2.npcdata
+	}
+	if err := verifyNonCallbackPCDatas(uint32(nPCData), f1, f2, addressMappings); err != nil {
+		return err
+	}
+	if err := verifyCallbacksPCDatas(uint32(nPCData), f1, f2, addressMappings); err != nil {
+		return err
+	}
 	return nil
 }
 

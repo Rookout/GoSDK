@@ -42,8 +42,8 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/frame"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/line"
-	loclist2 "github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/loclist"
-	op2 "github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/loclist"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/op"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/reader"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/util"
 	"github.com/Rookout/GoSDK/pkg/utils"
@@ -522,7 +522,7 @@ func (bi *BinaryInfo) loadDebugInfoMapsCompileUnit(ctxt *loadDebugInfoMapsContex
 			if n, ok := entry.Val(dwarf.AttrName).(string); ok {
 				var addr uint64
 				if loc, ok := entry.Val(dwarf.AttrLocation).([]byte); ok {
-					if len(loc) == bi.PointerSize+1 && op2.Opcode(loc[0]) == op2.DW_OP_addr {
+					if len(loc) == bi.PointerSize+1 && op.Opcode(loc[0]) == op.DW_OP_addr {
 						addr, _ = util.ReadUintRaw(bytes.NewReader(loc[1:]), binary.LittleEndian, bi.PointerSize)
 					}
 				}
@@ -935,7 +935,7 @@ func (bi *BinaryInfo) loclistEntry(off int64, pc uint64) []byte {
 		return nil
 	}
 
-	var loclist loclist2.Reader = bi.newLoclist2Reader()
+	var loclist loclist.Reader = bi.newLoclist2Reader()
 	var debugAddr *godwarf.DebugAddr
 	loclist5 := bi.newLoclist5Reader()
 	if cu != nil && cu.Version >= 5 && loclist5 != nil {
@@ -973,12 +973,12 @@ func (bi *BinaryInfo) findCompileUnit(pc uint64) *compileUnit {
 	return nil
 }
 
-func (bi *BinaryInfo) newLoclist2Reader() *loclist2.Dwarf2Reader {
-	return loclist2.NewDwarf2Reader(bi.debugLocBytes, bi.PointerSize)
+func (bi *BinaryInfo) newLoclist2Reader() *loclist.Dwarf2Reader {
+	return loclist.NewDwarf2Reader(bi.debugLocBytes, bi.PointerSize)
 }
 
-func (bi *BinaryInfo) newLoclist5Reader() *loclist2.Dwarf5Reader {
-	return loclist2.NewDwarf5Reader(bi.debugLoclistBytes)
+func (bi *BinaryInfo) newLoclist5Reader() *loclist.Dwarf5Reader {
+	return loclist.NewDwarf5Reader(bi.debugLoclistBytes)
 }
 
 
@@ -991,12 +991,12 @@ func (bi *BinaryInfo) PCToImage(pc uint64) *Image {
 
 
 
-func (bi *BinaryInfo) Location(entry godwarf.Entry, attr dwarf.Attr, pc uint64, regs op2.DwarfRegisters) (int64, []op2.Piece, *LocationExpr, error) {
+func (bi *BinaryInfo) Location(entry godwarf.Entry, attr dwarf.Attr, pc uint64, regs op.DwarfRegisters) (int64, []op.Piece, *LocationExpr, error) {
 	instr, descr, err := bi.LocationExpr(entry, attr, pc)
 	if err != nil {
 		return 0, nil, nil, err
 	}
-	addr, pieces, err := op2.ExecuteStackProgram(regs, instr, bi.PointerSize)
+	addr, pieces, err := op.ExecuteStackProgram(&regs, instr, bi.PointerSize)
 	return addr, pieces, descr, err
 }
 

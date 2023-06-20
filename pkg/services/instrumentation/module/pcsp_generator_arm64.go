@@ -4,12 +4,12 @@
 package module
 
 import (
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"strconv"
 	"strings"
 	"unsafe"
 
 	"github.com/Rookout/GoSDK/pkg/logger"
-	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 	"github.com/Rookout/GoSDK/pkg/services/disassembler"
 	"golang.org/x/arch/arm64/arm64asm"
 )
@@ -271,4 +271,8 @@ func read(startPC uintptr, endPC uintptr) ([]*disassembler.Instruction, rookoutE
 	}
 
 	return notSkipped, nil
+}
+
+func instructionSizeBytes(pc uintptr) (uintptr, rookoutErrors.RookoutError) {
+	return 4, nil
 }

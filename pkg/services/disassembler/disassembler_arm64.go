@@ -9,43 +9,48 @@ import (
 type inst = arm64asm.Inst
 
 func (i *Instruction) GetDestPC() (uintptr, rookoutErrors.RookoutError) {
-	if !IsCall(i) && !IsJump(i) {
+	if !IsDirectCall(i) && !IsDirectJump(i) {
 		return 0, rookoutErrors.NewUnexpectedInstructionOp(i)
 	}
 
-	relDest, ok := i.Args[0].(arm64asm.PCRel)
-	if !ok {
-		
-		if _, ok := i.Args[0].(arm64asm.Cond); !ok {
-			return 0, rookoutErrors.NewArgIsNotRel(i)
-		}
-
-		relDest, ok = i.Args[1].(arm64asm.PCRel)
-		if !ok {
-			return 0, rookoutErrors.NewArgIsNotRel(i)
-		}
-	}
+	relDest, _ := getPCRelArg(i)
 	return uintptr(int64(relDest) + int64(i.PC)), nil
 }
 
-func IsCall(i *Instruction) bool {
+
+func getPCRelArg(i *Instruction) (arm64asm.PCRel, bool) {
+	if pcrel, ok := i.Args[0].(arm64asm.PCRel); ok {
+		return pcrel, true
+	}
+
+	
+	if _, ok := i.Args[0].(arm64asm.Cond); ok {
+		if pcrel, ok := i.Args[1].(arm64asm.PCRel); ok {
+			return pcrel, ok
+		}
+	}
+
+	return 0, false
+}
+
+func IsDirectCall(i *Instruction) bool {
 	switch i.Op {
-	case arm64asm.BL,
-		arm64asm.BLR:
-		return true
+	case arm64asm.BL:
+		_, ok := getPCRelArg(i)
+		return ok
 	}
 	return false
 }
 
-func IsJump(i *Instruction) bool {
+func IsDirectJump(i *Instruction) bool {
 	switch i.Op {
 	case arm64asm.B,
-		arm64asm.BR,
 		arm64asm.CBNZ,
 		arm64asm.CBZ,
 		arm64asm.TBNZ,
 		arm64asm.TBZ:
-		return true
+		_, ok := getPCRelArg(i)
+		return ok
 	}
 	return false
 }

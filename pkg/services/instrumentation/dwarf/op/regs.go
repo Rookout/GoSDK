@@ -28,10 +28,10 @@ import (
 
 
 type DwarfRegisters struct {
-	StaticBase uint64
+	staticBase uint64
 
-	CFA       int64
-	FrameBase int64
+	cfa       int64
+	frameBase int64
 	ObjBase   int64
 	regs      []*DwarfRegister
 
@@ -53,7 +53,7 @@ type DwarfRegister struct {
 
 func NewDwarfRegisters(staticBase uint64, regs []*DwarfRegister, byteOrder binary.ByteOrder, pcRegNum, spRegNum, bpRegNum, lrRegNum uint64) *DwarfRegisters {
 	return &DwarfRegisters{
-		StaticBase: staticBase,
+		staticBase: staticBase,
 		regs:       regs,
 		ByteOrder:  byteOrder,
 		PCRegNum:   pcRegNum,
@@ -62,6 +62,13 @@ func NewDwarfRegisters(staticBase uint64, regs []*DwarfRegister, byteOrder binar
 		LRRegNum:   lrRegNum,
 	}
 }
+
+func (regs *DwarfRegisters) CFA() int64                      { return regs.cfa }
+func (regs *DwarfRegisters) StaticBase() uint64              { return regs.staticBase }
+func (regs *DwarfRegisters) FrameBase() int64                { return regs.frameBase }
+func (regs *DwarfRegisters) SetCFA(cfa int64)                { regs.cfa = cfa }
+func (regs *DwarfRegisters) SetStaticBase(staticBase uint64) { regs.staticBase = staticBase }
+func (regs *DwarfRegisters) SetFrameBase(frameBase int64)    { regs.frameBase = frameBase }
 
 
 

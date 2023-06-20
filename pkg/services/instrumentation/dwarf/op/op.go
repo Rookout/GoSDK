@@ -51,7 +51,7 @@ const (
 
 
 
-func ExecuteStackProgram(regs DwarfRegisters, instructions []byte, ptrSize int) (int64, []Piece, error) {
+func ExecuteStackProgram(regs Registers, instructions []byte, ptrSize int) (int64, []Piece, error) {
 	dwarfLocator, err := NewDwarfLocator(instructions, ptrSize)
 	if err != nil {
 		return 0, nil, err
@@ -99,15 +99,15 @@ func NewDwarfLocator(instructions []byte, ptrSize int) (*DwarfLocator, error) {
 	return &DwarfLocator{executors: executors, ptrSize: ptrSize}, nil
 }
 
-func (d *DwarfLocator) newDwarfLocatorContext(regs DwarfRegisters) *OpcodeExecutorContext {
+func (d *DwarfLocator) newDwarfLocatorContext(regs Registers) *OpcodeExecutorContext {
 	return &OpcodeExecutorContext{
-		Stack:          make([]int64, 0, 3),
-		PtrSize:        d.ptrSize,
-		DwarfRegisters: regs,
+		Stack:     make([]int64, 0, 3),
+		PtrSize:   d.ptrSize,
+		Registers: regs,
 	}
 }
 
-func (d *DwarfLocator) Locate(regs DwarfRegisters) (int64, []Piece, error) {
+func (d *DwarfLocator) Locate(regs Registers) (int64, []Piece, error) {
 	ctx := d.newDwarfLocatorContext(regs)
 
 	for _, executor := range d.executors {

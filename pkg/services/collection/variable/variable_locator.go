@@ -28,6 +28,8 @@ import (
 
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/logger"
+	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/assembler"
 	"github.com/Rookout/GoSDK/pkg/services/collection/memory"
 	"github.com/Rookout/GoSDK/pkg/services/collection/registers"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/binary_info"
@@ -60,20 +62,20 @@ func getVariableLocators(root *godwarf.Tree, depth int, pc uint64, line int, fun
 		if name := root.Val(dwarf.AttrName).(string); strings.HasPrefix(name, "~") {
 			return nil
 		}
-		visibilityOffset := 0
 		if root.Tag != dwarf.TagFormalParameter {
 			
 			
 			
-			visibilityOffset = 1
-		}
-		if declLine, ok := root.Val(dwarf.AttrDeclLine).(int64); !ok || line >= int(declLine)+visibilityOffset {
-			newVar, err := NewVariableLocator(root, function, pc, binaryInfo)
-			if err != nil {
+			declLine, ok := root.Val(dwarf.AttrDeclLine).(int64)
+			if ok && line < int(declLine)+1 {
 				return nil
 			}
-			return []*VariableLocator{newVar}
 		}
+		newVar, err := NewVariableLocator(root, function, pc, binaryInfo)
+		if err != nil {
+			return nil
+		}
+		return []*VariableLocator{newVar}
 	}
 
 	return nil
@@ -117,7 +119,7 @@ func (v *VariableLocator) Locate(regs registers.Registers, dictAddr uint64, vari
 	if err != nil {
 		logger.Logger().WithError(err).Warningf("Failed to advance regs")
 	} else {
-		addr, pieces, err = v.locator.Locate(dwarfRegs)
+		addr, pieces, err = v.locator.Locate(&dwarfRegs)
 		if err != nil {
 			logger.Logger().WithError(err).Warningf("Failed to locate %s", v.VariableName)
 		}
@@ -141,6 +143,17 @@ func (v *VariableLocator) Locate(regs registers.Registers, dictAddr uint64, vari
 	return newVar
 }
 
+func (v *VariableLocator) GetRegsUsed() ([]assembler.Reg, rookoutErrors.RookoutError) {
+	tracker := newRegTracker()
+
+	_, pieces, err := v.locator.Locate(tracker)
+	if err != nil {
+		return nil, rookoutErrors.NewFailedToLocate(v.VariableName, err)
+	}
+
+	return tracker.ResolveRegsUsed(v.variableType, pieces)
+}
+
 func (v *VariableLocator) advanceRegs(regs registers.Registers) (op.DwarfRegisters, error) {
 	dwarfRegs := binary_info.RegistersToDwarfRegisters(0, regs)
 	fde, err := v.binaryInfo.FrameEntries.FDEForPC(v.pc) 
@@ -161,9 +174,9 @@ func (v *VariableLocator) advanceRegs(regs registers.Registers) (op.DwarfRegiste
 
 	callimage := v.binaryInfo.PCToImage(v.pc)
 
-	dwarfRegs.StaticBase = callimage.StaticBase
-	dwarfRegs.CFA = int64(cfareg.Uint64Val)
-	dwarfRegs.FrameBase = v.frameBase(dwarfRegs)
+	dwarfRegs.SetStaticBase(callimage.StaticBase)
+	dwarfRegs.SetCFA(int64(cfareg.Uint64Val))
+	dwarfRegs.SetFrameBase(v.frameBase(dwarfRegs))
 
 	
 	
@@ -175,7 +188,7 @@ func (v *VariableLocator) advanceRegs(regs registers.Registers) (op.DwarfRegiste
 	dwarfRegs.AddReg(dwarfRegs.SPRegNum, cfareg)
 
 	for i, regRule := range framectx.Regs {
-		reg, err := executeFrameRegRule(i, regRule, dwarfRegs.CFA, dwarfRegs, v.binaryInfo)
+		reg, err := executeFrameRegRule(i, regRule, dwarfRegs.CFA(), dwarfRegs, v.binaryInfo)
 		dwarfRegs.AddReg(i, reg)
 		if i == framectx.RetAddrReg {
 			if reg == nil {
@@ -207,13 +220,13 @@ func executeFrameRegRule(regnum uint64, rule frame.DWRule, cfa int64, dwarfRegs 
 	case frame.RuleRegister:
 		return dwarfRegs.Reg(rule.Reg), nil
 	case frame.RuleExpression:
-		v, _, err := op.ExecuteStackProgram(dwarfRegs, rule.Expression, binaryInfo.PointerSize)
+		v, _, err := op.ExecuteStackProgram(&dwarfRegs, rule.Expression, binaryInfo.PointerSize)
 		if err != nil {
 			return nil, err
 		}
 		return readRegisterAt(regnum, uint64(v))
 	case frame.RuleValExpression:
-		v, _, err := op.ExecuteStackProgram(dwarfRegs, rule.Expression, binaryInfo.PointerSize)
+		v, _, err := op.ExecuteStackProgram(&dwarfRegs, rule.Expression, binaryInfo.PointerSize)
 		if err != nil {
 			return nil, err
 		}

@@ -34,6 +34,7 @@ const (
 	MessageTypeRpcRequest             = "com.rookout.C2cRpcRequest"
 	MessageTypeRpcResponse            = "com.rookout.C2cRpcResponse"
 	MessageTypeAssertAgents           = "com.rookout.AssertAgents"
+	MessageTypeErrorMessage           = "com.rookout.ErrorMessage"
 )
 
 func WrapMsgInEnvelopeWithTime(message proto.Message, t time.Time) ([]byte, error) {

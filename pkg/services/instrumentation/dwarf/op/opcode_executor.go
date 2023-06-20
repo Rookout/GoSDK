@@ -37,6 +37,14 @@ type OpcodeExecutorCreatorContext struct {
 	prog        []byte
 	pointerSize int
 }
+type Registers interface {
+	CFA() int64
+	StaticBase() uint64
+	FrameBase() int64
+	Reg(idx uint64) *DwarfRegister
+	Uint64Val(idx uint64) uint64
+}
+
 type OpcodeExecutorContext struct {
 	Stack      []int64
 	Pieces     []Piece
@@ -44,7 +52,7 @@ type OpcodeExecutorContext struct {
 	PtrSize    int
 	readMemory ReadMemoryFunc
 
-	DwarfRegisters
+	Registers Registers
 }
 type OpcodeExecutor interface {
 	Execute(ctx *OpcodeExecutorContext) error
@@ -99,10 +107,10 @@ func newCallframeCFAExecutor(opcode Opcode, ctx *OpcodeExecutorCreatorContext) (
 }
 
 func (c *callframeCFAExecutor) Execute(ctx *OpcodeExecutorContext) error {
-	if ctx.CFA == 0 {
+	if ctx.Registers.CFA() == 0 {
 		return fmt.Errorf("could not retrieve CFA for current PC")
 	}
-	ctx.Stack = append(ctx.Stack, int64(ctx.CFA))
+	ctx.Stack = append(ctx.Stack, int64(ctx.Registers.CFA()))
 	return nil
 }
 
@@ -120,7 +128,7 @@ func newAddrExecutor(opcode Opcode, ctx *OpcodeExecutorCreatorContext) (OpcodeEx
 }
 
 func (a *addrExecutor) Execute(ctx *OpcodeExecutorContext) error {
-	ctx.Stack = append(ctx.Stack, int64(a.stack+ctx.StaticBase))
+	ctx.Stack = append(ctx.Stack, int64(a.stack+ctx.Registers.StaticBase()))
 	return nil
 }
 
@@ -180,7 +188,7 @@ func newFramebaseExecutor(opcode Opcode, ctx *OpcodeExecutorCreatorContext) (Opc
 }
 
 func (f *framebaseExecutor) Execute(ctx *OpcodeExecutorContext) error {
-	ctx.Stack = append(ctx.Stack, ctx.FrameBase+f.num)
+	ctx.Stack = append(ctx.Stack, ctx.Registers.FrameBase()+f.num)
 	return nil
 }
 
@@ -213,10 +221,10 @@ func newBRegisterExecutor(opcode Opcode, ctx *OpcodeExecutorCreatorContext) (Opc
 }
 
 func (b *bRegisterExecutor) Execute(ctx *OpcodeExecutorContext) error {
-	if ctx.Reg(b.regNum) == nil {
+	if ctx.Registers.Reg(b.regNum) == nil {
 		return fmt.Errorf("register %d not available", b.regNum)
 	}
-	ctx.Stack = append(ctx.Stack, int64(ctx.Uint64Val(b.regNum))+b.offset)
+	ctx.Stack = append(ctx.Stack, int64(ctx.Registers.Uint64Val(b.regNum))+b.offset)
 	return nil
 }
 

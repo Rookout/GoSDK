@@ -320,6 +320,8 @@ func (a *agentComWs) handleIncomingMessage(typeName string, envelope *pb.Envelop
 				persistentCallbacks = append(persistentCallbacks, messageCB)
 			}
 		}
+		a.callbacks[typeName] = persistentCallbacks
+	} else {
+		logger.Logger().Infof("Received unknown command: %s", typeName)
 	}
-	a.callbacks[typeName] = persistentCallbacks
 }

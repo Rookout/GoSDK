@@ -83,12 +83,7 @@ func (i *InstrumentationService) setBreakpoint(location locations.Location) rook
 	filename := location.GetFileName()
 	lineno := location.GetLineno()
 
-	addrs, filename, function, err := i.processManager.LineToPC(filename, lineno)
-	if err != nil {
-		return err
-	}
-
-	breakpoint, rookErr := i.processManager.WriteBreakpoint(filename, lineno, function, addrs)
+	breakpoint, rookErr := i.processManager.WriteBreakpoint(filename, lineno)
 	if rookErr != nil {
 		return rookErr
 	}

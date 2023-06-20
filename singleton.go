@@ -10,6 +10,7 @@ import (
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
 )
 
+//go:generate go generate ./assembler/
 //go:generate go generate ./trampoline/
 
 func memberToString(memberName string, member interface{}) string {
@@ -64,6 +65,9 @@ func start(opts RookOptions) {
 				isErrorType(rookErr, rookoutErrors.NewInvalidLabelError("")),
 				isErrorType(rookErr, rookoutErrors.NewWebSocketError()):
 				_, _ = fmt.Fprintf(os.Stderr, "[Rookout] Failed to start rookout: %v\n", err)
+			case isErrorType(rookErr, rookoutErrors.NewFailedToDecode(nil, nil)),
+				isErrorType(rookErr, rookoutErrors.NewUnexpectedInstruction(nil, nil)):
+				_, _ = fmt.Fprintf(os.Stderr, "[Rookout] Failed to start rookout: error while starting instrumentation\n")
 			default:
 				_, _ = fmt.Fprintf(os.Stderr, "[Rookout] Failed to connect to the controller - will continue attempting in the background: %v\n", err)
 			}

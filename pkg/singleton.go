@@ -14,6 +14,7 @@ import (
 	"github.com/Rookout/GoSDK/pkg/information"
 	"github.com/Rookout/GoSDK/pkg/logger"
 	"github.com/Rookout/GoSDK/pkg/rookoutErrors"
+	"github.com/Rookout/GoSDK/pkg/services/assembler/common"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation"
 	"github.com/Rookout/GoSDK/pkg/utils"
 )
@@ -231,6 +232,11 @@ func (s *singleton) Start(opts *config.RookOptions) (err error) {
 	err = s.connect()
 	if err != nil {
 		return err
+	}
+
+	if common.InitError != nil {
+		logger.Logger().WithError(common.InitError).Error("Unable to start rook")
+		return common.InitError
 	}
 
 	buildOpts, buildInfo, verifyBuildOptsErr := utils.GetBuildOpts()

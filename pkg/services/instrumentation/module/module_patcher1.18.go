@@ -19,6 +19,9 @@ type pclntableInfo struct {
 }
 
 func (m *moduleDataPatcher) getPCDataTable(offset uintptr) []byte {
+	if offset == 0 {
+		return nil
+	}
 	return m.origModule.pctab[offset:]
 }
 
@@ -46,18 +49,18 @@ func (m *moduleDataPatcher) buildFunc(pcspOffset uint32, pcfileOffset uint32, pc
 	}
 }
 
-func (m *moduleDataPatcher) buildPCFile() error {
-	newPCFile, err := updatePCDataOffsets(m.getPCDataTable(uintptr(m.origFunction.pcfile)), m.offsetMappings, nil)
+func (m *moduleDataPatcher) buildPCFile(patcher *PCDataPatcher) error {
+	newPCFile, _, err := patcher.CreatePCFile(decodePCDataEntries(m.getPCDataTable(uintptr(m.origFunction.pcfile))))
 	if err != nil {
 		return err
 	}
-
+	newPCFileBytes, err := encodePCDataEntries(newPCFile)
 	if _, ok := os.LookupEnv("ROOKOUT_DEV_DEBUG"); ok {
 		dumpPCData(m.getPCDataTable(uintptr(m.origFunction.pcfile)), "Old pcfile")
-		dumpPCData(newPCFile, "New pcfile")
+		dumpPCData(newPCFileBytes, "New pcfile")
 	}
 
-	m.info.pcFile = newPCFile
+	m.info.pcFile = newPCFileBytes
 	return nil
 }
 

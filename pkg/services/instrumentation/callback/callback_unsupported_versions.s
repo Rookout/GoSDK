@@ -4,5 +4,5 @@
 #include "funcdata.h"
 #include "textflag.h"
 
-TEXT ·ShouldRunPrologue(SB), $0
+TEXT ·getContext(SB), NOSPLIT, $0-8
 RET

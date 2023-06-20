@@ -24,7 +24,7 @@ func Destroy() error {
 	return rookoutErrors.NewUnsupportedPlatform()
 }
 
-func (n *NativeAPI) RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologueCallback uintptr, shouldRunPrologue uintptr, functionStackUsage int32) (stateId int, err error) {
+func (n *NativeAPI) RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, functionStackUsage int32) (stateId int, err error) {
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
 

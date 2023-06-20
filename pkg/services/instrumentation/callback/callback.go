@@ -19,6 +19,9 @@ import (
 	"github.com/Rookout/GoSDK/pkg/utils"
 )
 
+
+func getContext() uintptr
+
 var BinaryInfo *binary_info.BinaryInfo
 var locationsSet *locations_set.LocationsSet
 var triggerChan chan bool

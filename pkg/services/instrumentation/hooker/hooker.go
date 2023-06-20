@@ -11,24 +11,21 @@ import (
 	"github.com/Rookout/GoSDK/pkg/services/safe_hook_validator"
 )
 
-const stackBig = 4096 
-
 type Address = uint64
 
 type Hooker interface {
 	StartWritingBreakpoint(bpInstance *augs.BreakpointInstance) (hookContext BreakpointFlowRunner, err error)
 	StartErasingBreakpoint(bpInstance *augs.BreakpointInstance) (hookContext BreakpointFlowRunner, err error)
+	StartCopyingFunction(f *augs.Function) (hookContext BreakpointFlowRunner, err error)
 }
 
 type hookerImpl struct {
-	bpCallback        unsafe.Pointer
-	prologueCallback  unsafe.Pointer
-	shouldRunPrologue unsafe.Pointer
-	api               NativeHookerAPI
+	bpCallback unsafe.Pointer
+	api        NativeHookerAPI
 }
 
 type NativeHookerAPI interface {
-	RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologueCallback uintptr, shouldRunPrologue uintptr, functionStackUsage int32) (stateID int, err error)
+	RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, functionStackUsage int32) (stateID int, err error)
 	GetInstructionMapping(functionEntry Address, functionEnd Address, stateID int) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error)
 	GetStateEntryAddr(functionEntry Address, functionEnd Address, stateID int) (uintptr, error)
 	GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error)
@@ -39,12 +36,10 @@ type NativeHookerAPI interface {
 	DefuseWatchDog()
 }
 
-func New(bpCallback unsafe.Pointer, prologueCallback unsafe.Pointer, shouldRunPrologue unsafe.Pointer) Hooker {
+func New(bpCallback unsafe.Pointer) Hooker {
 	return &hookerImpl{
-		bpCallback:        bpCallback,
-		prologueCallback:  prologueCallback,
-		shouldRunPrologue: shouldRunPrologue,
-		api:               NewNativeAPI(),
+		bpCallback: bpCallback,
+		api:        NewNativeAPI(),
 	}
 }
 
@@ -54,6 +49,10 @@ func sortSlice(slice []uint64) []uint64 {
 	})
 
 	return slice
+}
+
+func (h *hookerImpl) StartCopyingFunction(f *augs.Function) (BreakpointFlowRunner, error) {
+	return NewFlowRunner(h.api, BreakpointFlowRunnerInitializationInfo{Function: f}, []*augs.BreakpointInstance{}, safe_hook_installer.NewSafeHookInstaller)
 }
 
 func (h *hookerImpl) StartWritingBreakpoint(bpInstance *augs.BreakpointInstance) (BreakpointFlowRunner, error) {
@@ -93,16 +92,6 @@ func (h *hookerImpl) getHookingContextInitInfo(bpInstance *augs.BreakpointInstan
 	initInfo := BreakpointFlowRunnerInitializationInfo{
 		Function:   bpInstance.Function,
 		BPCallback: uintptr(h.bpCallback),
-	}
-
-	if functionStackFrameSize := bpInstance.Function.StackFrameSize; functionStackFrameSize < stackBig {
-		initInfo.PrologueCallback = uintptr(h.prologueCallback)
-		initInfo.ShouldRunPrologueCallback = uintptr(h.shouldRunPrologue)
-		initInfo.Function.StackFrameSize = functionStackFrameSize
-	} else {
-		initInfo.PrologueCallback = uintptr(unsafe.Pointer(nil))
-		initInfo.ShouldRunPrologueCallback = uintptr(unsafe.Pointer(nil))
-		initInfo.Function.StackFrameSize = -1
 	}
 
 	return initInfo
