@@ -17,7 +17,6 @@ type Stackframe struct {
 }
 
 type CollectionService struct {
-	
 	variables              []*variable.Variable
 	StackTraceElements     []Stackframe
 	variableLocators       []*variable.VariableLocator
@@ -27,7 +26,7 @@ type CollectionService struct {
 	dictAddr               uint64
 	regs                   registers.Registers
 	pointerSize            int
-	goid                   int 
+	goid                   int
 }
 
 const goDictionaryName = ".dict"
@@ -69,6 +68,7 @@ func (c *CollectionService) loadDictVariable(config config.ObjectDumpConfig) {
 }
 
 func (c *CollectionService) GetVariables(config config.ObjectDumpConfig) []*variable.Variable {
+	fmt.Printf("Getting %d variables\n", len(c.variableLocators))
 	c.loadDictVariable(config)
 
 	var variables []*variable.Variable
@@ -91,6 +91,7 @@ func (c *CollectionService) GetVariable(name string, config config.ObjectDumpCon
 }
 
 func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableLocator, config config.ObjectDumpConfig) (v *variable.Variable) {
+	fmt.Printf("Locating %s\n", varLocator.VariableName)
 	v = varLocator.Locate(c.regs, c.dictAddr, c.variablesCache, config)
 	if name := v.Name; len(name) > 1 && name[0] == '&' {
 		v = v.MaybeDereference()
@@ -104,8 +105,10 @@ func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableL
 		v.ObjectDumpConfig.Tailor(v.Kind, int(v.Len))
 	}
 
+	fmt.Printf("Loading %s\n", varLocator.VariableName)
 	v.LoadValue()
 	c.variables = append(c.variables, v)
+	fmt.Printf("Added %s\n", varLocator.VariableName)
 	return v
 }
 

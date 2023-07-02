@@ -1,6 +1,7 @@
 package namespaces
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -100,7 +101,7 @@ func (f *FrameNamespace) GetDump(args string) (*ContainerNamespace, rookoutError
 }
 
 func (f *FrameNamespace) ReadAttribute(name string) (Namespace, rookoutErrors.RookoutError) {
-	
+
 	if local, ok := f.locals[name]; ok {
 		if local.ObjectDumpConf.IsTailored {
 			return local, nil
@@ -110,7 +111,6 @@ func (f *FrameNamespace) ReadAttribute(name string) (Namespace, rookoutErrors.Ro
 	dumpConfig := config.GetDefaultDumpConfig()
 	dumpConfig.ShouldTailor = true
 
-	
 	v, err := f.collectionService.GetVariable(name, dumpConfig)
 	if err != nil {
 		return nil, rookoutErrors.NewRookAttributeNotFoundException(name)
@@ -134,5 +134,7 @@ func (f *FrameNamespace) GetObject() interface{} {
 
 func (f *FrameNamespace) Serialize(serializer Serializer) {
 	dump, _ := f.GetDump("")
+	fmt.Println("Serializing frame")
 	dump.Serialize(serializer)
+	fmt.Println("Done serializing frame")
 }
