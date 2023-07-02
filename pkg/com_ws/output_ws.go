@@ -1,6 +1,7 @@
 package com_ws
 
 import (
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -75,6 +76,7 @@ func (d *outputWs) sendUserMessage(augID types.AugID, messageID string, argument
 		return nil
 	}
 
+	fmt.Printf("Sending augID: %d, messageID: %d\n", augID, messageID)
 	msg := &pb.AugReportMessage{
 		AgentId:  d.agentID,
 		AugID:    augID,

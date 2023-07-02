@@ -19,7 +19,6 @@ import (
 	"github.com/Rookout/GoSDK/pkg/utils"
 )
 
-
 func getContext() uintptr
 
 var BinaryInfo *binary_info.BinaryInfo
@@ -45,11 +44,11 @@ type BreakpointInfo struct {
 
 func collectStacktrace(regs *registers.OnStackRegisters, g go_runtime.GPtr, maxStacktrace int) []collection.Stackframe {
 	if maxStacktrace == 0 {
-		maxStacktrace = 1 
+		maxStacktrace = 1
 	}
 
 	pcs := make([]uintptr, maxStacktrace)
-	
+
 	frameCount := go_runtime.Callers(uintptr(regs.PC()), uintptr(regs.SP()), g, pcs)
 	pcs = pcs[:frameCount]
 	stacktrace := make([]collection.Stackframe, 0, frameCount)
@@ -59,17 +58,13 @@ func collectStacktrace(regs *registers.OnStackRegisters, g go_runtime.GPtr, maxS
 	frame := runtime.Frame{}
 	for i := 0; i < frameCount; i++ {
 		if !more {
-			
+
 			logger.Logger().Warningf("Expected more frames but more is false: %d/%d\n", i, frameCount)
 			break
 		}
 
 		frame, more = frames.Next()
-		
-		
-		
-		
-		
+
 		stacktrace = append(stacktrace,
 			collection.Stackframe{
 				File:     frame.File,
@@ -131,7 +126,6 @@ func goCollect(context uintptr, g go_runtime.GPtr) {
 	systemstack(func() {
 		waitChan = make(chan struct{})
 
-		
 		go func() {
 			defer func() {
 				waitChan <- struct{}{}
@@ -169,7 +163,7 @@ func collectBreakpoint(context uintptr, g go_runtime.GPtr) {
 
 	goid := go_id.GetGoID(g)
 	stacktrace := collectStacktrace(regs, g, bpInstance.Breakpoint.Stacktrace)
-	
+
 	stacktrace[0].Line = bpInstance.Breakpoint.Line
 
 	bpInfo := &BreakpointInfo{
@@ -187,12 +181,14 @@ func reportBreakpoint(bpInstance *augs.BreakpointInstance, bpInfo *BreakpointInf
 		return
 	}
 
+	logger.Logger().Debugf("Triggered breakpoint %s:%d (0x%x)", bp.File, bp.Line, bpInstance.Addr)
 	wg := sync.WaitGroup{}
 	wg.Add(len(locations))
 	for i := range locations {
 		utils.CreateGoroutine(func(i int) func() {
-			return func() { 
+			return func() {
 				defer func() {
+					logger.Logger().Debugf("Finished collecting breakpoint %s:%d (0x%x), audID: %d", bp.File, bp.Line, bpInstance.Addr, locations[i].GetAugID())
 					if r := recover(); r != nil {
 						locations[i].SetError(rookoutErrors.NewUnknownError(r))
 					}
