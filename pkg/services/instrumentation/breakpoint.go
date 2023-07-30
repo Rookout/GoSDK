@@ -151,7 +151,7 @@ func createBreakpointID() (string, rookoutErrors.RookoutError) {
 
 
 func applyBreakpointState(runner hooker.BreakpointFlowRunner, filename string, lineno int) rookoutErrors.RookoutError {
-	if !runner.IsDefaultState() {
+	if !runner.IsUnhookedState() {
 		addressMappings, offsetMappings, err := runner.GetAddressMapping()
 		if err != nil {
 			return rookoutErrors.NewFailedToGetAddressMapping(filename, lineno, err)

@@ -25,10 +25,9 @@ type hookerImpl struct {
 }
 
 type NativeHookerAPI interface {
-	RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, functionStackUsage int32) (stateID int, err error)
+	RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, hasStackFrame bool) (stateID int, err error)
 	GetInstructionMapping(functionEntry Address, functionEnd Address, stateID int) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error)
 	GetStateEntryAddr(functionEntry Address, functionEnd Address, stateID int) (uintptr, error)
-	GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error)
 	ApplyBreakpointsState(functionEntry Address, functionEnd Address, stateID int) (err error)
 	GetHookAddress(functionEntry uint64, functionEnd uint64, stateID int) (uintptr, rookoutErrors.RookoutError)
 	GetFunctionType(functionEntry uint64, functionEnd uint64) (safe_hook_validator.FunctionType, error)
@@ -56,7 +55,10 @@ func (h *hookerImpl) StartCopyingFunction(f *augs.Function) (BreakpointFlowRunne
 }
 
 func (h *hookerImpl) StartWritingBreakpoint(bpInstance *augs.BreakpointInstance) (BreakpointFlowRunner, error) {
-	initInfo := h.getHookingContextInitInfo(bpInstance)
+	initInfo := BreakpointFlowRunnerInitializationInfo{
+		Function:   bpInstance.Function,
+		BPCallback: uintptr(h.bpCallback),
+	}
 	allBPs := append(bpInstance.Function.GetBreakpointInstances(), bpInstance)
 
 	baseCtxt, err := NewFlowRunner(h.api, initInfo, allBPs, safe_hook_installer.NewSafeHookInstaller)
@@ -67,7 +69,10 @@ func (h *hookerImpl) StartWritingBreakpoint(bpInstance *augs.BreakpointInstance)
 }
 
 func (h *hookerImpl) StartErasingBreakpoint(bpInstance *augs.BreakpointInstance) (BreakpointFlowRunner, error) {
-	initInfo := h.getHookingContextInitInfo(bpInstance)
+	initInfo := BreakpointFlowRunnerInitializationInfo{
+		Function:   bpInstance.Function,
+		BPCallback: uintptr(h.bpCallback),
+	}
 	var allBPs []*augs.BreakpointInstance
 
 	for _, bp := range bpInstance.Function.GetBreakpointInstances() {
@@ -86,13 +91,4 @@ func (h *hookerImpl) StartErasingBreakpoint(bpInstance *augs.BreakpointInstance)
 
 func (h *hookerImpl) getNativeAPI() NativeHookerAPI {
 	return h.api
-}
-
-func (h *hookerImpl) getHookingContextInitInfo(bpInstance *augs.BreakpointInstance) BreakpointFlowRunnerInitializationInfo {
-	initInfo := BreakpointFlowRunnerInitializationInfo{
-		Function:   bpInstance.Function,
-		BPCallback: uintptr(h.bpCallback),
-	}
-
-	return initInfo
 }

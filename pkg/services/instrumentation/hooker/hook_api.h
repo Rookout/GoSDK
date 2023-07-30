@@ -19,13 +19,10 @@ int RookoutDestroy();
 int RookoutRegisterFunctionBreakpointsState(void *function_entry_addr, void *function_end_addr, int num_breakpoints,
                                             void *breakpoints_addrs, void *breakpoint_failed_counters,
                                             void *breakpoint_execution_callback_addr, void *prologue_addr,
-                                            int prologue_len, uint32_t function_stack_usage);
+                                            int prologue_len, int has_stack_frame);
 
 
 void *RookoutGetInstructionMapping(void *function_entry_addr, void *function_end_addr, int state_id);
-
-
-void *RookoutGetUnpatchedInstructionMapping(void *function_entry_addr, void *function_end_addr);
 
 
 int RookoutGetFunctionType(void *function_entry_addr, void *function_end_addr);

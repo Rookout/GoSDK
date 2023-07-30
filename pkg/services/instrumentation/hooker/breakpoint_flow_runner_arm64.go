@@ -6,7 +6,7 @@ import (
 
 func (c *breakpointFlowRunner) ApplyBreakpointsState() error {
 	
-	if c.IsDefaultState() {
+	if c.IsUnhookedState() {
 		return c.installHook()
 	}
 

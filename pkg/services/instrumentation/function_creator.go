@@ -40,7 +40,7 @@ func (f *functionCreator) createFunction() (*augs.Function, rookoutErrors.Rookou
 	}
 	stackFrameSize := module.FindFuncMaxSPDelta(f.biFunction.Entry)
 	function := augs.NewFunction(f.biFunction.Entry, f.biFunction.End, stackFrameSize, middleTrampolineAddress, finalTrampolinePointer)
-	function.Prologue, err = f.getPrologue(function)
+	function.FunctionCopyStateID, function.Prologue, err = f.getPrologue(function)
 	if err != nil {
 		return nil, err
 	}
@@ -48,10 +48,10 @@ func (f *functionCreator) createFunction() (*augs.Function, rookoutErrors.Rookou
 	return function, nil
 }
 
-func (f *functionCreator) getPrologue(function *augs.Function) ([]byte, rookoutErrors.RookoutError) {
-	unpatchedFuncEntry, err := f.createFunctionCopy(function)
+func (f *functionCreator) getPrologue(function *augs.Function) (int, []byte, rookoutErrors.RookoutError) {
+	functionCopyStateID, functionCopyEntry, err := f.createFunctionCopy(function)
 	if err != nil {
-		return nil, err
+		return -1, nil, err
 	}
 
 	getRegsUsed := func() ([]assembler.Reg, rookoutErrors.RookoutError) {
@@ -79,30 +79,30 @@ func (f *functionCreator) getPrologue(function *augs.Function) ([]byte, rookoutE
 		return regsUsed, nil
 	}
 
-	prologueGenerator, err := prologue.NewGenerator(uintptr(f.biFunction.Entry), uintptr(f.biFunction.End), int(function.StackFrameSize), unpatchedFuncEntry, getRegsUsed)
+	prologueGenerator, err := prologue.NewGenerator(uintptr(f.biFunction.Entry), uintptr(f.biFunction.End), int(function.StackFrameSize), functionCopyEntry, getRegsUsed)
 	if err != nil {
-		return nil, err
+		return -1, nil, err
 	}
-
-	return prologueGenerator.Generate()
+	p, err := prologueGenerator.Generate()
+	return functionCopyStateID, p, err
 }
 
-func (f *functionCreator) createFunctionCopy(function *augs.Function) (uintptr, rookoutErrors.RookoutError) {
+func (f *functionCreator) createFunctionCopy(function *augs.Function) (int, uintptr, rookoutErrors.RookoutError) {
 	runner, err := f.hooker.StartCopyingFunction(function)
 	if err != nil {
-		return 0, rookoutErrors.NewFailedToStartCopyingFunction(err)
+		return -1, 0, rookoutErrors.NewFailedToStartCopyingFunction(err)
 	}
-	addressMappings, offsetMappings, err := runner.GetUnpatchedAddressMapping()
+	addressMappings, offsetMappings, err := runner.GetAddressMapping()
 	if err != nil {
-		return 0, rookoutErrors.NewFailedToGetAddressMapping(f.filename, f.lineno, err)
+		return -1, 0, rookoutErrors.NewFailedToGetAddressMapping(f.filename, f.lineno, err)
 	}
 
 	
 	
 	
 	if err = module.PatchModuleData(addressMappings, offsetMappings, runner.ID()); err != nil {
-		return 0, rookoutErrors.NewFailedToPatchModule(f.filename, f.lineno, err)
+		return -1, 0, rookoutErrors.NewFailedToPatchModule(f.filename, f.lineno, err)
 	}
 
-	return addressMappings[0].NewAddress, nil
+	return runner.ID(), addressMappings[0].NewAddress, nil
 }

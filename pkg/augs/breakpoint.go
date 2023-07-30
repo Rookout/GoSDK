@@ -48,6 +48,7 @@ type Function struct {
 	PatchedBytes            []byte
 	Hooked                  bool
 	Prologue                []byte
+	FunctionCopyStateID     int
 }
 
 func NewFunction(entry uint64, end uint64, stackFrameSize int32, middleTrampolineAddress unsafe.Pointer, finalTrampolinePointer *uint64) *Function {
@@ -61,5 +62,6 @@ func NewFunction(entry uint64, end uint64, stackFrameSize int32, middleTrampolin
 		MiddleTrampolineAddress: middleTrampolineAddress,
 		FinalTrampolinePointer:  finalTrampolinePointer,
 		Hooked:                  false,
+		FunctionCopyStateID:     -1, 
 	}
 }

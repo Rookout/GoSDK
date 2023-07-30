@@ -91,7 +91,7 @@ func getUnsafePointer(value uint64) unsafe.Pointer {
 	return unsafe.Pointer(uintptr(value))
 }
 
-func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, functionEnd uint64, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, functionStackUsage int32) (int, error) {
+func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, functionEnd uint64, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, hasStackFrame bool) (int, error) {
 	
 	var breakpointAddrs []uint64
 	var bpAddr unsafe.Pointer
@@ -116,7 +116,10 @@ func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, function
 			prologueLen = len(prologue)
 		}
 	}
-
+	cHasStackFrame := 0
+	if hasStackFrame {
+		cHasStackFrame = 1
+	}
 	stateID := int(C.RookoutRegisterFunctionBreakpointsState(
 		getUnsafePointer(functionEntry),
 		getUnsafePointer(functionEnd),
@@ -126,7 +129,7 @@ func (a *nativeAPIImpl) RegisterFunctionBreakpointsState(functionEntry, function
 		bpCallbackPtr,
 		prologueAddr,
 		C.int(prologueLen),
-		C.uint(functionStackUsage)))
+		C.int(cHasStackFrame)))
 
 	if stateID < 0 {
 		return stateID, fmt.Errorf("couldn't set new function breakpoint state (%v) (%s)", breakpoints, C.GoString(C.RookoutGetHookerLastError()))
@@ -156,16 +159,6 @@ func (a *nativeAPIImpl) GetStateEntryAddr(functionEntry uint64, functionEnd uint
 		return 0, err
 	}
 	return addressMappings[0].NewAddress, nil
-}
-
-func (a *nativeAPIImpl) GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error) {
-	rawUnpatchedAddressMapping := C.RookoutGetUnpatchedInstructionMapping(getUnsafePointer(functionEntry), getUnsafePointer(functionEnd))
-	if rawUnpatchedAddressMapping == nil {
-		return nil, nil, fmt.Errorf("Couldn't get unpatched instruction mapping (%s)\n", C.GoString(C.RookoutGetHookerLastError()))
-	}
-
-	addressMappings, offsetMappings = bufferToAddressMapping(rawUnpatchedAddressMapping, uintptr(functionEntry))
-	return addressMappings, offsetMappings, nil
 }
 
 func (a *nativeAPIImpl) ApplyBreakpointsState(functionEntry uint64, functionEnd uint64, stateId int) error {

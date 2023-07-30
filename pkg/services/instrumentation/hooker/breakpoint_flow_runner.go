@@ -23,11 +23,10 @@ const (
 
 type BreakpointFlowRunner interface {
 	GetAddressMapping() ([]module.AddressMapping, []module.AddressMapping, error)
-	GetUnpatchedAddressMapping() ([]module.AddressMapping, []module.AddressMapping, error)
 	ApplyBreakpointsState() error
-	IsDefaultState() bool
+	IsUnhookedState() bool
 	ID() int
-	DefaultID() int
+	UnhookedFunctionStateID() int
 }
 
 type BreakpointFlowRunnerInitializationInfo struct {
@@ -46,10 +45,6 @@ type breakpointFlowRunner struct {
 
 func (c *breakpointFlowRunner) GetAddressMapping() ([]module.AddressMapping, []module.AddressMapping, error) {
 	return c.nativeAPI.GetInstructionMapping(c.function.Entry, c.function.End, c.stateID)
-}
-
-func (c *breakpointFlowRunner) GetUnpatchedAddressMapping() ([]module.AddressMapping, []module.AddressMapping, error) {
-	return c.nativeAPI.GetUnpatchedInstructionMapping(c.function.Entry, c.function.End)
 }
 
 func (c *breakpointFlowRunner) installHook() (err error) {
@@ -100,7 +95,7 @@ func (c *breakpointFlowRunner) installHook() (err error) {
 			continue
 		}
 		
-		c.function.Hooked = !c.IsDefaultState()
+		c.function.Hooked = !c.IsUnhookedState()
 		break
 	}
 	if err == nil {
@@ -127,7 +122,7 @@ func (c *breakpointFlowRunner) getHookWriter() (*safe_hook_installer.HookWriter,
 }
 
 func (c *breakpointFlowRunner) buildHook(hookAddr uintptr) ([]byte, rookoutErrors.RookoutError) {
-	if c.IsDefaultState() {
+	if c.IsUnhookedState() {
 		return c.function.PatchedBytes, nil
 	}
 
@@ -145,28 +140,35 @@ func (c *breakpointFlowRunner) buildHook(hookAddr uintptr) ([]byte, rookoutError
 	return hook, nil
 }
 
-func (c *breakpointFlowRunner) IsDefaultState() bool {
-	return c.stateID == c.DefaultID()
+func (c *breakpointFlowRunner) IsUnhookedState() bool {
+	return c.stateID == c.UnhookedFunctionStateID()
 }
 
 func (c *breakpointFlowRunner) ID() int {
 	return c.stateID
 }
 
-func (c *breakpointFlowRunner) DefaultID() int {
+func (c *breakpointFlowRunner) UnhookedFunctionStateID() int {
 	return 0
 }
 
 func NewFlowRunner(nativeAPI NativeHookerAPI, initInfo BreakpointFlowRunnerInitializationInfo, requiredBreakpoints []*augs.BreakpointInstance, installerFactory safe_hook_installer.SafeHookInstallerCreator) (*breakpointFlowRunner, error) {
-	stateID, err := nativeAPI.RegisterFunctionBreakpointsState(initInfo.Function.Entry, initInfo.Function.End, requiredBreakpoints, initInfo.BPCallback, initInfo.Function.Prologue, initInfo.Function.StackFrameSize)
+	stateID, err := nativeAPI.RegisterFunctionBreakpointsState(initInfo.Function.Entry, initInfo.Function.End, requiredBreakpoints, initInfo.BPCallback, initInfo.Function.Prologue, initInfo.Function.StackFrameSize > 0)
 	if err != nil {
 		return nil, err
 	}
-	return &breakpointFlowRunner{
+
+	runner := &breakpointFlowRunner{
 		installerCreator: installerFactory,
 		info:             initInfo,
 		stateID:          stateID,
 		function:         initInfo.Function,
 		nativeAPI:        nativeAPI,
-	}, nil
+	}
+	if runner.stateID == initInfo.Function.FunctionCopyStateID {
+		
+		
+		runner.stateID = runner.UnhookedFunctionStateID()
+	}
+	return runner, nil
 }

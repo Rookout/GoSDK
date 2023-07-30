@@ -24,7 +24,7 @@ func Destroy() error {
 	return rookoutErrors.NewUnsupportedPlatform()
 }
 
-func (n *NativeAPI) RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, functionStackUsage int32) (stateId int, err error) {
+func (n *NativeAPI) RegisterFunctionBreakpointsState(functionEntry Address, functionEnd Address, breakpoints []*augs.BreakpointInstance, bpCallback uintptr, prologue []byte, hasStackFrame bool) (stateId int, err error) {
 	return 0, rookoutErrors.NewUnsupportedPlatform()
 }
 
@@ -33,13 +33,6 @@ func (n *NativeAPI) GetInstructionMapping(_ uint64, _ uint64, _ int) ([]module.A
 }
 func (n *NativeAPI) GetStateEntryAddr(functionEntry uint64, functionEnd uint64, stateId int) (uintptr, error) {
 	return 0, rookoutErrors.NewUnsupportedPlatform()
-}
-func (n *NativeAPI) GetUnpatchedInstructionMapping(functionEntry uint64, functionEnd uint64) (addressMappings []module.AddressMapping, offsetMappings []module.AddressMapping, err error) {
-	return nil, nil, rookoutErrors.NewUnsupportedPlatform()
-}
-
-func (n *NativeAPI) GetStackUsageMap() (map[uint64][]map[string]int64, rookoutErrors.RookoutError) {
-	return nil, rookoutErrors.NewUnsupportedPlatform()
 }
 
 func (n *NativeAPI) ApplyBreakpointsState(functionEntry Address, functionEnd Address, stateId int) (err error) {
