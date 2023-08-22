@@ -1,13 +1,15 @@
-//go:build amd64 && go1.15 && !go1.21
-// +build amd64,go1.15,!go1.21
+//go:build amd64 && go1.15 && !go1.22
+// +build amd64,go1.15,!go1.22
 
 package callstack
 
 import (
-	"github.com/Rookout/GoSDK/pkg/services/go_runtime"
 	"runtime"
+
+	"github.com/Rookout/GoSDK/pkg/services/go_runtime"
+
+	_ "unsafe"
 )
-import _ "unsafe"
 
 
 const (

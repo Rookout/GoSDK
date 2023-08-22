@@ -37,7 +37,7 @@ type _func struct {
 	pcfile    int32
 	pcln      int32
 	npcdata   int32
-	funcID    funcID  
+	funcID    FuncID  
 	_         [2]int8 
 	nfuncdata uint8   
 }

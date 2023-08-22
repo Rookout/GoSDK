@@ -28,6 +28,7 @@ import (
 	"github.com/Rookout/GoSDK/pkg/config"
 	"github.com/Rookout/GoSDK/pkg/services/collection/memory"
 	"github.com/Rookout/GoSDK/pkg/services/instrumentation/binary_info"
+	"github.com/Rookout/GoSDK/pkg/services/instrumentation/dwarf/godwarf"
 )
 
 
@@ -78,30 +79,38 @@ func readUintRaw(mem memory.MemoryReader, addr uint64, size int64) (uint64, erro
 	return n, nil
 }
 
-func readStringInfo(mem memory.MemoryReader, bi *binary_info.BinaryInfo, addr uint64) (uint64, int64, error) {
+func readStringInfo(mem memory.MemoryReader, bi *binary_info.BinaryInfo, addr uint64, typ *godwarf.StringType) (uint64, int64, error) {
 	
 	
 
 	mem = memory.CacheMemory(mem, addr, bi.PointerSize*2)
 
-	
-	strlen, err := readIntRaw(mem, addr+uint64(bi.PointerSize), int64(bi.PointerSize))
-	if err != nil {
-		return 0, 0, fmt.Errorf("could not read string len %s", err)
-	}
-	if strlen < 0 {
-		return 0, 0, fmt.Errorf("invalid length: %d", strlen)
+	var strlen int64
+	var outaddr uint64
+	var err error
+
+	for _, field := range typ.StructType.Field {
+		switch field.Name {
+		case "len":
+			strlen, err = readIntRaw(mem, addr+uint64(field.ByteOffset), int64(bi.PointerSize))
+			if err != nil {
+				return 0, 0, fmt.Errorf("could not read string len %s", err)
+			}
+			if strlen < 0 {
+				return 0, 0, fmt.Errorf("invalid length: %d", strlen)
+			}
+		case "str":
+			outaddr, err = readUintRaw(mem, addr+uint64(field.ByteOffset), int64(bi.PointerSize))
+			if err != nil {
+				return 0, 0, fmt.Errorf("could not read string pointer %s", err)
+			}
+			if addr == 0 {
+				return 0, 0, nil
+			}
+		}
 	}
 
-	
-	addr, err = readUintRaw(mem, addr, int64(bi.PointerSize))
-	if err != nil {
-		return 0, 0, fmt.Errorf("could not read string pointer %s", err)
-	}
-	if addr == 0 {
-		return 0, 0, nil
-	}
-	return addr, strlen, nil
+	return outaddr, strlen, nil
 }
 
 func readStringValue(mem memory.MemoryReader, addr uint64, strlen int64, cfg config.ObjectDumpConfig) (string, error) {

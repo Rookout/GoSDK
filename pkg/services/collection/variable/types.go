@@ -63,9 +63,14 @@ func runtimeTypeToDIE(_type *Variable, dataAddr uint64) (typ godwarf.Type, kind 
 					return nil, 0, fmt.Errorf("invalid interface type: %v", err)
 				}
 				if rtdie.Kind == -1 {
-					if kindField := _type.loadFieldNamed("kind"); kindField != nil && kindField.Value != nil {
-						rtdie.Kind, _ = constant.Int64Val(kindField.Value)
+					kindField := _type.loadFieldNamed("kind")
+					if kindField == nil || kindField.Value == nil {
+						kindField = _type.loadFieldNamed("Kind_")
+						if kindField == nil || kindField.Value == nil {
+							return typ, rtdie.Kind, nil
+						}
 					}
+					rtdie.Kind, _ = constant.Int64Val(kindField.Value)
 				}
 				return typ, rtdie.Kind, nil
 			}
@@ -230,7 +235,7 @@ func nameOfUnnamedRuntimeType(_type *Variable, kind, tflag int64) (string, error
 
 
 func nameOfFuncRuntimeType(_type *Variable, tflag int64, anonymous bool) (string, error) {
-	rtyp, err := _type.bi.FindType("runtime._type")
+	rtyp, err := _type.bi.FindType(_type.bi.RuntimeTypeTypename())
 	if err != nil {
 		return "", err
 	}
@@ -317,7 +322,7 @@ func resolveTypeOff(bi *binary_info.BinaryInfo, typeAddr, off uint64, mem memory
 	
 	md := module.FindModuleDataForType(typeAddr)
 
-	rtyp, err := bi.FindType("runtime._type")
+	rtyp, err := bi.FindType(bi.RuntimeTypeTypename())
 	if err != nil {
 		return nil, err
 	}
@@ -333,14 +338,14 @@ func resolveTypeOff(bi *binary_info.BinaryInfo, typeAddr, off uint64, mem memory
 	}
 
 	if t, ok := md.GetTypeMap()[module.TypeOff(off)]; ok {
-		tVar := NewVariable("", uint64(t), nil, mem, bi, config.GetDefaultDumpConfig(), 0, map[VariablesCacheKey]VariablesCacheValue{})
+		tVar := NewVariable("", uint64(t), nil, mem, bi, config.GetDefaultDumpConfig(), 0, VariablesCache{})
 		tVar.Value = constant.MakeUint64(uint64(t))
 		return tVar, nil
 	}
 
 	res := md.GetTypesAddr() + off
 
-	return NewVariable("", uint64(res), rtyp, mem, bi, config.GetDefaultDumpConfig(), 0, map[VariablesCacheKey]VariablesCacheValue{}), nil
+	return NewVariable("", uint64(res), rtyp, mem, bi, config.GetDefaultDumpConfig(), 0, VariablesCache{}), nil
 }
 
 func nameOfInterfaceRuntimeType(_type *Variable, kind, tflag int64) (string, error) {
@@ -622,7 +627,7 @@ func resolveNameOff(bi *binary_info.BinaryInfo, typeAddr, off uint64, mem memory
 }
 
 func reflectOffsMapAccess(bi *binary_info.BinaryInfo, off uint64, mem memory.MemoryReader) (*Variable, error) {
-	v := NewVariable("", 0, nil, mem, bi, config.GetDefaultDumpConfig(), 0, map[VariablesCacheKey]VariablesCacheValue{})
+	v := NewVariable("", 0, nil, mem, bi, config.GetDefaultDumpConfig(), 0, VariablesCache{})
 	v.Value = constant.MakeUint64(uint64(uintptr(reflectOffs.m[int32(off)])))
 	v.Addr = uint64(uintptr(reflectOffs.m[int32(off)]))
 	return v, nil
@@ -727,11 +732,11 @@ func resolveParametricType(bi *binary_info.BinaryInfo, mem memory.MemoryReader, 
 	if err != nil {
 		return ptyp.TypedefType.Type, err
 	}
-	runtimeType, err := bi.FindType("runtime._type")
+	runtimeType, err := bi.FindType(bi.RuntimeTypeTypename())
 	if err != nil {
 		return ptyp.TypedefType.Type, err
 	}
-	_type := NewVariable("", rtypeAddr, runtimeType, mem, bi, config.GetDefaultDumpConfig(), dictAddr, map[VariablesCacheKey]VariablesCacheValue{})
+	_type := NewVariable("", rtypeAddr, runtimeType, mem, bi, config.GetDefaultDumpConfig(), dictAddr, VariablesCache{})
 
 	typ, _, err := runtimeTypeToDIE(_type, 0)
 	if err != nil {

@@ -32,7 +32,7 @@ type ObjectDumpConfig struct {
 	IsTailored         bool
 }
 
-func (o *ObjectDumpConfig) Tailor(kind reflect.Kind, objLen int) {
+func TailorObjectDumpConfig(kind reflect.Kind, objLen int) (o ObjectDumpConfig) {
 	defer func() {
 		o.IsTailored = true
 		o.ShouldTailor = false
@@ -45,7 +45,7 @@ func (o *ObjectDumpConfig) Tailor(kind reflect.Kind, objLen int) {
 		o.MaxDepth = 1
 		return
 	case reflect.Array, reflect.Slice, reflect.Map:
-		if objLen > defaults.tolerantConfig.MaxWidth {
+		if objLen > defaults.tolerantConfig.MaxWidth || objLen == 0 {
 			o.MaxDepth = defaults.defaultConfig.MaxDepth
 			o.MaxWidth = defaults.unlimitedConfig.MaxWidth
 			o.MaxCollectionDepth = defaults.defaultConfig.MaxCollectionDepth
@@ -53,26 +53,23 @@ func (o *ObjectDumpConfig) Tailor(kind reflect.Kind, objLen int) {
 			return
 		}
 	}
-	*o = defaults.tolerantConfig
+	return defaults.tolerantConfig
 }
 
-func GetTailoredLimits(obj interface{}) ObjectDumpConfig {
-	c := ObjectDumpConfig{
-		IsTailored: true,
+func max(a, b int) int {
+	if a > b {
+		return a
 	}
+	return b
+}
 
-	defaults := config.Load().(DynamicConfiguration).ObjectDumpConfigDefaults
-	if obj == nil {
-		return defaults.tolerantConfig
+func MaxObjectDumpConfig(a, b ObjectDumpConfig) ObjectDumpConfig {
+	return ObjectDumpConfig{
+		MaxDepth:           max(a.MaxDepth, b.MaxDepth),
+		MaxCollectionDepth: max(a.MaxCollectionDepth, b.MaxCollectionDepth),
+		MaxWidth:           max(a.MaxWidth, b.MaxWidth),
+		MaxString:          max(a.MaxString, b.MaxString),
+		ShouldTailor:       a.ShouldTailor || b.ShouldTailor,
+		IsTailored:         false,
 	}
-
-	value := reflect.ValueOf(obj)
-	objLen := 0
-	if value.Kind() == reflect.Array ||
-		value.Kind() == reflect.Slice ||
-		value.Kind() == reflect.Map {
-		objLen = value.Len()
-	}
-	c.Tailor(value.Kind(), objLen)
-	return c
 }

@@ -270,7 +270,7 @@ func (n *NamespaceSerializer) dumpRookoutError(r rookoutErrors.RookoutError) {
 	n.dumpType(pb.Variant_VARIANT_ERROR)
 
 	stackFramesObj := NewGoObjectNamespace(string(r.Stack()))
-	stackFramesObj.ObjectDumpConf.Tailor(reflect.String, len(r.Stack()))
+	stackFramesObj.ObjectDumpConf = config.TailorObjectDumpConfig(reflect.String, len(r.Stack()))
 
 	n.Value = &pb.Variant_ErrorValue{
 		ErrorValue: &pb.Error{

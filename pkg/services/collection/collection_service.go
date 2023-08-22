@@ -21,7 +21,7 @@ type CollectionService struct {
 	variables              []*variable.Variable
 	StackTraceElements     []Stackframe
 	variableLocators       []*variable.VariableLocator
-	variablesCache         map[variable.VariablesCacheKey]variable.VariablesCacheValue
+	variablesCache         variable.VariablesCache
 	dictVariableLocator    *variable.VariableLocator
 	shouldLoadDictVariable bool
 	dictAddr               uint64
@@ -39,7 +39,7 @@ func NewCollectionService(regs registers.Registers, pointerSize int, stackTraceE
 		shouldLoadDictVariable: false,
 		pointerSize:            pointerSize,
 		goid:                   goid,
-		variablesCache:         make(map[variable.VariablesCacheKey]variable.VariablesCacheValue),
+		variablesCache:         make(variable.VariablesCache),
 	}
 
 	for _, variableLocator := range variableLocators {
@@ -90,8 +90,8 @@ func (c *CollectionService) GetVariable(name string, config config.ObjectDumpCon
 	return nil, errors.New("variable not found")
 }
 
-func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableLocator, config config.ObjectDumpConfig) (v *variable.Variable) {
-	v = varLocator.Locate(c.regs, c.dictAddr, c.variablesCache, config)
+func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableLocator, objectDumpConfig config.ObjectDumpConfig) (v *variable.Variable) {
+	v = varLocator.Locate(c.regs, c.dictAddr, c.variablesCache, objectDumpConfig)
 	if name := v.Name; len(name) > 1 && name[0] == '&' {
 		v = v.MaybeDereference()
 		if v.Addr == 0 && v.Unreadable == nil {
@@ -101,7 +101,7 @@ func (c *CollectionService) locateAndLoadVariable(varLocator *variable.VariableL
 	}
 
 	if v.ObjectDumpConfig.ShouldTailor {
-		v.ObjectDumpConfig.Tailor(v.Kind, int(v.Len))
+		v.UpdateObjectDumpConfig(config.TailorObjectDumpConfig(v.Kind, int(v.Len)))
 	}
 
 	v.LoadValue()

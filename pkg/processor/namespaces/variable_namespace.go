@@ -182,12 +182,13 @@ func (v *VariableNamespace) readKeyFromMap(key string) (Namespace, rookoutErrors
 		keyVar.LoadValue()
 		keyName := constant.StringVal(keyVar.Value)
 		if key == keyName {
+			v.Obj.Children[i+1].LoadValue()
 			item, _ := v.spawn(name, v.Obj.Children[i+1], false)
 			return item, nil
 		}
 	}
 
-	if int(v.Obj.Len) > len(v.Obj.Children) {
+	if int(v.Obj.Len) > len(v.Obj.Children)/2 {
 		
 		value, err := v.Obj.LoadMapValue(key)
 		if err != nil {

@@ -36,7 +36,7 @@ type _func struct {
 	pcln      uint32
 	npcdata   uint32
 	cuOffset  uint32  
-	funcID    funcID  
+	funcID    FuncID  
 	_         [2]byte 
 	nfuncdata uint8   
 }

@@ -38,7 +38,7 @@ type _func struct {
 	npcdata   uint32
 	cuOffset  uint32 
 	startLine int32  
-	funcID    funcID 
+	funcID    FuncID 
 	flag      funcFlag
 	_         [1]byte 
 	nfuncdata uint8   

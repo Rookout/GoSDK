@@ -1,12 +1,13 @@
-//go:build amd64 && go1.17 && !go1.21
-// +build amd64,go1.17,!go1.21
+//go:build amd64 && go1.17 && !go1.22
+// +build amd64,go1.17,!go1.22
 
 package callstack
 
 import (
+	_ "unsafe"
+
 	"github.com/Rookout/GoSDK/pkg/services/go_runtime"
 	"github.com/Rookout/GoSDK/pkg/services/suspender"
-	_ "unsafe"
 )
 
 //go:linkname forEachGRace runtime.forEachGRace

@@ -35,4 +35,5 @@ const cacheEnabled = true
 type MemoryReader interface {
 	
 	ReadMemory(buf []byte, addr uint64) (n int, err error)
+	ID() string
 }

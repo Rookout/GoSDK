@@ -65,3 +65,7 @@ func CacheMemory(mem MemoryReader, addr uint64, size int) MemoryReader {
 	}
 	return &memCache{false, addr, make([]byte, size), mem}
 }
+
+func (m *memCache) ID() string {
+	return m.mem.ID()
+}

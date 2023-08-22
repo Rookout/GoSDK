@@ -1,5 +1,5 @@
-//go:build go1.15 && !go1.21 && amd64
-// +build go1.15,!go1.21,amd64
+//go:build go1.15 && !go1.22 && amd64
+// +build go1.15,!go1.22,amd64
 
 #include "funcdata.h"
 #include "textflag.h"

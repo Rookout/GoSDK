@@ -52,7 +52,7 @@ type mapIterator struct {
 }
 
 
-func (v *Variable) mapIterator() (*mapIterator, error) {
+func (v *Variable) newMapIterator() (*mapIterator, error) {
 	sv := v.clone()
 	sv.RealType = resolveTypedef(&(sv.RealType.(*godwarf.MapType).TypedefType))
 	sv = sv.MaybeDereference()

@@ -24,7 +24,7 @@ func funcMaxSPDelta(_ FuncInfo) int32
 //goland:noinspection GoUnusedParameter
 func step(p []byte, pc *uintptr, val *int32, first bool) (newp []byte, ok bool)
 
-type funcID uint8
+type FuncID uint8
 
 
 
@@ -119,10 +119,10 @@ func pcdatastart(_ FuncInfo, _ uint32) uint32
 func funcdata(f FuncInfo, i uint8) unsafe.Pointer
 
 //go:linkname pcdatavalue1 runtime.pcdatavalue1
-func pcdatavalue1(f FuncInfo, table uint32, targetpc uintptr, cache *pcvalueCache, strict bool) int32
+func pcdatavalue1(f FuncInfo, table uint32, targetpc uintptr, cache *PCValueCache, strict bool) int32
 
 //go:linkname funcspdelta runtime.funcspdelta
-func funcspdelta(f FuncInfo, targetpc uintptr, cache *pcvalueCache) int32
+func funcspdelta(f FuncInfo, targetpc uintptr, cache *PCValueCache) int32
 
 //go:linkname funcline1 runtime.funcline1
 func funcline1(f FuncInfo, targetpc uintptr, strict bool) (file string, line int32)
@@ -137,12 +137,12 @@ type pcvalueCacheEnt struct {
 	val int32
 }
 
-type pcvalueCache struct {
+type PCValueCache struct {
 	entries [2][8]pcvalueCacheEnt
 }
 
 //go:linkname pcvalue runtime.pcvalue
-func pcvalue(f FuncInfo, off uint32, targetpc uintptr, cache *pcvalueCache, strict bool) (int32, uintptr)
+func pcvalue(f FuncInfo, off uint32, targetpc uintptr, cache *PCValueCache, strict bool) (int32, uintptr)
 
 var moduleDatas []*moduledata
 

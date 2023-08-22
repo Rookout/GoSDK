@@ -110,3 +110,7 @@ func DereferenceMemory(m MemoryReader) MemoryReader {
 
 	return m
 }
+
+func (m *CompositeMemory) ID() string {
+	return string(m.data)
+}

@@ -1,5 +1,5 @@
-//go:build go1.18 && !go1.20
-// +build go1.18,!go1.20
+//go:build go1.21 && !go1.22
+// +build go1.21,!go1.22
 
 package module
 
@@ -23,7 +23,14 @@ type textsect struct {
 	baseaddr uintptr 
 }
 
+type nih struct{}
+
+
+type NotInHeap struct{ _ nih }
+
 type _func struct {
+	NotInHeap 
+
 	entryoff uint32 
 	nameoff  int32  
 
@@ -35,10 +42,33 @@ type _func struct {
 	pcln      uint32
 	npcdata   uint32
 	cuOffset  uint32 
+	startLine int32  
 	funcID    FuncID 
 	flag      funcFlag
 	_         [1]byte 
 	nfuncdata uint8   
+
+	
+	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
 }
 
 type pcHeader struct {
@@ -56,7 +86,15 @@ type pcHeader struct {
 	pclnOffset     uintptr 
 }
 
+type initTask struct {
+	state uint32 
+	nfns  uint32
+	
+}
+
 type moduledata struct {
+	NotInHeap 
+
 	pcHeader     *pcHeader
 	funcnametab  []byte
 	cutab        []uint32
@@ -72,6 +110,7 @@ type moduledata struct {
 	data, edata           uintptr
 	bss, ebss             uintptr
 	noptrbss, enoptrbss   uintptr
+	covctrs, ecovctrs     uintptr
 	end, gcdata, gcbss    uintptr
 	types, etypes         uintptr
 	rodata                uintptr
@@ -85,6 +124,10 @@ type moduledata struct {
 
 	pluginpath string
 	pkghashes  []modulehash
+
+	
+	
+	inittasks []*initTask
 
 	modulename   string
 	modulehashes []modulehash

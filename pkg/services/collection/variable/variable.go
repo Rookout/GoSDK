@@ -56,8 +56,6 @@ const (
 
 type variableFlags uint16
 
-var variablesPool = make(chan *internalVariable, 102400)
-
 const (
 	
 	
@@ -92,8 +90,7 @@ const (
 
 
 type Variable struct {
-	Name      string
-	DwarfType godwarf.Type
+	Name string
 	*internalVariable
 }
 
@@ -107,12 +104,13 @@ type Variable struct {
 
 
 type internalVariable struct {
-	Addr     uint64
-	OnlyAddr bool
-	RealType godwarf.Type
-	Kind     reflect.Kind
-	Mem      memory.MemoryReader
-	bi       *binary_info.BinaryInfo
+	Addr      uint64
+	OnlyAddr  bool
+	DwarfType godwarf.Type
+	RealType  godwarf.Type
+	Kind      reflect.Kind
+	Mem       memory.MemoryReader
+	bi        *binary_info.BinaryInfo
 
 	Value        constant.Value
 	FloatSpecial floatSpecial
@@ -141,22 +139,19 @@ type internalVariable struct {
 	Children []*Variable
 
 	loaded           bool
+	needsUpdate      bool
 	Unreadable       error
 	ObjectDumpConfig config.ObjectDumpConfig
 	dictAddr         uint64
 	reg              *op.DwarfRegister 
 
-	VariablesCache map[VariablesCacheKey]VariablesCacheValue
-	closed         bool
+	mapIter *mapIterator
+
+	VariablesCache VariablesCache
+	inPool         bool
 }
 
-type VariablesCacheKey struct {
-	addr uint64
-	typ  godwarf.Type
-}
-type VariablesCacheValue = *internalVariable
-
-func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader, bi *binary_info.BinaryInfo, objectDumpConfig config.ObjectDumpConfig, dictAddr uint64, variablesCache map[VariablesCacheKey]VariablesCacheValue) (v *Variable) {
+func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader, bi *binary_info.BinaryInfo, objectDumpConfig config.ObjectDumpConfig, dictAddr uint64, variablesCache VariablesCache) (v *Variable) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Logger().Fatalf("Caught panic while creating variable. Variable: %s, recovered: %v\n", name, r)
@@ -202,25 +197,12 @@ func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.Me
 		}
 	}
 
-	
-	
-	
-	
-	
-	
-
-	var i *internalVariable
-	select {
-	case i = <-variablesPool:
-	default:
-		i = &internalVariable{}
+	if v, ok := variablesCache.get(addr, dwarfType, mem); ok {
+		v.UpdateObjectDumpConfig(config.MaxObjectDumpConfig(v.ObjectDumpConfig, objectDumpConfig))
+		return &Variable{Name: name, internalVariable: v}
 	}
-	v = &Variable{internalVariable: i}
 
-	
-	
-	
-	
+	v = &Variable{internalVariable: variablesPool.get()}
 	v.VariablesCache = variablesCache
 	v.Name = name
 	v.Addr = addr
@@ -230,6 +212,8 @@ func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.Me
 	v.ObjectDumpConfig = objectDumpConfig
 	v.dictAddr = dictAddr
 	v.RealType = resolveTypedef(dwarfType)
+
+	variablesCache.set(v.internalVariable)
 
 	switch t := v.RealType.(type) {
 	case *godwarf.PtrType:
@@ -260,7 +244,7 @@ func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.Me
 		v.stride = 1
 		v.fieldType = &godwarf.UintType{BasicType: godwarf.BasicType{CommonType: godwarf.CommonType{ByteSize: 1, Name: "byte"}, BitSize: 8, BitOffset: 0}}
 		if v.Addr != 0 {
-			v.Base, v.Len, v.Unreadable = readStringInfo(v.Mem, v.bi, v.Addr)
+			v.Base, v.Len, v.Unreadable = readStringInfo(v.Mem, v.bi, v.Addr, t)
 		}
 	case *godwarf.SliceType:
 		v.Kind = reflect.Slice
@@ -525,6 +509,14 @@ func (v *Variable) MaybeDereference() *Variable {
 	}
 }
 
+func (v *internalVariable) UpdateObjectDumpConfig(newConfig config.ObjectDumpConfig) {
+	v.needsUpdate = !(v.ObjectDumpConfig.MaxWidth == newConfig.MaxWidth &&
+		v.ObjectDumpConfig.MaxDepth == newConfig.MaxDepth &&
+		v.ObjectDumpConfig.MaxString == newConfig.MaxString &&
+		v.ObjectDumpConfig.MaxCollectionDepth == newConfig.MaxCollectionDepth)
+	v.ObjectDumpConfig = newConfig
+}
+
 
 func (v *Variable) LoadValue() {
 	v.LoadValueInternal(0)
@@ -532,6 +524,9 @@ func (v *Variable) LoadValue() {
 
 func (v *Variable) LoadValueInternal(recurseLevel int) error {
 	defer func() {
+		v.loaded = true
+		v.needsUpdate = false
+
 		if r := recover(); r != nil {
 			logger.Logger().Fatalf("Caught panic while loading variable. Variable: %s, recovered: %v\n", v.Name, r)
 			var err error
@@ -543,15 +538,27 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 			v.Unreadable = err
 		}
 	}()
-	if v.Unreadable != nil || v.loaded || (v.Addr == 0 && v.Base == 0) {
+
+	if v.Unreadable != nil || (v.Addr == 0 && v.Base == 0) {
 		return v.Unreadable
 	}
+	if v.loaded && !v.needsUpdate {
+		return nil
+	}
 
-	v.loaded = true
+	increaseDepth := v.loaded && v.needsUpdate
+	if increaseDepth {
+		for _, child := range v.Children {
+			child.UpdateObjectDumpConfig(config.MaxObjectDumpConfig(v.ObjectDumpConfig, child.ObjectDumpConfig))
+		}
+	}
+
 	switch v.Kind {
 	case reflect.Ptr, reflect.UnsafePointer:
-		v.Len = 1
-		v.Children = []*Variable{v.MaybeDereference()}
+		if !increaseDepth {
+			v.Len = 1
+			v.Children = []*Variable{v.MaybeDereference()}
+		}
 		
 		
 		nextLvl := recurseLevel
@@ -583,9 +590,12 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 			}
 		} else {
 			
-			_, err := v.mapIterator()
-			if err != nil {
-				return err
+			if v.mapIter == nil {
+				var err error
+				v.mapIter, err = v.newMapIterator()
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -603,6 +613,11 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 			}
 
 		case v.Flags&VariableCPURegister != 0:
+			if increaseDepth {
+				
+				break
+			}
+
 			val = fmt.Sprintf("%x", v.reg.Bytes)
 			s := v.Base - memory.FakeAddress
 			if s < uint64(len(val)) {
@@ -618,6 +633,13 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 		v.Value = constant.MakeString(val)
 
 	case reflect.Slice, reflect.Array:
+		if increaseDepth {
+			
+			for _, child := range v.Children {
+				child.LoadValueInternal(recurseLevel + 1)
+			}
+		}
+
 		v.loadArrayValues(recurseLevel)
 
 	case reflect.Struct:
@@ -629,24 +651,50 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 			return nil
 		}
 
-		v.Children = make([]*Variable, 0, len(t.Field))
-		for i := range t.Field {
-			f, _ := v.toField(t.Field[i])
-			v.Children = append(v.Children, f)
-			v.Children[i].Name = t.Field[i].Name
-			v.Children[i].LoadValueInternal(recurseLevel + 1)
+		
+		if len(v.Children) != len(t.Field) {
+			v.Children = make([]*Variable, 0, len(t.Field))
+			for i := range t.Field {
+				f, _ := v.toField(t.Field[i])
+				v.Children = append(v.Children, f)
+				v.Children[i].Name = t.Field[i].Name
+				v.Children[i].LoadValueInternal(recurseLevel + 1)
+			}
+		} else if increaseDepth {
+			
+			for i := range v.Children {
+				v.Children[i].LoadValueInternal(recurseLevel + 1)
+			}
 		}
 
 	case reflect.Interface:
+		if increaseDepth && v.Children != nil && recurseLevel <= v.ObjectDumpConfig.MaxDepth {
+			v.Children[0].LoadValueInternal(recurseLevel)
+		}
 		v.loadInterface(recurseLevel, true)
 
 	case reflect.Complex64, reflect.Complex128:
+		if increaseDepth {
+			
+			break
+		}
+
 		v.readComplex(v.RealType.(*godwarf.ComplexType).ByteSize)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if increaseDepth {
+			
+			break
+		}
+
 		var val int64
 		val, v.Unreadable = readIntRaw(v.Mem, v.Addr, v.RealType.(*godwarf.IntType).ByteSize)
 		v.Value = constant.MakeInt64(val)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		if increaseDepth {
+			
+			break
+		}
+
 		if v.Flags&VariableCPURegister != 0 {
 			v.Value = constant.MakeUint64(v.reg.Uint64Val)
 		} else {
@@ -656,6 +704,11 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 		}
 
 	case reflect.Bool:
+		if increaseDepth {
+			
+			break
+		}
+
 		val := make([]byte, 1)
 		_, err := v.Mem.ReadMemory(val, v.Addr)
 		v.Unreadable = err
@@ -663,6 +716,11 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 			v.Value = constant.MakeBool(val[0] != 0)
 		}
 	case reflect.Float32, reflect.Float64:
+		if increaseDepth {
+			
+			break
+		}
+
 		var val float64
 		val, v.Unreadable = v.readFloatRaw(v.RealType.(*godwarf.FloatType).ByteSize)
 		v.Value = constant.MakeFloat64(val)
@@ -675,6 +733,11 @@ func (v *Variable) LoadValueInternal(recurseLevel int) error {
 			v.FloatSpecial = FloatIsNaN
 		}
 	case reflect.Func:
+		if increaseDepth {
+			
+			break
+		}
+
 		v.readFunctionPtr()
 	default:
 		v.Unreadable = fmt.Errorf("unknown or unsupported kind: \"%s\"", v.Kind.String())
@@ -758,39 +821,39 @@ func (v *Variable) funcvalAddr() uint64 {
 	return val
 }
 
-const maxErrCount = 3 
-
 func (v *Variable) loadMap(recurseLevel int) error {
-	it, err := v.mapIterator()
-	if err != nil {
-		return err
+	if v.mapIter == nil {
+		var err error
+		v.mapIter, err = v.newMapIterator()
+		if err != nil {
+			return err
+		}
 	}
 
 	if v.Len == 0 || v.ObjectDumpConfig.MaxWidth == 0 {
 		return nil
 	}
 
-	count := 0
-	errcount := 0
-	for it.next() {
-		key := it.key()
+	childrenLen := int(v.Len)
+	if childrenLen > v.ObjectDumpConfig.MaxWidth {
+		childrenLen = v.ObjectDumpConfig.MaxWidth
+	}
+	if v.Children == nil {
+		
+		v.Children = make([]*Variable, 0, childrenLen*2)
+	}
+	for v.mapIter.next() {
+		key := v.mapIter.key()
 		var val *Variable
-		if it.values.fieldType.Size() > 0 {
-			val = it.value()
+		if v.mapIter.values.fieldType.Size() > 0 {
+			val = v.mapIter.value()
 		} else {
-			val = v.spawn("", it.values.Addr, it.values.fieldType, memory.DereferenceMemory(v.Mem))
+			val = v.spawn("", v.mapIter.values.Addr, v.mapIter.values.fieldType, memory.DereferenceMemory(v.Mem))
 		}
 		key.LoadValueInternal(recurseLevel + 1)
 		val.LoadValueInternal(recurseLevel + 1)
-		if key.Unreadable != nil || val.Unreadable != nil {
-			errcount++
-		}
 		v.Children = append(v.Children, key, val)
-		count++
-		if errcount > maxErrCount {
-			break
-		}
-		if count >= v.ObjectDumpConfig.MaxWidth || int64(count) >= v.Len {
+		if len(v.Children)/2 >= childrenLen {
 			break
 		}
 	}
@@ -822,13 +885,25 @@ func (v *Variable) LoadMapValue(key string) (*Variable, error) {
 		return nil, rookoutErrors.NewVariableIsNotMap(v.Name, v.Kind)
 	}
 
-	it, err := v.mapIterator()
-	if err != nil {
-		return nil, err
+	if v.mapIter == nil {
+		var err error
+		v.mapIter, err = v.newMapIterator()
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	for it.next() {
-		keyVar := it.key()
+	for v.mapIter.next() {
+		
+		keyVar := v.mapIter.key()
+		var valVar *Variable
+		if v.mapIter.values.fieldType.Size() > 0 {
+			valVar = v.mapIter.value()
+		} else {
+			valVar = v.spawn("", v.mapIter.values.Addr, v.mapIter.values.fieldType, memory.DereferenceMemory(v.Mem))
+		}
+		v.Children = append(v.Children, keyVar, valVar)
+
 		
 		if keyVar.Unreadable != nil {
 			continue
@@ -850,16 +925,9 @@ func (v *Variable) LoadMapValue(key string) (*Variable, error) {
 		}
 
 		
-		var val *Variable
-		if it.values.fieldType.Size() > 0 {
-			val = it.value()
-		} else {
-			val = v.spawn("", it.values.Addr, it.values.fieldType, memory.DereferenceMemory(v.Mem))
-		}
-		val.ObjectDumpConfig.Tailor(val.Kind, int(val.Len))
-		val.LoadValue()
-		v.Children = append(v.Children, keyVar, val)
-		return val, nil
+		valVar.UpdateObjectDumpConfig(config.TailorObjectDumpConfig(valVar.Kind, int(valVar.Len)))
+		valVar.LoadValue()
+		return valVar, nil
 	}
 
 	return nil, rookoutErrors.NewKeyNotInMap(v.Name, key)
@@ -952,7 +1020,12 @@ func (v *Variable) loadArrayValues(recurseLevel int) {
 		mem = memory.DereferenceMemory(mem)
 	}
 
-	for i := int64(0); i < count; i++ {
+	if v.Children == nil {
+		
+		v.Children = make([]*Variable, 0, count)
+	}
+
+	for i := int64(len(v.Children)); i < count; i++ {
 		fieldvar := v.spawn("", uint64(int64(v.Base)+(i*v.stride)), v.fieldType, mem)
 		fieldvar.LoadValueInternal(recurseLevel + 1)
 		v.Children = append(v.Children, fieldvar)
@@ -1229,42 +1302,17 @@ func (v *Variable) ConstDescr() string {
 	return ""
 }
 
-var internalVariableSize = func() int {
-	return int(unsafe.Sizeof(internalVariable{}))
-}()
-
-func (i *internalVariable) clear() {
-	defer func() {
-		if r := recover(); r != nil {
-			logger.Logger().Errorf("Failed to clear variable, error: %v", r)
-		}
-	}()
-
-	a := unsafe.Pointer(reflect.ValueOf(i).Pointer())
-	for i := 0; i < internalVariableSize; i++ {
-		b := (*byte)(a)
-		*b = 0
-		a = unsafe.Pointer(uintptr(a) + unsafe.Sizeof(*b))
-	}
-}
-
 func (v *Variable) Close() error {
-	if v.closed {
+	if v.inPool {
 		return nil
 	}
-	v.closed = true
+	v.inPool = true
 
 	for i := range v.Children {
 		_ = v.Children[i].Close()
 	}
 
-	v.clear()
-
-	select {
-	case variablesPool <- v.internalVariable:
-	default:
-	}
-
+	variablesPool.set(v.internalVariable)
 	return nil
 }
 
@@ -1428,7 +1476,7 @@ func (v *Variable) LoadArrayValue(index int) (*Variable, error) {
 	}
 
 	fieldvar := v.spawn("", uint64(int64(v.Base)+(int64(index)*v.stride)), v.fieldType, mem)
-	fieldvar.ObjectDumpConfig.Tailor(fieldvar.Kind, int(fieldvar.Len))
+	fieldvar.UpdateObjectDumpConfig(config.TailorObjectDumpConfig(fieldvar.Kind, int(fieldvar.Len)))
 	fieldvar.LoadValueInternal(1)
 	return fieldvar, nil
 }

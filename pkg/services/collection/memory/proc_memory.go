@@ -49,3 +49,7 @@ func memcpy(dest, src unsafe.Pointer, len int) unsafe.Pointer {
 	}
 	return dest
 }
+
+func (m *ProcMemory) ID() string {
+	return "procmemory"
+}

@@ -1027,3 +1027,10 @@ func (bi *BinaryInfo) ReadVariableEntry(entry *godwarf.Tree) (name string, typ g
 
 	return name, typ, nil
 }
+
+func (bi *BinaryInfo) RuntimeTypeTypename() string {
+	if GoVersionAfterOrEqual(1, 21) {
+		return "internal/abi.Type"
+	}
+	return "runtime._type"
+}
