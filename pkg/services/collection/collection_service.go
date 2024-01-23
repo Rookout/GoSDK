@@ -21,7 +21,7 @@ type CollectionService struct {
 	variables              []*variable.Variable
 	StackTraceElements     []Stackframe
 	variableLocators       []*variable.VariableLocator
-	variablesCache         variable.VariablesCache
+	variablesCache         *variable.VariablesCache
 	dictVariableLocator    *variable.VariableLocator
 	shouldLoadDictVariable bool
 	dictAddr               uint64
@@ -39,7 +39,7 @@ func NewCollectionService(regs registers.Registers, pointerSize int, stackTraceE
 		shouldLoadDictVariable: false,
 		pointerSize:            pointerSize,
 		goid:                   goid,
-		variablesCache:         make(variable.VariablesCache),
+		variablesCache:         variable.NewVariablesCache(),
 	}
 
 	for _, variableLocator := range variableLocators {

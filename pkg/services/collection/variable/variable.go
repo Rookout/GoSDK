@@ -147,11 +147,11 @@ type internalVariable struct {
 
 	mapIter *mapIterator
 
-	VariablesCache VariablesCache
+	VariablesCache *VariablesCache
 	inPool         bool
 }
 
-func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader, bi *binary_info.BinaryInfo, objectDumpConfig config.ObjectDumpConfig, dictAddr uint64, variablesCache VariablesCache) (v *Variable) {
+func NewVariable(name string, addr uint64, dwarfType godwarf.Type, mem memory.MemoryReader, bi *binary_info.BinaryInfo, objectDumpConfig config.ObjectDumpConfig, dictAddr uint64, variablesCache *VariablesCache) (v *Variable) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Logger().Fatalf("Caught panic while creating variable. Variable: %s, recovered: %v\n", name, r)

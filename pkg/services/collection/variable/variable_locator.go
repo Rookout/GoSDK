@@ -110,7 +110,7 @@ func NewVariableLocator(entry *godwarf.Tree, function *binary_info.Function, pc 
 	return v, nil
 }
 
-func (v *VariableLocator) Locate(regs registers.Registers, dictAddr uint64, variablesCache VariablesCache, objectDumpConfig config.ObjectDumpConfig) *Variable {
+func (v *VariableLocator) Locate(regs registers.Registers, dictAddr uint64, variablesCache *VariablesCache, objectDumpConfig config.ObjectDumpConfig) *Variable {
 	var mem memory.MemoryReader = &memory.ProcMemory{}
 	var addr int64
 	var pieces []op.Piece

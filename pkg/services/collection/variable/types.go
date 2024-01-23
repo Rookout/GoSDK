@@ -338,14 +338,14 @@ func resolveTypeOff(bi *binary_info.BinaryInfo, typeAddr, off uint64, mem memory
 	}
 
 	if t, ok := md.GetTypeMap()[module.TypeOff(off)]; ok {
-		tVar := NewVariable("", uint64(t), nil, mem, bi, config.GetDefaultDumpConfig(), 0, VariablesCache{})
+		tVar := NewVariable("", uint64(t), nil, mem, bi, config.GetDefaultDumpConfig(), 0, &VariablesCache{})
 		tVar.Value = constant.MakeUint64(uint64(t))
 		return tVar, nil
 	}
 
 	res := md.GetTypesAddr() + off
 
-	return NewVariable("", uint64(res), rtyp, mem, bi, config.GetDefaultDumpConfig(), 0, VariablesCache{}), nil
+	return NewVariable("", uint64(res), rtyp, mem, bi, config.GetDefaultDumpConfig(), 0, &VariablesCache{}), nil
 }
 
 func nameOfInterfaceRuntimeType(_type *Variable, kind, tflag int64) (string, error) {
@@ -627,7 +627,7 @@ func resolveNameOff(bi *binary_info.BinaryInfo, typeAddr, off uint64, mem memory
 }
 
 func reflectOffsMapAccess(bi *binary_info.BinaryInfo, off uint64, mem memory.MemoryReader) (*Variable, error) {
-	v := NewVariable("", 0, nil, mem, bi, config.GetDefaultDumpConfig(), 0, VariablesCache{})
+	v := NewVariable("", 0, nil, mem, bi, config.GetDefaultDumpConfig(), 0, &VariablesCache{})
 	v.Value = constant.MakeUint64(uint64(uintptr(reflectOffs.m[int32(off)])))
 	v.Addr = uint64(uintptr(reflectOffs.m[int32(off)]))
 	return v, nil
@@ -736,7 +736,7 @@ func resolveParametricType(bi *binary_info.BinaryInfo, mem memory.MemoryReader, 
 	if err != nil {
 		return ptyp.TypedefType.Type, err
 	}
-	_type := NewVariable("", rtypeAddr, runtimeType, mem, bi, config.GetDefaultDumpConfig(), dictAddr, VariablesCache{})
+	_type := NewVariable("", rtypeAddr, runtimeType, mem, bi, config.GetDefaultDumpConfig(), dictAddr, &VariablesCache{})
 
 	typ, _, err := runtimeTypeToDIE(_type, 0)
 	if err != nil {
