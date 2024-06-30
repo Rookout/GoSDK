@@ -1,5 +1,5 @@
-//go:build arm64 && go1.15 && !go1.22
-// +build arm64,go1.15,!go1.22
+//go:build arm64 && go1.16 && !go1.23
+// +build arm64,go1.16,!go1.23
 
 package instrumentation
 

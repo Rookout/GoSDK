@@ -1,5 +1,5 @@
-//go:build go1.15 && !go1.22 && arm64
-// +build go1.15,!go1.22,arm64
+//go:build go1.16 && !go1.23 && arm64
+// +build go1.16,!go1.23,arm64
 
 #include "funcdata.h"
 #include "textflag.h"

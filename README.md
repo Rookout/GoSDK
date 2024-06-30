@@ -2,7 +2,7 @@
 [Rookout](https://rookout.com)'s Go SDK is a Go module that supports on the fly debugging and data extraction from Go applications in production. 
 
 ## Compatibility
-Go versions 1.15 and higher are supported. 
+Go versions 1.16 and higher are supported. 
 
 Linux (including Alpine) and Mac operating systems are supported. 
 

@@ -1,6 +1,6 @@
 module github.com/Rookout/GoSDK
 
-go 1.15
+go 1.16
 
 require (
 	github.com/fallais/logrus-lumberjack-hook v0.0.0-20210917073259-3227e1ab93b0

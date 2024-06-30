@@ -1,6 +1,6 @@
-//go:build go1.15 && !go1.22 && cgo && (amd64 || arm64)
-// +build go1.15
-// +build !go1.22
+//go:build go1.16 && !go1.23 && cgo && (amd64 || arm64)
+// +build go1.16
+// +build !go1.23
 // +build cgo
 // +build amd64 arm64
 
